@@ -717,8 +717,21 @@
       btn.addEventListener('click', showPanel);
       document.body.appendChild(btn);
     }
+    // 首次访问自动从飞书拉取（后端已配置但 KV 还没数据时），避免用户手动点一次
+    function autoSyncIfNeeded() {
+      try {
+        fetch('./api/status').then(function (r) { return r.json(); }).then(function (s) {
+          if (s && s.configured && !s.synced) {
+            fetch('./api/sync', { method: 'POST' }).then(function (r) { return r.json(); }).then(function (j) {
+              if (j && j.ok) setTimeout(function () { location.reload(); }, 600);
+            }).catch(function () {});
+          }
+        }).catch(function () {});
+      } catch (e) {}
+    }
     if (document.body) injectBtn();
     else document.addEventListener('DOMContentLoaded', injectBtn);
+    setTimeout(autoSyncIfNeeded, 1500);
   })();
 
   /* ---------- 导出 ---------- */
