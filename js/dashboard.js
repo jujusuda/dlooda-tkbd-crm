@@ -231,12 +231,112 @@
     container.innerHTML = html;
   }
 
+  function renderTrend() {
+    var c = document.getElementById('trend-analysis');
+    if (!c) return;
+    var data = Data.getTrendAnalysis(filterState.startDate, filterState.endDate, filterState.sku);
+    if (!data || data.length === 0) { c.innerHTML = '<div class="card"><div style="padding:16px;color:var(--text-3);font-size:13px;text-align:center;">暂无数据</div></div>'; return; }
+    var pts = data.slice(-30);
+    var W = 680, H = 210, padL = 30, padB = 26, padT = 14, padR = 12;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var maxS = Math.max.apply(null, pts.map(function (p) { return p.sampleCount; }).concat([1]));
+    var maxO = Math.max.apply(null, pts.map(function (p) { return p.orderCount || 0; }).concat([1]));
+    var n = pts.length, step = plotW / n;
+    var barW = Math.min(18, step * 0.55);
+    var bars = '', linePts = [], dots = '';
+    pts.forEach(function (p, i) {
+      var x = padL + i * step + step / 2;
+      var sh = Math.round(p.sampleCount / maxS * plotH);
+      var y = padT + plotH - sh;
+      bars += '<rect x="' + (x - barW / 2) + '" y="' + y + '" width="' + barW + '" height="' + sh + '" rx="2" fill="url(#barGrad)"><title>' + p.date + ' 寄样 ' + p.sampleCount + ' 出单 ' + (p.orderCount || 0) + ' 通过率 ' + p.passRate + '%</title></rect>';
+      var oy = padT + plotH - Math.round((p.orderCount || 0) / maxO * plotH);
+      linePts.push(x + ',' + oy);
+      dots += '<circle cx="' + x + '" cy="' + oy + '" r="2.5" fill="#4caf87"><title>' + p.date + ' 出单 ' + (p.orderCount || 0) + '</title></circle>';
+    });
+    var line = '<polyline points="' + linePts.join(' ') + '" fill="none" stroke="#4caf87" stroke-width="2" stroke-linejoin="round"/>';
+    var labels = '';
+    var gap = Math.ceil(n / 6);
+    pts.forEach(function (p, i) {
+      if (i % gap === 0 || i === n - 1) {
+        var x = padL + i * step + step / 2;
+        labels += '<text x="' + x + '" y="' + (H - 8) + '" font-size="9" fill="#9b8e8e" text-anchor="middle">' + p.date.slice(5) + '</text>';
+      }
+    });
+    var yTicks = '<text x="2" y="' + (padT + 6) + '" font-size="8" fill="#9b8e8e">' + maxS + '</text><text x="2" y="' + (padT + plotH) + '" font-size="8" fill="#9b8e8e">0</text>';
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;">' +
+      '<defs><linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ff9ec4"/><stop offset="100%" stop-color="#ffd6e6"/></linearGradient></defs>' +
+      yTicks + bars + line + dots + labels +
+      '<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' + (padT + plotH) + '" stroke="#efe6e6" stroke-width="1"/></svg>';
+    var legend = '<div style="display:flex;gap:16px;font-size:11px;color:var(--text-2);margin:8px 0 4px;padding:0 4px;">' +
+      '<span><span style="display:inline-block;width:10px;height:10px;background:#ff9ec4;border-radius:2px;margin-right:4px;"></span>每日寄样量</span>' +
+      '<span><span style="display:inline-block;width:12px;height:3px;background:#4caf87;margin-right:4px;vertical-align:middle;"></span>每日出单量</span></div>';
+    c.innerHTML = '<div class="card" style="overflow-x:auto;"><div style="padding:8px 4px;">' + legend + svg +
+      '<div style="font-size:11px;color:var(--text-3);margin-top:6px;padding:0 4px;">共 ' + data.length + ' 个有数据的日期 · 柱=寄样量，绿线=出单量，悬停看通过率</div></div></div>';
+  }
+
+  function renderFulfillMethod() {
+    var c = document.getElementById('fulfill-method');
+    if (!c) return;
+    var dist = Data.getFulfillMethodDistribution(filterState.startDate, filterState.endDate, filterState.sku);
+    if (!dist || dist.length === 0) { c.innerHTML = '<div class="card"><div style="padding:16px;color:var(--text-3);font-size:13px;text-align:center;">暂无数据</div></div>'; return; }
+    var max = dist[0].count || 1;
+    var colors = { '视频': 'var(--c-info)', '直播': 'var(--c-success)', '已催': 'var(--c-warning)', '已取消': 'var(--c-danger)', '未履约': '#b0a0a0', '未填': 'var(--text-3)' };
+    var html = '<div class="card" style="padding:8px 4px;">' + dist.map(function (d) {
+      var pct = Math.round(d.count / max * 100);
+      var col = colors[d.method] || 'var(--pink-400)';
+      return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+        '<span style="width:54px;font-size:12px;color:var(--text-2);">' + App.escapeHtml(d.method) + '</span>' +
+        '<div style="flex:1;height:16px;background:var(--bg-pink-soft);border-radius:8px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + col + ';border-radius:8px;"></div></div>' +
+        '<span style="width:42px;text-align:right;font-size:12px;color:var(--text-3);">' + d.count + '</span></div>';
+    }).join('') + '</div>';
+    c.innerHTML = html;
+  }
+
+  function renderLanguage() {
+    var c = document.getElementById('language-distribution');
+    if (!c) return;
+    var d = Data.getLanguageDistribution(filterState.startDate, filterState.endDate, filterState.sku);
+    if (!d || !d.total) { c.innerHTML = '<div class="card"><div style="padding:16px;color:var(--text-3);font-size:13px;text-align:center;">暂无数据</div></div>'; return; }
+    var langColors = { '英语': '#4A90D9', '黑人': '#7E5BEF', '西语': '#F5A623', '其他': '#9b8e8e' };
+    function barBlock(title, arr, totalNote) {
+      var max = Math.max.apply(null, arr.map(function (x) { return x.count; }).concat([1]));
+      var rows = arr.map(function (x) {
+        var pct = Math.round(x.count / max * 100);
+        return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">' +
+          '<span style="width:42px;font-size:12px;color:var(--text-2);">' + App.escapeHtml(x.lang) + '</span>' +
+          '<div style="flex:1;height:14px;background:var(--bg-pink-soft);border-radius:7px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + (langColors[x.lang] || 'var(--pink-400)') + ';border-radius:7px;"></div></div>' +
+          '<span style="width:36px;text-align:right;font-size:12px;color:var(--text-3);">' + x.count + '</span></div>';
+      }).join('');
+      return '<div class="card" style="margin-bottom:12px;"><div class="card__header"><h3 class="card__title">' + title + '</h3></div><div style="padding:8px 4px;">' + rows + '<div style="font-size:11px;color:var(--text-3);margin-top:4px;">' + totalNote + '</div></div></div>';
+    }
+    var skuHtml = '<div class="card"><div class="card__header"><h3 class="card__title">各 SKU 语言构成</h3></div><div style="padding:8px 4px;">';
+    d.bySku.forEach(function (item) {
+      var total = item.langs.reduce(function (s, x) { return s + x.count; }, 0);
+      if (total === 0) return;
+      var segs = '';
+      item.langs.forEach(function (x) {
+        if (x.count > 0) { var w = Math.round(x.count / total * 100); segs += '<div style="width:' + w + '%;background:' + (langColors[x.lang] || 'var(--pink-400)') + ';height:100%;" title="' + App.escapeHtml(x.lang) + ' ' + x.count + '"></div>'; }
+      });
+      skuHtml += '<div style="margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span style="font-weight:600;color:var(--text-1);">SKU ' + App.escapeHtml(item.sku) + '</span><span style="color:var(--text-3);">' + total + ' 寄样</span></div>' +
+        '<div style="display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--bg-pink-soft);">' + segs + '</div></div>';
+    });
+    skuHtml += '</div></div>';
+    var totalCount = d.total.reduce(function (s, x) { return s + x.count; }, 0);
+    var orderCount = d.orderByLang.reduce(function (s, x) { return s + x.count; }, 0);
+    c.innerHTML = barBlock('整体语言分布', d.total, '总计 ' + totalCount + ' 条寄样') +
+      barBlock('出单语言分布', d.orderByLang, '有出单的寄样 ' + orderCount + ' 条') + skuHtml;
+  }
+
   function renderAll() {
     renderPersona();
     renderDevEffect();
     renderProductAnalysis();
     renderVideoQuality();
     renderReinvest();
+    renderTrend();
+    renderFulfillMethod();
+    renderLanguage();
   }
 
   function init() {

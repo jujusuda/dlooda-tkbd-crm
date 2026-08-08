@@ -1461,6 +1461,69 @@
     });
   }
 
+  // === 新增：趋势 / 履约方式 / 语言分布 分析 (v-enhance) ===
+  function getTrendAnalysis(startDate, endDate, sku) {
+    var samples = filterSamples(D.samples, startDate, endDate, sku);
+    var byDay = {};
+    samples.forEach(function (s) {
+      var d = (s.sampleTime || '').slice(0, 10);
+      if (!d) return;
+      if (!byDay[d]) byDay[d] = { date: d, sampleCount: 0, orderCount: 0, orderedCreators: 0 };
+      byDay[d].sampleCount++;
+      var oc = (s.orderCount && s.orderCount > 0) ? s.orderCount : 0;
+      byDay[d].orderCount += oc;
+      if (oc > 0) byDay[d].orderedCreators++;
+    });
+    var days = Object.keys(byDay).sort();
+    return days.map(function (d) {
+      var o = byDay[d];
+      o.passRate = o.sampleCount > 0 ? Math.round(o.orderedCreators / o.sampleCount * 100) : 0;
+      return o;
+    });
+  }
+
+  function getFulfillMethodDistribution(startDate, endDate, sku) {
+    var samples = filterSamples(D.samples, startDate, endDate, sku);
+    var map = {};
+    samples.forEach(function (s) {
+      var m = s.fulfillMethod || '未填';
+      map[m] = (map[m] || 0) + 1;
+    });
+    var order = ['视频', '直播', '已催', '已取消', '未履约', '未填'];
+    return Object.keys(map).map(function (k) {
+      return { method: k, count: map[k] };
+    }).sort(function (a, b) {
+      var ia = order.indexOf(a.method), ib = order.indexOf(b.method);
+      if (ia === -1) ia = 99;
+      if (ib === -1) ib = 99;
+      if (ia !== ib) return ia - ib;
+      return b.count - a.count;
+    });
+  }
+
+  function getLanguageDistribution(startDate, endDate, sku) {
+    var samples = filterSamples(D.samples, startDate, endDate, sku);
+    var total = {}, orderByLang = {}, bySku = {};
+    samples.forEach(function (s) {
+      var lang = s.language || '其他';
+      total[lang] = (total[lang] || 0) + 1;
+      if (s.orderCount && s.orderCount > 0) orderByLang[lang] = (orderByLang[lang] || 0) + 1;
+      if (s.sku) {
+        if (!bySku[s.sku]) bySku[s.sku] = {};
+        bySku[s.sku][lang] = (bySku[s.sku][lang] || 0) + 1;
+      }
+    });
+    var langs = ['英语', '黑人', '西语', '其他'];
+    function toArr(m) {
+      return langs.map(function (l) { return { lang: l, count: m[l] || 0 }; });
+    }
+    var bySkuArr = Object.keys(bySku).map(function (sk) {
+      return { sku: sk, langs: toArr(bySku[sk]) };
+    });
+    bySkuArr = sortByPositioning(bySkuArr);
+    return { total: toArr(total), orderByLang: toArr(orderByLang), bySku: bySkuArr };
+  }
+
   // 综合数据看板
   function getDashboardData() {
     return {
@@ -1575,6 +1638,9 @@
     getCreatorSKUBreakdown: getCreatorSKUBreakdown,
     getTaskGapAnalysis: getTaskGapAnalysis,
     getDashboardData: getDashboardData,
+    getTrendAnalysis: getTrendAnalysis,
+    getFulfillMethodDistribution: getFulfillMethodDistribution,
+    getLanguageDistribution: getLanguageDistribution,
     getAvailableSKUs: getAvailableSKUs,
     getTodayStr: getTodayStr,
     // AI辅助

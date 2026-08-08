@@ -5,6 +5,26 @@
 window.REAL_DATA = {
   "creators": [
     {
+      "_rid": "recvrHD1zXAm2S",
+      "name": "2222",
+      "official": "L2",
+      "stars": "3★",
+      "creatorType": null,
+      "bodyType": "丰满",
+      "age": "中年",
+      "fulfillment": "谨慎",
+      "category": [
+        "女装"
+      ],
+      "note": null,
+      "sampleCount": 1,
+      "videoCount": 0,
+      "skus": [
+        "2722"
+      ],
+      "lastSampleTime": "2026-08-08"
+    },
+    {
       "_rid": "recvr7cqPK5hmr",
       "name": "jewelisabelaxoxo",
       "official": "L2",
@@ -37478,6 +37498,30 @@ window.REAL_DATA = {
     }
   ],
   "samples": [
+    {
+      "_rid": "recvrHD1zXAm2S",
+      "creator": "2222",
+      "official": "L2",
+      "stars": "3★",
+      "creatorType": null,
+      "orderCount": null,
+      "reinvest": null,
+      "approval": "手动",
+      "language": "英语",
+      "bodyType": "丰满",
+      "age": "中年",
+      "fulfillment": "谨慎",
+      "category": [
+        "女装"
+      ],
+      "note": null,
+      "color": "黑",
+      "sku": "2722",
+      "sampleTime": "2026-08-08",
+      "updateTime": null,
+      "fulfillMethod": null,
+      "videos": []
+    },
     {
       "_rid": "recvr7cqPK5hmr",
       "creator": "jewelisabelaxoxo",
@@ -137641,8 +137685,8 @@ window.REAL_DATA = {
 };
 
 window.REAL_DATA_STATS = {
-  "creatorCount": 1802,
-  "sampleCount": 2843,
+  "creatorCount": 1803,
+  "sampleCount": 2844,
   "pendingCount": 214,
   "inviteCount": 383,
   "taskCount": 28,
