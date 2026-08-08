@@ -51,17 +51,17 @@
   function renderRankingBar(items, labelKey, color) {
     color = color || 'var(--pink-400)';
     if (!items || items.length === 0) return '<div style="padding:12px;color:var(--text-3);font-size:13px;">暂无数据</div>';
-    var max = items[0].total || 1;
+    var total = items.reduce(function (s, x) { return s + (x.total || 0); }, 0) || 1;
     return items.map(function (item) {
-      var pct = Math.round(item.total / max * 100);
+      var pct = total > 0 ? Math.round(item.total / total * 100) : 0;
       var fulfillPct = item.fulfillRate || 0;
       var orderPct = item.orderRate || 0;
-      return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
-        + '<span style="width:60px;font-size:11px;font-weight:600;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + App.escapeHtml(item[labelKey] || item.label || '') + '</span>'
-        + '<div style="flex:1;height:16px;background:var(--bg-pink-soft);border-radius:8px;overflow:hidden;position:relative;">'
-        + '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:8px;transition:width .6s ease;"></div>'
+      return '<div class="bar-row">'
+        + '<span class="bar-label">' + App.escapeHtml(item[labelKey] || item.label || '') + '</span>'
+        + '<div class="bar-track">'
+        + '<div class="bar-fill" style="width:' + pct + '%;background:' + color + ';">' + (pct >= 12 ? '<span class="bar-pct">' + pct + '%</span>' : '') + '</div>'
         + '</div>'
-        + '<span style="width:90px;text-align:right;font-size:11px;color:var(--text-3);">' + item.total + ' · 履' + fulfillPct + '% · 单' + orderPct + '%</span>'
+        + '<span class="bar-count">' + item.total + '<span style="margin:0 2px;">·</span>履' + fulfillPct + '%<span style="margin:0 2px;">·</span>单' + orderPct + '%</span>'
         + '</div>';
     }).join('');
   }
@@ -138,26 +138,37 @@
       return;
     }
 
+    // 按产品定位档位排序，同档按出单率降序
+    products.sort(function (a, b) {
+      var ta = Data.getSKUPositionTier(a.sku), tb = Data.getSKUPositionTier(b.sku);
+      if (ta !== tb) return ta - tb;
+      return b.orderRate - a.orderRate;
+    });
+
     var html = '<div class="card" style="overflow-x:auto;"><table style="width:100%;font-size:12px;border-collapse:collapse;">'
       + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
       + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-2);">SKU</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-2);">邀请</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--c-info);">通过</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--c-success);">履约</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--pink-500);">出单</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">履约率</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">出单率</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-2);">寄样</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--c-info);">履约达人</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--pink-500);">出单达人</th>'
+      + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-3);">出单率</th>'
       + '</tr></thead><tbody>';
 
     products.slice(0, 20).forEach(function (p) {
+      var barColor = p.orderRate >= 50 ? 'var(--c-success)' : p.orderRate >= 25 ? 'var(--c-warning)' : 'var(--pink-400)';
       html += '<tr style="border-bottom:1px solid var(--border-1);">'
         + '<td style="padding:6px 4px;font-weight:600;color:var(--text-1);">SKU ' + App.escapeHtml(p.sku) + '</td>'
-        + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + p.invited + '</td>'
-        + '<td style="padding:6px 4px;text-align:center;color:var(--c-info);">' + p.approved + '</td>'
-        + '<td style="padding:6px 4px;text-align:center;color:var(--c-success);">' + p.fulfilled + '</td>'
-        + '<td style="padding:6px 4px;text-align:center;color:var(--pink-500);font-weight:700;">' + p.ordered + '</td>'
-        + '<td style="padding:6px 4px;text-align:center;color:var(--text-3);">' + p.fulfillRate + '%</td>'
-        + '<td style="padding:6px 4px;text-align:center;color:var(--text-3);">' + p.orderRate + '%</td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + p.approved + '</td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--c-info);">' + p.fulfilledCreators + '</td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--pink-500);font-weight:700;">' + p.orderedCreators + '</td>'
+        + '<td style="padding:6px 4px;">'
+        + '<div style="display:flex;align-items:center;gap:6px;">'
+        + '<div style="flex:1;min-width:60px;height:12px;background:var(--bg-pink-soft);border-radius:6px;overflow:hidden;">'
+        + '<div style="height:100%;width:' + Math.min(p.orderRate, 100) + '%;background:' + barColor + ';border-radius:6px;"></div>'
+        + '</div>'
+        + '<span style="font-size:11px;font-weight:700;color:' + barColor + ';min-width:34px;">' + p.orderRate + '%</span>'
+        + '</div>'
+        + '</td>'
         + '</tr>';
     });
     html += '</tbody></table></div>';
@@ -177,24 +188,25 @@
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + App.formatNumber(analytics.uniqueCreators) + '</div><div class="stat-card__label">有视频达人</div></div>'
       + '</div>';
 
-    // SKU 视频排行
+    // SKU 视频出单排行
     if (analytics.skuRanking.length > 0) {
       html += '<div class="card" style="margin-bottom:12px;">'
-        + '<div class="card__header"><h3 class="card__title">SKU 视频排名 TOP 8</h3></div>'
+        + '<div class="card__header"><h3 class="card__title">SKU 视频出单排行 TOP 8</h3></div>'
         + '<div style="padding:8px 0;">';
-      // 按产品定位排序：爆品 → 销售 → 测品 → 撤退，同档按视频数降序
+      // 按视频出单数量降序，同数量按定位档
       var skuRank = (analytics.skuRanking || []).slice().sort(function (a, b) {
+        if (b.orderedCount !== a.orderedCount) return b.orderedCount - a.orderedCount;
         var ta = Data.getSKUPositionTier(a.sku), tb = Data.getSKUPositionTier(b.sku);
         if (ta !== tb) return ta - tb;
         return b.videoCount - a.videoCount;
       });
-      var maxV = skuRank[0] ? (skuRank[0].videoCount || 1) : 1;
+      var maxO = skuRank[0] ? (skuRank[0].orderedCount || 1) : 1;
       skuRank.slice(0, 8).forEach(function (s, i) {
-        var pct = Math.round(s.videoCount / maxV * 100);
+        var pct = Math.round(s.orderedCount / maxO * 100);
         html += '<div style="margin-bottom:8px;">'
           + '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;">'
           + '<span style="font-weight:600;color:var(--text-1);">#' + (i+1) + ' SKU ' + App.escapeHtml(s.sku) + '</span>'
-          + '<span><span style="color:var(--c-info);">' + s.videoCount + '视频</span> · <span style="color:var(--pink-500);">' + s.orderedCount + '出单</span> · <span style="color:var(--c-success);">' + s.orderRate + '%</span></span>'
+          + '<span><span style="color:var(--pink-500);">' + s.orderedCount + '出单</span> · <span style="color:var(--c-info);">' + s.videoCount + '视频</span> · <span style="color:var(--c-success);">' + s.orderRate + '%</span></span>'
           + '</div>'
           + '<div style="height:6px;background:var(--bg-pink-soft);border-radius:3px;overflow:hidden;">'
           + '<div style="height:100%;width:' + pct + '%;background:var(--pink-400);border-radius:3px;transition:width .6s ease;"></div>'
@@ -208,17 +220,16 @@
       html += '<div class="card">'
         + '<div class="card__header"><h3 class="card__title">颜色分布 TOP 8</h3></div>'
         + '<div style="padding:8px 0;">';
-      var maxC = analytics.colorRanking[0].count || 1;
+      var totalC = analytics.colorRanking.reduce(function (s, c) { return s + c.count; }, 0) || 1;
       var colorMap = { '黑': '#333', '白': '#eee', '灰': '#999', '蓝': '#4A90D9', '淡蓝': '#B0D4E8', '粉': '#F5B0BC', '绿': '#7EC850', '棕': '#8B6F47', '卡其': '#C3B091', '杏': '#D4A574' };
       analytics.colorRanking.slice(0, 8).forEach(function (c) {
-        var pct = Math.round(c.count / maxC * 100);
+        var pct = Math.round(c.count / totalC * 100);
         var bg = colorMap[c.color] || 'var(--pink-300)';
-        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
-          + '<span style="width:40px;font-size:12px;font-weight:600;color:var(--text-2);">' + App.escapeHtml(c.color) + '</span>'
-          + '<div style="flex:1;height:14px;background:var(--bg-pink-soft);border-radius:7px;overflow:hidden;">'
-          + '<div style="height:100%;width:' + pct + '%;background:' + bg + ';border-radius:7px;transition:width .6s ease;"></div>'
-          + '</div>'
-          + '<span style="width:40px;text-align:right;font-size:12px;color:var(--text-3);">' + c.count + '</span>'
+        var textColor = (c.color === '白' || c.color === '杏') ? 'var(--text-1)' : '#fff';
+        html += '<div class="bar-row">'
+          + '<span class="bar-label">' + App.escapeHtml(c.color) + '</span>'
+          + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + bg + ';">' + (pct >= 12 ? '<span class="bar-pct" style="color:' + textColor + ';">' + pct + '%</span>' : '') + '</div></div>'
+          + '<span class="bar-count">' + c.count + ' · ' + pct + '%</span>'
           + '</div>';
       });
       if (analytics.topColor) {
@@ -305,27 +316,45 @@
       '<defs><linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ff9ec4"/><stop offset="100%" stop-color="#ffd6e6"/></linearGradient></defs>' +
       yTicks + bars + line + dots + labels +
       '<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' + (padT + plotH) + '" stroke="#efe6e6" stroke-width="1"/></svg>';
+    // 寄样ROI汇总
+    var totalSamples = data.reduce(function (s, p) { return s + p.sampleCount; }, 0);
+    var totalOrders = data.reduce(function (s, p) { return s + (p.orderCount || 0); }, 0);
+    var roi = totalSamples > 0 ? Math.round(totalOrders / totalSamples * 1000) / 10 : 0;
+
     var legend = '<div style="display:flex;gap:16px;font-size:11px;color:var(--text-2);margin:8px 0 4px;padding:0 4px;">' +
       '<span><span style="display:inline-block;width:10px;height:10px;background:#ff9ec4;border-radius:2px;margin-right:4px;"></span>每日寄样量</span>' +
       '<span><span style="display:inline-block;width:12px;height:3px;background:#4caf87;margin-right:4px;vertical-align:middle;"></span>每日出单量</span></div>';
-    c.innerHTML = '<div class="card" style="overflow-x:auto;"><div style="padding:8px 4px;">' + legend + svg +
-      '<div style="font-size:11px;color:var(--text-3);margin-top:6px;padding:0 4px;">共 ' + data.length + ' 个有数据的日期 · 柱=寄样量，绿线=出单量，悬停看通过率</div></div></div>';
+    var summary = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;">'
+      + '<div style="padding:10px;background:var(--bg-pink-soft);border-radius:8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:var(--pink-600);">' + totalSamples + '</div><div style="font-size:11px;color:var(--text-2);">总寄样</div></div>'
+      + '<div style="padding:10px;background:var(--c-success-bg);border-radius:8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:var(--c-success);">' + totalOrders + '</div><div style="font-size:11px;color:var(--text-2);">总出单</div></div>'
+      + '<div style="padding:10px;background:var(--c-info-bg);border-radius:8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:var(--c-info);">' + roi + '%</div><div style="font-size:11px;color:var(--text-2);">寄样ROI</div></div>'
+      + '</div>';
+    c.innerHTML = '<div class="card" style="overflow-x:auto;"><div style="padding:8px 4px;">' + legend + svg + summary +
+      '<div style="font-size:11px;color:var(--text-3);margin-top:8px;padding:0 4px;">共 ' + data.length + ' 个有数据的日期 · 柱=寄样量，绿线=出单量，悬停看通过率</div></div></div>';
   }
 
   function renderFulfillMethod() {
     var c = document.getElementById('fulfill-method');
     if (!c) return;
-    var dist = Data.getFulfillMethodDistribution(filterState.startDate, filterState.endDate, filterState.sku);
-    if (!dist || dist.length === 0) { c.innerHTML = '<div class="card"><div style="padding:16px;color:var(--text-3);font-size:13px;text-align:center;">暂无数据</div></div>'; return; }
-    var max = dist[0].count || 1;
+    var data = Data.getFulfillmentRate(filterState.startDate, filterState.endDate, filterState.sku);
+    if (!data || data.total === 0) { c.innerHTML = '<div class="card"><div style="padding:16px;color:var(--text-3);font-size:13px;text-align:center;">暂无数据</div></div>'; return; }
+
     var colors = { '视频': 'var(--c-info)', '直播': 'var(--c-success)', '已催': 'var(--c-warning)', '已取消': 'var(--c-danger)', '未履约': '#b0a0a0', '未填': 'var(--text-3)' };
-    var html = '<div class="card" style="padding:8px 4px;">' + dist.map(function (d) {
-      var pct = Math.round(d.count / max * 100);
+    var total = data.total || 1;
+    var html = '<div class="stat-grid" style="margin-bottom:16px;">'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-success);">' + data.fulfillmentRate + '%</div><div class="stat-card__label">整体履约率</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + data.fulfilled + '</div><div class="stat-card__label">履约达人</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + data.total + '</div><div class="stat-card__label">寄样总数</div></div>'
+      + '</div>';
+
+    html += '<div class="card" style="padding:8px 4px;">' + data.byMethod.map(function (d) {
+      var share = Math.round(d.count / total * 100);
       var col = colors[d.method] || 'var(--pink-400)';
-      return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
-        '<span style="width:54px;font-size:12px;color:var(--text-2);">' + App.escapeHtml(d.method) + '</span>' +
-        '<div style="flex:1;height:16px;background:var(--bg-pink-soft);border-radius:8px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + col + ';border-radius:8px;"></div></div>' +
-        '<span style="width:42px;text-align:right;font-size:12px;color:var(--text-3);">' + d.count + '</span></div>';
+      return '<div class="bar-row">'
+        + '<span class="bar-label">' + App.escapeHtml(d.method) + '</span>'
+        + '<div class="bar-track"><div class="bar-fill" style="width:' + share + '%;background:' + col + ';">' + (share >= 12 ? '<span class="bar-pct">' + share + '%</span>' : '') + '</div></div>'
+        + '<span class="bar-count">' + d.count + ' · ' + share + '%</span>'
+        + '</div>';
     }).join('') + '</div>';
     c.innerHTML = html;
   }
@@ -347,16 +376,21 @@
       }).join('');
       return '<div class="card" style="margin-bottom:12px;"><div class="card__header"><h3 class="card__title">' + title + '</h3></div><div style="padding:8px 4px;">' + rows + '<div style="font-size:11px;color:var(--text-3);margin-top:4px;">' + totalNote + '</div></div></div>';
     }
-    var skuHtml = '<div class="card"><div class="card__header"><h3 class="card__title">各 SKU 语言构成</h3></div><div style="padding:8px 4px;">';
+    var skuHtml = '<div class="card"><div class="card__header"><h3 class="card__title">各 SKU 出单语言占比</h3></div><div style="padding:8px 4px;">';
     d.bySku.forEach(function (item) {
-      var total = item.langs.reduce(function (s, x) { return s + x.count; }, 0);
-      if (total === 0) return;
+      var total = item.orderTotal || 0;
+      if (total === 0) {
+        skuHtml += '<div style="margin-bottom:10px;">'
+          + '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span style="font-weight:600;color:var(--text-1);">SKU ' + App.escapeHtml(item.sku) + '</span><span style="color:var(--text-3);">暂无出单</span></div>'
+          + '<div style="height:16px;border-radius:8px;background:var(--bg-pink-soft);"></div></div>';
+        return;
+      }
       var segs = '';
-      item.langs.forEach(function (x) {
-        if (x.count > 0) { var w = Math.round(x.count / total * 100); segs += '<div style="width:' + w + '%;background:' + (langColors[x.lang] || 'var(--pink-400)') + ';height:100%;" title="' + App.escapeHtml(x.lang) + ' ' + x.count + '"></div>'; }
+      item.orderLangs.forEach(function (x) {
+        if (x.count > 0) { var w = Math.round(x.count / total * 100); segs += '<div style="width:' + w + '%;background:' + (langColors[x.lang] || 'var(--pink-400)') + ';height:100%;display:flex;align-items:center;justify-content:center;" title="' + App.escapeHtml(x.lang) + ' ' + x.count + ' (' + w + '%)">' + (w >= 14 ? '<span style="font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.15);">' + w + '%</span>' : '') + '</div>'; }
       });
       skuHtml += '<div style="margin-bottom:10px;">' +
-        '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span style="font-weight:600;color:var(--text-1);">SKU ' + App.escapeHtml(item.sku) + '</span><span style="color:var(--text-3);">' + total + ' 寄样</span></div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span style="font-weight:600;color:var(--text-1);">SKU ' + App.escapeHtml(item.sku) + '</span><span style="color:var(--text-3);">' + total + ' 出单</span></div>' +
         '<div style="display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--bg-pink-soft);">' + segs + '</div></div>';
     });
     skuHtml += '</div></div>';

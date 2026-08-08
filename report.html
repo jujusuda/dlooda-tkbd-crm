@@ -10,6 +10,22 @@
   <link rel="manifest" href="manifest.json">
   <title>Dlooda TKBD · 数据复盘</title>
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    .bar-row { display:flex;align-items:center;gap:10px;margin-bottom:8px; }
+    .bar-label { width:60px;font-size:11px;font-weight:600;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+    .bar-track { flex:1;height:14px;background:var(--bg-pink-soft);border-radius:7px;overflow:hidden;position:relative; }
+    .bar-fill { height:100%;border-radius:7px;transition:width .6s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:6px; }
+    .bar-pct { font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.15); }
+    .bar-count { width:70px;text-align:right;font-size:11px;color:var(--text-3); }
+    .change-up { color:var(--c-success); }
+    .change-down { color:var(--c-danger); }
+    .change-flat { color:var(--text-3); }
+    .attribution-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:12px; }
+    @media (max-width: 640px) { .attribution-grid { grid-template-columns:1fr; } }
+    .dim-card { background:#fff;border:1px solid var(--border-1);border-radius:12px;padding:12px; }
+    .dim-title { font-size:13px;font-weight:700;color:var(--pink-600);margin-bottom:10px; }
+    .trend-line { fill:none;stroke-width:2;stroke-linejoin:round; }
+  </style>
 </head>
 <body>
   <div class="app-shell">
@@ -18,123 +34,60 @@
       <div class="page-header">
         <div class="page-header__left">
           <h1 class="page-header__title">数据复盘</h1>
-          <p class="page-header__subtitle">出单分析 · 寄样任务 · 达人排行</p>
+          <p class="page-header__subtitle">SKU 出单率趋势 · 升降归因 · 寄样任务</p>
         </div>
       </div>
 
       <!-- 视图切换 -->
       <div class="view-tabs" id="report-view-tabs">
-        <button class="view-tab active" data-view="overview">整体概览</button>
-        <button class="view-tab" data-view="orders">出单分析</button>
+        <button class="view-tab active" data-view="trend">SKU 出单率趋势</button>
+        <button class="view-tab" data-view="attribution">升降归因</button>
         <button class="view-tab" data-view="tasks">寄样任务</button>
       </div>
 
       <!-- 筛选栏 -->
       <div id="report-filter-bar"></div>
 
-      <!-- ========== 视图1: 整体概览 ========== -->
-      <div id="view-overview" class="view-panel">
-        <!-- 关键指标 -->
-        <div class="stat-grid" id="report-metrics"></div>
-
-        <!-- 达人视频排名 -->
+      <!-- ========== 视图1: SKU 出单率趋势 ========== -->
+      <div id="view-trend" class="view-panel">
+        <div class="stat-grid" id="trend-metrics"></div>
         <div class="section">
-          <div class="section__header">
-            <h2 class="section__title">达人视频排名 TOP 20</h2>
-            <span class="section__hint">点击达人查看 SKU 明细</span>
-          </div>
-          <div class="card">
-            <div id="creator-ranking"></div>
-          </div>
+          <div class="section__header"><h2 class="section__title">SKU 月度出单率趋势</h2></div>
+          <div class="card"><div id="sku-trend-chart"></div></div>
         </div>
-
-        <!-- SKU 寄样量排名 -->
         <div class="section">
-          <div class="section__header">
-            <h2 class="section__title">SKU 寄样量排名</h2>
-          </div>
-          <div class="card">
-            <div id="sku-ranking"></div>
-          </div>
-        </div>
-
-        <!-- 分布图 -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="report-dist">
-          <div class="section">
-            <div class="section__header">
-              <h2 class="section__title">官方等级分布</h2>
-            </div>
-            <div class="card">
-              <div id="official-dist"></div>
-            </div>
-          </div>
-          <div class="section">
-            <div class="section__header">
-              <h2 class="section__title">履约方式分布</h2>
-            </div>
-            <div class="card">
-              <div id="method-dist"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 整体概览 -->
-        <div class="section">
-          <div class="section__header">
-            <h2 class="section__title">整体概览</h2>
-          </div>
-          <div class="card">
-            <div id="report-overview"></div>
-          </div>
+          <div class="section__header"><h2 class="section__title">出单率升降榜</h2></div>
+          <div class="card"><div id="sku-change-ranking"></div></div>
         </div>
       </div>
 
-      <!-- ========== 视图2: 出单分析 ========== -->
-      <div id="view-orders" class="view-panel" style="display:none;">
-        <!-- 出单达人排行 TOP 10 -->
-        <div class="section">
-          <div class="section__header">
-            <h2 class="section__title">出单达人排行 TOP 10</h2>
-            <span class="section__hint">点击展开该达人带的 SKU 及出单情况</span>
-          </div>
-          <div class="card">
-            <div id="order-creator-ranking"></div>
+      <!-- ========== 视图2: 升降归因 ========== -->
+      <div id="view-attribution" class="view-panel" style="display:none;">
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px;">
+            <label style="font-size:13px;font-weight:600;color:var(--text-2);">选择 SKU：</label>
+            <select id="attr-sku-select" style="padding:8px 12px;border:1px solid var(--border-1);border-radius:8px;background:#fff;font-size:13px;color:var(--text-1);min-width:160px;"></select>
+            <span style="font-size:12px;color:var(--text-3);">对比最近两个月，从达人画像/颜色/语言/通过率找原因</span>
           </div>
         </div>
-
-        <!-- 复投分析 -->
-        <div class="section">
-          <div class="section__header">
-            <h2 class="section__title">复投分析</h2>
-          </div>
-          <div class="card">
-            <div id="reinvest-analysis"></div>
-          </div>
-        </div>
+        <div id="attribution-content"></div>
       </div>
 
       <!-- ========== 视图3: 寄样任务 ========== -->
       <div id="view-tasks" class="view-panel" style="display:none;">
-        <!-- 优先寄样提醒 -->
         <div class="section" id="urgent-section">
           <div class="section__header">
             <h2 class="section__title">⚠️ 优先寄样提醒</h2>
             <span class="section__hint">寄样量与要求差距大，需优先处理</span>
           </div>
-          <div class="card">
-            <div id="urgent-samples"></div>
-          </div>
+          <div class="card"><div id="urgent-samples"></div></div>
         </div>
-
-        <!-- 寄样任务差距分析 -->
         <div class="section">
           <div class="section__header">
             <h2 class="section__title">寄样任务差距分析</h2>
             <span class="section__hint">实际寄样量 vs 要求寄样量</span>
           </div>
-          <div class="card">
-            <div id="task-gap-analysis"></div>
-          </div>
+          <div class="card"><div id="task-gap-analysis"></div></div>
         </div>
       </div>
     </main>

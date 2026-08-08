@@ -39,6 +39,7 @@
       D[key].forEach(function (rec) {
         if (rec.category !== undefined && rec.category !== null) rec.category = normFieldToStr(rec.category);
         if (rec.creatorType !== undefined && rec.creatorType !== null) rec.creatorType = normFieldToStr(rec.creatorType);
+        if (rec.fulfillMethod !== undefined && rec.fulfillMethod !== null) rec.fulfillMethod = normFieldToStr(rec.fulfillMethod);
       });
     }
   });
@@ -1218,10 +1219,17 @@
     var stats = {};
     samples.forEach(function (s) {
       if (!s.sku) return;
-      if (!stats[s.sku]) stats[s.sku] = { invited: 0, approved: 0, fulfilled: 0, ordered: 0, videos: 0, reinvest: 0 };
+      if (!stats[s.sku]) stats[s.sku] = { invited: 0, approved: 0, fulfilled: 0, ordered: 0, videos: 0, reinvest: 0, fulfilledCreators: {}, orderedCreators: {} };
       stats[s.sku].approved++;
-      if (s.fulfillMethod === '视频' || (s.fulfillMethod && s.fulfillMethod.indexOf('直播') >= 0)) stats[s.sku].fulfilled++;
-      if (s.orderCount && s.orderCount > 0) stats[s.sku].ordered++;
+      var isFulfilled = s.fulfillMethod === '视频' || (s.fulfillMethod && s.fulfillMethod.indexOf('直播') >= 0);
+      if (isFulfilled) {
+        stats[s.sku].fulfilled++;
+        stats[s.sku].fulfilledCreators[s.creator] = true;
+      }
+      if (s.orderCount && s.orderCount > 0) {
+        stats[s.sku].ordered++;
+        stats[s.sku].orderedCreators[s.creator] = true;
+      }
       if (s.videos) stats[s.sku].videos += s.videos.length;
       if (s.reinvest) stats[s.sku].reinvest++;
     });
@@ -1231,12 +1239,16 @@
     if (endDate) filteredInvites = filteredInvites.filter(function (i) { return i.date && i.date <= endDate + ' 23:59'; });
     filteredInvites.forEach(function (i) {
       if (!i.sku) return;
-      if (!stats[i.sku]) stats[i.sku] = { invited: 0, approved: 0, fulfilled: 0, ordered: 0, videos: 0, reinvest: 0 };
+      if (!stats[i.sku]) stats[i.sku] = { invited: 0, approved: 0, fulfilled: 0, ordered: 0, videos: 0, reinvest: 0, fulfilledCreators: {}, orderedCreators: {} };
       stats[i.sku].invited += (i.achieved || 0);
     });
 
     return Object.entries(stats).map(function (entry) {
       var d = getSKUDetail(entry[0]);
+      var fulfilledCreatorsCount = Object.keys(entry[1].fulfilledCreators || {}).length;
+      var orderedCreatorsCount = Object.keys(entry[1].orderedCreators || {}).length;
+      delete entry[1].fulfilledCreators;
+      delete entry[1].orderedCreators;
       return Object.assign({
         sku: entry[0],
         productName: d.productName || '',
@@ -1244,7 +1256,9 @@
         commission: d.defaultCommission || '',
         approveRate: entry[1].invited > 0 ? Math.round(entry[1].approved / entry[1].invited * 100) : 0,
         fulfillRate: entry[1].approved > 0 ? Math.round(entry[1].fulfilled / entry[1].approved * 100) : 0,
-        orderRate: entry[1].fulfilled > 0 ? Math.round(entry[1].ordered / entry[1].fulfilled * 1000) / 10 : 0,
+        fulfilledCreators: fulfilledCreatorsCount,
+        orderedCreators: orderedCreatorsCount,
+        orderRate: fulfilledCreatorsCount > 0 ? Math.round(orderedCreatorsCount / fulfilledCreatorsCount * 1000) / 10 : 0,
       }, entry[1]);
     }).sort(function (a, b) {
       // 先按定位档位（爆品→销售→测品），同档按寄样量降序
@@ -1496,6 +1510,7 @@
     return days.map(function (d) {
       var o = byDay[d];
       o.passRate = o.sampleCount > 0 ? Math.round(o.orderedCreators / o.sampleCount * 100) : 0;
+      o.roi = o.sampleCount > 0 ? Math.round(o.orderCount / o.sampleCount * 1000) / 10 : 0;
       return o;
     });
   }
@@ -1519,9 +1534,38 @@
     });
   }
 
+  function getFulfillmentRate(startDate, endDate, sku) {
+    var samples = filterSamples(D.samples, startDate, endDate, sku);
+    var fulfilledCreators = {};
+    var byMethod = {};
+    var total = samples.length;
+    samples.forEach(function (s) {
+      var m = s.fulfillMethod || '未填';
+      byMethod[m] = (byMethod[m] || 0) + 1;
+      if (m === '视频' || (m && m.indexOf('直播') >= 0)) {
+        fulfilledCreators[s.creator] = true;
+      }
+    });
+    var fulfilledCount = Object.keys(fulfilledCreators).length;
+    var order = ['视频', '直播', '已催', '已取消', '未履约', '未填'];
+    return {
+      total: total,
+      fulfilled: fulfilledCount,
+      fulfillmentRate: total > 0 ? Math.round(fulfilledCount / total * 1000) / 10 : 0,
+      byMethod: Object.keys(byMethod).map(function (k) {
+        return { method: k, count: byMethod[k] };
+      }).sort(function (a, b) {
+        var ia = order.indexOf(a.method), ib = order.indexOf(b.method);
+        if (ia === -1) ia = 99; if (ib === -1) ib = 99;
+        if (ia !== ib) return ia - ib;
+        return b.count - a.count;
+      })
+    };
+  }
+
   function getLanguageDistribution(startDate, endDate, sku) {
     var samples = filterSamples(D.samples, startDate, endDate, sku);
-    var total = {}, orderByLang = {}, bySku = {};
+    var total = {}, orderByLang = {}, bySku = {}, bySkuOrder = {};
     samples.forEach(function (s) {
       var lang = s.language || '其他';
       total[lang] = (total[lang] || 0) + 1;
@@ -1529,6 +1573,10 @@
       if (s.sku) {
         if (!bySku[s.sku]) bySku[s.sku] = {};
         bySku[s.sku][lang] = (bySku[s.sku][lang] || 0) + 1;
+        if (s.orderCount && s.orderCount > 0) {
+          if (!bySkuOrder[s.sku]) bySkuOrder[s.sku] = {};
+          bySkuOrder[s.sku][lang] = (bySkuOrder[s.sku][lang] || 0) + 1;
+        }
       }
     });
     var langs = ['英语', '黑人', '西语', '其他'];
@@ -1536,10 +1584,136 @@
       return langs.map(function (l) { return { lang: l, count: m[l] || 0 }; });
     }
     var bySkuArr = Object.keys(bySku).map(function (sk) {
-      return { sku: sk, langs: toArr(bySku[sk]) };
+      var orderLangs = toArr(bySkuOrder[sk] || {});
+      var orderTotal = orderLangs.reduce(function (s, x) { return s + x.count; }, 0);
+      return { sku: sk, langs: toArr(bySku[sk]), orderLangs: orderLangs, orderTotal: orderTotal };
     });
     bySkuArr = sortByPositioning(bySkuArr);
     return { total: toArr(total), orderByLang: toArr(orderByLang), bySku: bySkuArr };
+  }
+
+  // SKU 出单率趋势：按月份统计每个SKU的出单率（用于复盘）
+  function getSKUTrendAnalysis(skuFilter) {
+    var samples = D.samples;
+    if (skuFilter) samples = samples.filter(function (s) { return s.sku === skuFilter; });
+    var byMonth = {};
+    samples.forEach(function (s) {
+      if (!s.sku || !s.sampleTime) return;
+      var month = s.sampleTime.slice(0, 7);
+      var key = month + '|' + s.sku;
+      if (!byMonth[key]) byMonth[key] = { month: month, sku: s.sku, sampleCount: 0, fulfilledCreators: {}, orderedCreators: {} };
+      byMonth[key].sampleCount++;
+      var m = s.fulfillMethod || '';
+      if (m === '视频' || m.indexOf('直播') >= 0) byMonth[key].fulfilledCreators[s.creator] = true;
+      if (s.orderCount && s.orderCount > 0) byMonth[key].orderedCreators[s.creator] = true;
+    });
+    var rows = Object.values(byMonth).map(function (r) {
+      var f = Object.keys(r.fulfilledCreators).length;
+      var o = Object.keys(r.orderedCreators).length;
+      return {
+        month: r.month,
+        sku: r.sku,
+        sampleCount: r.sampleCount,
+        fulfilledCreators: f,
+        orderedCreators: o,
+        orderRate: f > 0 ? Math.round(o / f * 1000) / 10 : 0,
+      };
+    }).sort(function (a, b) { return (a.month + a.sku).localeCompare(b.month + b.sku); });
+
+    // 计算环比变化：每个SKU按月排序后，当前月 vs 上一月
+    var bySku = {};
+    rows.forEach(function (r) { if (!bySku[r.sku]) bySku[r.sku] = []; bySku[r.sku].push(r); });
+    Object.keys(bySku).forEach(function (sk) {
+      var list = bySku[sk].sort(function (a, b) { return a.month.localeCompare(b.month); });
+      list.forEach(function (r, i) {
+        if (i > 0) {
+          r.prevOrderRate = list[i - 1].orderRate;
+          r.orderRateDiff = Math.round((r.orderRate - list[i - 1].orderRate) * 10) / 10;
+        } else {
+          r.prevOrderRate = null;
+          r.orderRateDiff = null;
+        }
+      });
+    });
+    return rows;
+  }
+
+  // SKU 升降归因详情：对比最近两个月各维度分布
+  function getSKUAttributionDetail(sku) {
+    if (!sku) return null;
+    var samples = D.samples.filter(function (s) { return s.sku === sku && s.sampleTime; });
+    var byMonth = {};
+    samples.forEach(function (s) {
+      var month = s.sampleTime.slice(0, 7);
+      if (!byMonth[month]) byMonth[month] = [];
+      byMonth[month].push(s);
+    });
+    var months = Object.keys(byMonth).sort();
+    if (months.length < 2) return null;
+    var prevMonth = months[months.length - 2];
+    var currMonth = months[months.length - 1];
+
+    function dim(samples) {
+      var age = {}, body = {}, official = {}, category = {}, color = {}, lang = {}, approval = {};
+      var fulfilledCreators = {}, orderedCreators = {};
+      samples.forEach(function (s) {
+        if (s.age) age[s.age] = (age[s.age] || 0) + 1;
+        if (s.bodyType) body[s.bodyType] = (body[s.bodyType] || 0) + 1;
+        if (s.official) official[s.official] = (official[s.official] || 0) + 1;
+        if (s.category) {
+          String(s.category).split(',').forEach(function (c) { c = c.trim(); if (c) category[c] = (category[c] || 0) + 1; });
+        }
+        if (s.color) color[s.color] = (color[s.color] || 0) + 1;
+        var l = s.language || '其他';
+        lang[l] = (lang[l] || 0) + 1;
+        if (s.approval) approval[s.approval] = (approval[s.approval] || 0) + 1;
+        var m = s.fulfillMethod || '';
+        if (m === '视频' || m.indexOf('直播') >= 0) fulfilledCreators[s.creator] = true;
+        if (s.orderCount && s.orderCount > 0) orderedCreators[s.creator] = true;
+      });
+      return { age: age, body: body, official: official, category: category, color: color, language: lang, approval: approval, sampleCount: samples.length, fulfilledCreators: Object.keys(fulfilledCreators).length, orderedCreators: Object.keys(orderedCreators).length };
+    }
+
+    function toArr(obj) {
+      var total = Object.values(obj).reduce(function (s, v) { return s + v; }, 0) || 1;
+      return Object.entries(obj).map(function (e) {
+        return { key: e[0], count: e[1], pct: Math.round(e[1] / total * 1000) / 10 };
+      }).sort(function (a, b) { return b.count - a.count; });
+    }
+
+    var prev = dim(byMonth[prevMonth]);
+    var curr = dim(byMonth[currMonth]);
+    return {
+      sku: sku,
+      prevMonth: prevMonth,
+      currMonth: currMonth,
+      prev: { sampleCount: prev.sampleCount, fulfilledCreators: prev.fulfilledCreators, orderedCreators: prev.orderedCreators, orderRate: prev.fulfilledCreators > 0 ? Math.round(prev.orderedCreators / prev.fulfilledCreators * 1000) / 10 : 0, age: toArr(prev.age), body: toArr(prev.body), official: toArr(prev.official), category: toArr(prev.category), color: toArr(prev.color), language: toArr(prev.language), approval: toArr(prev.approval) },
+      curr: { sampleCount: curr.sampleCount, fulfilledCreators: curr.fulfilledCreators, orderedCreators: curr.orderedCreators, orderRate: curr.fulfilledCreators > 0 ? Math.round(curr.orderedCreators / curr.fulfilledCreators * 1000) / 10 : 0, age: toArr(curr.age), body: toArr(curr.body), official: toArr(curr.official), category: toArr(curr.category), color: toArr(curr.color), language: toArr(curr.language), approval: toArr(curr.approval) },
+    };
+  }
+
+  // SKU 升降归因：对比最近两个月，输出变化维度
+  function getSKUAttributionAnalysis(skuFilter) {
+    var trend = getSKUTrendAnalysis(skuFilter);
+    var bySku = {};
+    trend.forEach(function (r) { if (!bySku[r.sku]) bySku[r.sku] = []; bySku[r.sku].push(r); });
+    var result = [];
+    Object.keys(bySku).forEach(function (sk) {
+      var list = bySku[sk].sort(function (a, b) { return a.month.localeCompare(b.month); });
+      if (list.length < 2) return;
+      var curr = list[list.length - 1];
+      var prev = list[list.length - 2];
+      result.push({
+        sku: sk,
+        currMonth: curr.month,
+        prevMonth: prev.month,
+        currRate: curr.orderRate,
+        prevRate: prev.orderRate,
+        diff: curr.orderRateDiff,
+        direction: (curr.orderRateDiff || 0) > 0 ? 'up' : ((curr.orderRateDiff || 0) < 0 ? 'down' : 'flat'),
+      });
+    });
+    return result.sort(function (a, b) { return Math.abs(b.diff || 0) - Math.abs(a.diff || 0); });
   }
 
   // 综合数据看板
@@ -1658,7 +1832,11 @@
     getDashboardData: getDashboardData,
     getTrendAnalysis: getTrendAnalysis,
     getFulfillMethodDistribution: getFulfillMethodDistribution,
+    getFulfillmentRate: getFulfillmentRate,
     getLanguageDistribution: getLanguageDistribution,
+    getSKUTrendAnalysis: getSKUTrendAnalysis,
+    getSKUAttributionAnalysis: getSKUAttributionAnalysis,
+    getSKUAttributionDetail: getSKUAttributionDetail,
     getAvailableSKUs: getAvailableSKUs,
     getTodayStr: getTodayStr,
     // AI辅助
