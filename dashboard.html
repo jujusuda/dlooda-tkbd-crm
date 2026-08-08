@@ -10,6 +10,15 @@
   <link rel="manifest" href="manifest.json">
   <title>Dlooda TKBD · 数据看板</title>
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    .analysis-tabs { display:flex; gap:8px; overflow-x:auto; padding:12px 0; margin:0 -4px 12px; scrollbar-width:none; -webkit-overflow-scrolling:touch; position:sticky; top:0; z-index:10; background:var(--bg-1); }
+    .analysis-tabs::-webkit-scrollbar { display:none; }
+    .analysis-tab { flex:0 0 auto; padding:8px 14px; border:1px solid var(--border-1); border-radius:18px; background:#fff; color:var(--text-2); font-size:12px; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap; }
+    .analysis-tab.active { background:linear-gradient(135deg,#ff9ec4,#ffb6d5); color:#fff; border-color:transparent; box-shadow:0 2px 8px rgba(255,140,180,.35); }
+    .analysis-tab:hover { border-color:#ff9ec4; color:#ff9ec4; }
+    .analysis-tab.active:hover { color:#fff; }
+    .section.tab-hidden { display:none !important; }
+  </style>
 </head>
 <body>
   <div class="app-shell">
@@ -18,59 +27,71 @@
       <div class="page-header">
         <div class="page-header__left">
           <h1 class="page-header__title">数据看板</h1>
-          <p class="page-header__subtitle">达人画像 · 开发效果 · 产品 · 视频 · 复投</p>
+          <p class="page-header__subtitle">达人画像 · 语言 · 开发效果 · 趋势 · 产品 · 履约 · 视频 · 复投</p>
         </div>
       </div>
 
       <!-- 筛选栏 -->
       <div id="dashboard-filter-bar"></div>
 
+      <!-- 顶部分析标签页 -->
+      <div class="analysis-tabs" id="analysis-tabs">
+        <button class="analysis-tab active" data-target="section-persona">达人画像分析</button>
+        <button class="analysis-tab" data-target="section-language">语言分布</button>
+        <button class="analysis-tab" data-target="section-dev">开发效果分析</button>
+        <button class="analysis-tab" data-target="section-trend">寄样趋势分析</button>
+        <button class="analysis-tab" data-target="section-product">产品分析</button>
+        <button class="analysis-tab" data-target="section-fulfill">履约方式分析</button>
+        <button class="analysis-tab" data-target="section-video">视频质量分析</button>
+        <button class="analysis-tab" data-target="section-reinvest">复投分析</button>
+      </div>
+
       <!-- 1. 达人画像分析 -->
-      <div class="section">
+      <div class="section" id="section-persona">
         <div class="section__header"><h2 class="section__title">达人画像分析</h2></div>
         <div id="persona-analysis"></div>
       </div>
 
-      <!-- 2. 开发效果分析 -->
-      <div class="section">
+      <!-- 2. 语言分布 -->
+      <div class="section" id="section-language">
+        <div class="section__header"><h2 class="section__title">语言分布</h2></div>
+        <div id="language-distribution"></div>
+      </div>
+
+      <!-- 3. 开发效果分析 -->
+      <div class="section" id="section-dev">
         <div class="section__header"><h2 class="section__title">开发效果分析</h2></div>
         <div id="dev-effect"></div>
       </div>
 
-      <!-- 3. 产品分析 -->
-      <div class="section">
-        <div class="section__header"><h2 class="section__title">产品分析</h2></div>
-        <div id="product-analysis"></div>
-      </div>
-
-      <!-- 4. 视频质量分析 -->
-      <div class="section">
-        <div class="section__header"><h2 class="section__title">视频质量分析</h2></div>
-        <div id="video-quality"></div>
-      </div>
-
-      <!-- 5. 复投分析 -->
-      <div class="section">
-        <div class="section__header"><h2 class="section__title">复投分析</h2></div>
-        <div id="reinvest-analysis"></div>
-      </div>
-
-      <!-- 6. 寄样趋势分析 -->
-      <div class="section">
+      <!-- 4. 寄样趋势分析 -->
+      <div class="section" id="section-trend">
         <div class="section__header"><h2 class="section__title">寄样趋势分析</h2></div>
         <div id="trend-analysis"></div>
       </div>
 
-      <!-- 7. 履约方式分布 -->
-      <div class="section">
-        <div class="section__header"><h2 class="section__title">履约方式分布</h2></div>
+      <!-- 5. 产品分析 -->
+      <div class="section" id="section-product">
+        <div class="section__header"><h2 class="section__title">产品分析</h2></div>
+        <div id="product-analysis"></div>
+      </div>
+
+      <!-- 6. 履约方式分析 -->
+      <div class="section" id="section-fulfill">
+        <div class="section__header"><h2 class="section__title">履约方式分析</h2></div>
         <div id="fulfill-method"></div>
       </div>
 
-      <!-- 8. 语言分布 -->
-      <div class="section">
-        <div class="section__header"><h2 class="section__title">语言分布</h2></div>
-        <div id="language-distribution"></div>
+      <!-- 7. 视频质量分析 -->
+      <div class="section" id="section-video">
+        <div class="section__header"><h2 class="section__title">视频质量分析</h2></div>
+        <div id="video-quality"></div>
+      </div>
+
+      <!-- 8. 复投分析 -->
+      <div class="section" id="section-reinvest">
+        <div class="section__header"><h2 class="section__title">复投分析</h2></div>
+        <div id="reinvest-analysis"></div>
       </div>
     </main>
     <nav class="bottom-nav"></nav>

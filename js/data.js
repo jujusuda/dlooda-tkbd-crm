@@ -27,6 +27,22 @@
     if (_ups) { var _ps = JSON.parse(_ups); if (_ps && typeof _ps === 'object') STATS = _ps; }
   } catch (e) {}
 
+  /* ---------- 数据规范化：飞书导出的 category / creatorType 是数组，
+     统一转成逗号分隔字符串，避免各页面 .toLowerCase() / .split() 调用报错 ---------- */
+  function normFieldToStr(v) {
+    if (v == null) return '';
+    if (Array.isArray(v)) return v.join(',');
+    return String(v);
+  }
+  ['creators', 'samples', 'invites', 'pending', 'skus'].forEach(function (key) {
+    if (D[key] && D[key].length) {
+      D[key].forEach(function (rec) {
+        if (rec.category !== undefined && rec.category !== null) rec.category = normFieldToStr(rec.category);
+        if (rec.creatorType !== undefined && rec.creatorType !== null) rec.creatorType = normFieldToStr(rec.creatorType);
+      });
+    }
+  });
+
   /* ---------- SKU 产品信息（话术生成 + 产品管理页用） ---------- */
   // 用户确认的产品定位表，BD 统一话术参考
   // 可在 products.html 页面编辑，编辑后存 localStorage 覆盖默认值
@@ -222,11 +238,12 @@
   function searchCreators(keyword) {
     if (!keyword) return getCreators();
     var kw = keyword.toLowerCase().trim();
+    function fieldStr(v) { return Array.isArray(v) ? v.join(' ') : (v == null ? '' : String(v)); }
     return getCreators().filter(function (c) {
       return c.name.toLowerCase().includes(kw) ||
-             (c.category && c.category.toLowerCase().includes(kw)) ||
+             fieldStr(c.category).toLowerCase().includes(kw) ||
              (c.note && c.note.toLowerCase().includes(kw)) ||
-             (c.creatorType && c.creatorType.toLowerCase().includes(kw)) ||
+             fieldStr(c.creatorType).toLowerCase().includes(kw) ||
              (c.official && c.official.toLowerCase().includes(kw));
     });
   }
@@ -1115,8 +1132,9 @@
         if (s.orderCount && s.orderCount > 0) byBodyType[s.bodyType].ordered++;
       }
       if (s.category) {
-        s.category.split(',').forEach(function (cat) {
-          cat = cat.trim();
+        var cats = String(s.category).split(',');
+        cats.forEach(function (cat) {
+          cat = String(cat).trim();
           if (!cat) return;
           if (!byCategory[cat]) byCategory[cat] = { total: 0, fulfilled: 0, ordered: 0 };
           byCategory[cat].total++;
@@ -1470,7 +1488,7 @@
       if (!d) return;
       if (!byDay[d]) byDay[d] = { date: d, sampleCount: 0, orderCount: 0, orderedCreators: 0 };
       byDay[d].sampleCount++;
-      var oc = (s.orderCount && s.orderCount > 0) ? s.orderCount : 0;
+      var oc = (Number(s.orderCount) > 0) ? Number(s.orderCount) : 0;
       byDay[d].orderCount += oc;
       if (oc > 0) byDay[d].orderedCreators++;
     });

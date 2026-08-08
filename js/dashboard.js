@@ -10,6 +10,44 @@
   var Data = global.DloodaData;
   var filterState = { sku: '', startDate: '', endDate: '' };
 
+  /* ---------- 安全渲染：单个模块报错不影响其它模块 ---------- */
+  function safeRender(name, fn) {
+    try {
+      fn();
+    } catch (err) {
+      console.error('[dashboard] 渲染失败:', name, err);
+      var container = document.getElementById(name);
+      if (container) {
+        container.innerHTML = '<div class="card"><div style="padding:16px;color:var(--c-danger);font-size:12px;text-align:center;">'
+          + '<div>「' + App.escapeHtml(name) + '」加载失败</div>'
+          + '<div style="font-size:11px;color:var(--text-3);margin-top:4px;">请按 Ctrl+F5 强制刷新，或打开控制台截图给开发</div>'
+          + '</div></div>';
+      }
+    }
+  }
+
+  /* ---------- 顶部分析标签页（点击切换，一次显示一个区块） ---------- */
+  function initAnalysisTabs() {
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.analysis-tab'));
+    var sections = ['section-persona','section-language','section-dev','section-trend','section-product','section-fulfill','section-video','section-reinvest'];
+    function showTab(targetId) {
+      sections.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.toggle('tab-hidden', id !== targetId);
+      });
+      tabs.forEach(function (t) {
+        t.classList.toggle('active', t.getAttribute('data-target') === targetId);
+      });
+      try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) {}
+    }
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        showTab(tab.getAttribute('data-target'));
+      });
+    });
+    showTab(sections[0]); // 默认显示第一个标签页
+  }
+
   function renderRankingBar(items, labelKey, color) {
     color = color || 'var(--pink-400)';
     if (!items || items.length === 0) return '<div style="padding:12px;color:var(--text-3);font-size:13px;">暂无数据</div>';
@@ -329,14 +367,14 @@
   }
 
   function renderAll() {
-    renderPersona();
-    renderDevEffect();
-    renderProductAnalysis();
-    renderVideoQuality();
-    renderReinvest();
-    renderTrend();
-    renderFulfillMethod();
-    renderLanguage();
+    safeRender('persona-analysis', renderPersona);
+    safeRender('language-distribution', renderLanguage);
+    safeRender('dev-effect', renderDevEffect);
+    safeRender('trend-analysis', renderTrend);
+    safeRender('product-analysis', renderProductAnalysis);
+    safeRender('fulfill-method', renderFulfillMethod);
+    safeRender('video-quality', renderVideoQuality);
+    safeRender('reinvest-analysis', renderReinvest);
   }
 
   function init() {
@@ -347,6 +385,7 @@
       filterState.endDate = endDate;
       renderAll();
     });
+    initAnalysisTabs();
     renderAll();
   }
 
