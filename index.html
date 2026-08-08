@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#FAF6F6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Dlooda TKBD">
+  <link rel="manifest" href="manifest.json">
+  <title>Dlooda TKBD · 首页</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar"></aside>
+
+    <main class="main">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-header__title">首页</h1>
+          <p class="page-header__subtitle">Dlooda TKBD · 达人商务工作台</p>
+        </div>
+        <div class="page-header__actions">
+          <a href="ai-assistant.html" class="btn btn--primary btn--sm">AI 分析达人</a>
+        </div>
+      </div>
+
+      <!-- 统计卡片（真实飞书数据） -->
+      <div class="stat-grid" id="stat-grid"></div>
+
+      <!-- 快捷入口 -->
+      <div class="section">
+        <div class="section__header">
+          <h2 class="section__title">快捷操作</h2>
+        </div>
+        <div class="quick-actions">
+          <a href="ai-assistant.html" class="quick-action">
+            <div class="quick-action__icon quick-action__icon--pink">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.5 6.5L21 11l-6.5 2.5L12 20l-2.5-6.5L3 11l6.5-2.5z"/></svg>
+            </div>
+            <div class="quick-action__label">AI 达人分析</div>
+          </a>
+          <a href="creator.html" class="quick-action">
+            <div class="quick-action__icon quick-action__icon--green">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+            </div>
+            <div class="quick-action__label">达人管理</div>
+          </a>
+          <a href="invite.html" class="quick-action">
+            <div class="quick-action__icon quick-action__icon--sand">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H4z"/><path d="M4 5l8 7 8-7"/></svg>
+            </div>
+            <div class="quick-action__label">邀约管理</div>
+          </a>
+          <a href="report.html" class="quick-action">
+            <div class="quick-action__icon quick-action__icon--blue">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+            </div>
+            <div class="quick-action__label">数据复盘</div>
+          </a>
+        </div>
+      </div>
+
+      <!-- TOP达人 + 寄样任务 -->
+      <div style="display:grid;grid-template-columns:1fr;gap:16px;" id="dashboard-grid">
+        <!-- TOP达人（按视频数） -->
+        <div class="card">
+          <div class="card__header">
+            <h3 class="card__title">TOP 达人（按视频数）</h3>
+            <a href="creator.html" class="section__link">查看全部</a>
+          </div>
+          <div class="creator-list" id="recent-creators"></div>
+        </div>
+
+        <!-- 本月寄样任务 -->
+        <div class="card">
+          <div class="card__header">
+            <h3 class="card__title">本月寄样任务</h3>
+            <a href="sample.html" class="section__link">查看全部</a>
+          </div>
+          <div id="task-list"></div>
+        </div>
+      </div>
+    </main>
+
+    <nav class="bottom-nav"></nav>
+  </div>
+
+  <script src="js/real-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    (function() {
+      var App = DloodaApp;
+      var Data = DloodaData;
+      var stats = window.REAL_DATA_STATS || {};
+
+      // === 统计卡片 ===
+      var statGrid = document.getElementById('stat-grid');
+      if (statGrid) {
+        var taskStats = Data.getTaskStats();
+        statGrid.innerHTML = ''
+          + '<div class="stat-card">'
+          +   '<div class="stat-card__icon stat-card__icon--pink"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>'
+          +   '<div class="stat-card__value">' + App.formatNumber(stats.creatorCount || 0) + '</div>'
+          +   '<div class="stat-card__label">达人总数</div>'
+          + '</div>'
+          + '<div class="stat-card">'
+          +   '<div class="stat-card__icon stat-card__icon--green"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7L12 3 4 7v10l8 4 8-4z"/><path d="M4 7l8 4 8-4"/></svg></div>'
+          +   '<div class="stat-card__value">' + App.formatNumber(stats.sampleCount || 0) + '</div>'
+          +   '<div class="stat-card__label">寄样记录</div>'
+          + '</div>'
+          + '<div class="stat-card">'
+          +   '<div class="stat-card__icon stat-card__icon--sand"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="14" height="12" rx="2"/><path d="M17 10l4-2v8l-4-2"/></svg></div>'
+          +   '<div class="stat-card__value">' + App.formatNumber(stats.videoCount || 0) + '</div>'
+          +   '<div class="stat-card__label">视频总数</div>'
+          + '</div>'
+          + '<div class="stat-card">'
+          +   '<div class="stat-card__icon stat-card__icon--blue"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg></div>'
+          +   '<div class="stat-card__value">' + (taskStats.completionRate || 0) + '%</div>'
+          +   '<div class="stat-card__label">任务完成率</div>'
+          + '</div>';
+      }
+
+      // === TOP达人（按视频数排序，取前5） ===
+      var creatorContainer = document.getElementById('recent-creators');
+      if (creatorContainer) {
+        var report = Data.getReportData();
+        var topCreators = report.creatorRanking.slice(0, 5);
+
+        if (topCreators.length === 0) {
+          creatorContainer.innerHTML = '<div class="empty-state"><div class="empty-state__text">暂无达人数据</div></div>';
+        } else {
+          creatorContainer.innerHTML = topCreators.map(function(c) {
+            var initials = App.getInitials(c.name);
+            var typeBadge = '';
+            if (c.creatorType) {
+              var cls = c.creatorType.indexOf('核心') >= 0 ? 'badge--pink' :
+                        c.creatorType.indexOf('潜力') >= 0 ? 'badge--blue' : 'badge--gray';
+              typeBadge = '<span class="badge ' + cls + '">' + App.escapeHtml(c.creatorType.split(',')[0]) + '</span>';
+            }
+
+            return ''
+              + '<div class="creator-card" onclick="location.href=\'ai-assistant.html?creator=' + encodeURIComponent(c.name) + '\'">'
+              +   '<div class="creator-card__avatar">' + initials + '</div>'
+              +   '<div class="creator-card__body">'
+              +     '<div class="creator-card__name">' + App.escapeHtml(c.name) + '<span class="creator-card__link">@' + App.escapeHtml(c.name) + '</span></div>'
+              +     '<div class="creator-card__meta">'
+              +       '<span class="badge badge--green">' + App.escapeHtml(c.official || '') + '</span>'
+              +       '<span class="creator-card__meta-item">' + App.escapeHtml(c.stars || '') + '</span>'
+              +       typeBadge
+              +       '<span class="creator-card__meta-item">' + App.escapeHtml(c.category || '') + '</span>'
+              +     '</div>'
+              +     '<div class="creator-card__meta">'
+              +       '<span class="creator-card__meta-item">📦 ' + c.sampleCount + '次寄样</span>'
+              +       '<span class="creator-card__meta-item">🎬 ' + c.videoCount + '个视频</span>'
+              +     '</div>'
+              +   '</div>'
+              +   '<div class="creator-card__score">'
+              +     '<div class="creator-card__score-value">' + c.videoCount + '<span>视频</span></div>'
+              +   '</div>'
+              + '</div>';
+          }).join('');
+        }
+      }
+
+      // === 本月寄样任务 ===
+      var taskContainer = document.getElementById('task-list');
+      if (taskContainer) {
+        var tasks = Data.getTasks().filter(function(t) { return t.target; }).slice(0, 8);
+        if (tasks.length === 0) {
+          taskContainer.innerHTML = '<div class="empty-state"><div class="empty-state__text">暂无任务数据</div></div>';
+        } else {
+          taskContainer.innerHTML = tasks.map(function(t) {
+            var completed = t.completed || 0;
+            var target = t.target || 0;
+            var pct = target > 0 ? Math.min(100, Math.round(completed / target * 100)) : 0;
+            var priorityCls = t.priority === 'P0' ? 'badge--pink' : t.priority === 'P1' ? 'badge--blue' : 'badge--sand';
+            var posColor = t.positioning === '爆品' ? 'var(--pink-500)' :
+                           t.positioning === '销售' ? 'var(--c-success)' :
+                           t.positioning === '测品' ? 'var(--c-info)' : 'var(--text-3)';
+
+            return ''
+              + '<div style="margin-bottom:12px;padding:10px;background:var(--bg-pink-soft);border-radius:10px;">'
+              +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+              +     '<div style="display:flex;align-items:center;gap:6px;">'
+              +       '<span class="badge ' + priorityCls + '">' + App.escapeHtml(t.priority || '') + '</span>'
+              +       '<span style="font-weight:600;font-size:13px;color:var(--text-1);">SKU ' + App.escapeHtml(t.sku) + '</span>'
+              +       '<span class="tag" style="font-size:10px;background:' + posColor + ';color:#fff;">' + App.escapeHtml(t.positioning || '') + '</span>'
+              +     '</div>'
+              +     '<span style="font-size:12px;color:var(--text-2);">' + completed + '/' + target + ' (' + pct + '%)</span>'
+              +   '</div>'
+              +   '<div style="height:6px;background:var(--bg-hover);border-radius:3px;overflow:hidden;">'
+              +     '<div style="height:100%;width:' + pct + '%;background:var(--c-primary);border-radius:3px;transition:width .6s ease;"></div>'
+              +   '</div>'
+              + '</div>';
+          }).join('');
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

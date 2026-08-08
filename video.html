@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#FAF6F6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Dlooda TKBD">
+  <link rel="manifest" href="manifest.json">
+  <title>Dlooda TKBD · 视频管理</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar"></aside>
+    <main class="main">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-header__title">视频管理</h1>
+          <p class="page-header__subtitle">视频数据 & 深度效果分析</p>
+        </div>
+        <div class="page-header__actions" style="display:flex;gap:6px;">
+          <button class="btn btn--ghost btn--sm active" id="btn-view-list">列表</button>
+          <button class="btn btn--ghost btn--sm" id="btn-view-analysis">分析</button>
+        </div>
+      </div>
+
+      <!-- 搜索 -->
+      <div class="search-bar" style="margin-bottom:12px;">
+        <input type="text" class="input" id="video-search" placeholder="搜索达人 / SKU / 品类...">
+      </div>
+
+      <!-- 时间筛选栏（列表和分析视图共用） -->
+      <div id="video-list-filter-bar" style="margin-bottom:12px;"></div>
+
+      <!-- 筛选 + 排序 -->
+      <div class="filter-tabs" id="filter-tabs"></div>
+      <div id="sort-section" style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+        <span style="font-size:12px;color:var(--text-3);flex-shrink:0;">排序：</span>
+        <div class="filter-tabs" id="sort-buttons" style="margin-bottom:0;flex:1;"></div>
+      </div>
+
+      <!-- 分析视图 -->
+      <div id="video-analysis" style="display:none;">
+        <!-- 分析内容 -->
+        <div id="video-analysis-content"></div>
+      </div>
+
+      <!-- 视频列表 -->
+      <div id="video-list"></div>
+    </main>
+    <nav class="bottom-nav"></nav>
+  </div>
+  <script src="js/real-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/video.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+{
+  "server": { "port": 3000, "host": "0.0.0.0" },
+  "feishu": {
+    "appId": "",
+    "appSecret": "",
+    "baseAppToken": "TBu5bPDU0apfCPs5ppacyHtdn4g",
+    "tables": {
+      "daily": {
+        "tableId": "tblsbvn8WWvviBmg",
+        "fields": {
+          "creator": "达人名称", "official": "官方", "stars": "星级", "creatorType": "达人类型",
+          "orderCount": "出单量7.29", "reinvest": "是否复投", "approval": "通过", "language": "语言",
+          "bodyType": "身材", "age": "年龄", "fulfillment": "履约率", "category": "品类",
+          "note": "备注", "color": "颜色", "sku": "SKU", "sampleTime": "寄样时间",
+          "updateTime": "更新时间", "fulfillMethod": "履约方式"
+        }
+      },
+      "pending": {
+        "tableId": "tblEangju19z1GMq",
+        "fields": {
+          "name": "达人名称", "official": "官方", "stars": "星级", "bodyType": "身材",
+          "age": "年龄", "fulfillment": "履约率", "category": "品类", "note": "备注",
+          "color": "颜色", "sku": "SKU", "rejectReason": "未通过原因",
+          "reprocessTime": "预估再处理时间", "result": "处理结果"
+        }
+      },
+      "invites": {
+        "tableId": "tblKEJQP1179xxvW",
+        "fields": {
+          "date": "日期", "sku": "sku", "creatorId": "达人名称", "category": "品类",
+          "commission": "佣金", "validDays": "有效期|天", "planTarget": "计划",
+          "achieved": "达成", "note": "备注", "script": "话术"
+        }
+      },
+      "tasks": {
+        "_tableName": "本月寄样任务完成情况",
+        "tableId": "tblVqkdEQcE5CdJW",
+        "fields": {
+          "sku": "sku", "priority": "优先级", "positioning": "定位",
+          "startTime": "开始时间", "target": "寄样量", "completed": "已完成",
+          "uncompleted": "未完成", "avgDaily": "平均每天", "todayCompleted": "今日已完成", "note": "备注"
+        }
+      },
+      "offline": {
+        "_tableName": "线下寄样",
+        "tableId": "tbljJWs7XiGUoklT",
+        "fields": {
+          "creator": "达人名称", "sku": "SKU", "color": "颜色", "sampleTime": "寄样时间", "note": "备注"
+        }
+      },
+      "products": {
+        "tableId": "tblE5gZsh2449fa3",
+        "fields": {
+          "sku": "产品定位", "positioning": "定位", "productId": "商品ID"
+        }
+      }
+    }
+  }
+}

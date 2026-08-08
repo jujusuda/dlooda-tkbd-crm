@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#FAF6F6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Dlooda TKBD">
+  <link rel="manifest" href="manifest.json">
+  <title>Dlooda TKBD · 任务清单</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar"></aside>
+    <main class="main">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-header__title">任务清单</h1>
+          <p class="page-header__subtitle" id="todo-date-label">今日任务</p>
+        </div>
+      </div>
+
+      <!-- 日期选择 -->
+      <div class="filter-bar" style="margin-bottom:16px;">
+        <input type="date" class="filter-date" id="todo-date-input">
+        <button class="filter-btn" id="btn-today">今天</button>
+        <button class="filter-btn" id="btn-prev-day">前一天</button>
+        <button class="filter-btn" id="btn-next-day">后一天</button>
+      </div>
+
+      <!-- 进度概览 -->
+      <div class="stat-grid" id="todo-progress" style="margin-bottom:16px;"></div>
+
+      <!-- 固定任务 -->
+      <div class="section">
+        <div class="section__header">
+          <h2 class="section__title">每日固定任务</h2>
+          <span class="section__hint">不可删除</span>
+        </div>
+        <div class="card">
+          <div id="fixed-tasks"></div>
+        </div>
+      </div>
+
+      <!-- 自定义任务 -->
+      <div class="section">
+        <div class="section__header">
+          <h2 class="section__title">自定义任务</h2>
+          <button class="btn btn--ghost btn--sm" id="btn-add-task">+ 新增任务</button>
+        </div>
+        <div class="card">
+          <div id="custom-tasks"></div>
+        </div>
+      </div>
+    </main>
+    <nav class="bottom-nav"></nav>
+  </div>
+
+  <!-- 新增任务弹窗 -->
+  <div class="modal-overlay" id="add-task-modal" style="display:none;">
+    <div class="modal" style="max-width:400px;">
+      <div class="modal__header">
+        <h3 class="modal__title">新增任务</h3>
+        <button class="modal__close" id="btn-close-add-task">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div class="form-group">
+          <label class="form-label">任务名称</label>
+          <input type="text" class="input" id="new-task-name" placeholder="输入任务名称..." style="width:100%;">
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost btn--sm" id="btn-cancel-add-task">取消</button>
+        <button class="btn btn--primary btn--sm" id="btn-save-task">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/real-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/todo.js"></script>
+</body>
+</html>

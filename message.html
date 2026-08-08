@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#FAF6F6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Dlooda TKBD">
+  <link rel="manifest" href="manifest.json">
+  <title>Dlooda TKBD · 私信管理</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar"></aside>
+    <main class="main">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-header__title">私信管理</h1>
+          <p class="page-header__subtitle">分类模板 · 增删查改 · 中英西三语 · AI 润色翻译</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--primary btn--sm" id="btn-new-dm">+ 写私信</button>
+        </div>
+      </div>
+
+      <!-- 私信分类模板 -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card__header" style="display:flex;justify-content:space-between;align-items:center;">
+          <h3 class="card__title">私信分类模板</h3>
+          <button class="btn btn--ghost btn--sm" id="btn-add-category">+ 新建分类</button>
+        </div>
+        <div style="font-size:13px;color:var(--text-3);padding:0 0 8px;">点击分类查看三语话术，可编辑话术和分类名称</div>
+        <div id="dm-category-list"></div>
+      </div>
+
+      <!-- 已保存的私信 -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card__header"><h3 class="card__title">已保存的私信</h3></div>
+        <div style="font-size:13px;color:var(--text-3);padding:0 0 8px;">点击任意私信查看中文 / 英文 / 西语</div>
+        <div id="dm-saved-list"></div>
+      </div>
+    </main>
+    <nav class="bottom-nav"></nav>
+  </div>
+
+  <!-- 写私信弹窗 -->
+  <div class="modal-overlay" id="new-dm-modal" style="display:none;">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 class="modal__title">写私信</h3>
+        <button class="modal__close" id="btn-close-new-dm">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div class="form-group">
+          <label class="form-label">选择 SKU <span class="required">*</span></label>
+          <select class="select" id="dm-sku"></select>
+          <div class="form-hint">达人申请了哪个 SKU 就选哪个</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">选择私信场景 <span class="required">*</span></label>
+          <select class="select" id="dm-category"></select>
+          <div class="form-hint">选择合作前/合作后场景，模板话术会自动填入</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">达人昵称</label>
+          <input type="text" class="input" id="dm-creator" placeholder="如 SarahStyle">
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" id="btn-cancel-new-dm">取消</button>
+        <button class="btn btn--primary" id="btn-manual-dm">润色并翻译</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 手动编辑弹窗 -->
+  <div class="modal-overlay" id="manual-dm-modal" style="display:none;">
+    <div class="modal" style="max-width:680px;">
+      <div class="modal__header">
+        <h3 class="modal__title">私信话术编辑</h3>
+        <button class="modal__close" id="btn-close-manual-dm">&times;</button>
+      </div>
+      <div class="modal__body">
+        <!-- 隐藏字段 -->
+        <input type="hidden" id="manual-dm-sku">
+        <input type="hidden" id="manual-dm-creator-name">
+        <input type="hidden" id="manual-dm-category-id">
+        <div class="form-group">
+          <label class="form-label">私信内容（中文草稿）</label>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:6px;">输入中文草稿，点击「AI 润色翻译」自动润色并翻译为英文+西语</div>
+          <textarea class="input" id="manual-dm-text" rows="8" style="resize:vertical;font-size:13px;line-height:1.7;" placeholder="输入中文草稿..."></textarea>
+        </div>
+        <!-- AI 翻译结果区 -->
+        <div id="dm-translate-result-area"></div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" id="btn-cancel-manual-dm">取消</button>
+        <button class="btn btn--secondary" id="btn-ai-translate-dm">AI 润色翻译</button>
+        <button class="btn btn--primary" id="btn-save-manual-dm">保存到场景</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分类编辑弹窗 -->
+  <div class="modal-overlay" id="category-edit-modal" style="display:none;">
+    <div class="modal" style="max-width:680px;">
+      <div class="modal__header">
+        <h3 class="modal__title" id="category-edit-title">编辑分类</h3>
+        <button class="modal__close" id="btn-close-cat-edit">&times;</button>
+      </div>
+      <div class="modal__body">
+        <input type="hidden" id="cat-edit-id">
+        <div class="dm-edit-field">
+          <label>分类名称</label>
+          <input type="text" class="input" id="cat-edit-label" placeholder="如：问是否拍视频">
+        </div>
+        <div class="dm-edit-field">
+          <label>分类描述</label>
+          <input type="text" class="input" id="cat-edit-desc" placeholder="如：寄样前确认达人是否愿意拍视频">
+        </div>
+        <div class="dm-edit-field">
+          <label>场景阶段</label>
+          <select class="select" id="cat-edit-phase">
+            <option value="合作前">合作前</option>
+            <option value="合作后">合作后</option>
+          </select>
+        </div>
+        <div class="dm-edit-field">
+          <label>English 话术</label>
+          <textarea class="input" id="cat-edit-en" rows="4" style="resize:vertical;font-size:13px;line-height:1.7;" placeholder="English script..."></textarea>
+        </div>
+        <div class="dm-edit-field">
+          <label>中文话术</label>
+          <textarea class="input" id="cat-edit-zh" rows="4" style="resize:vertical;font-size:13px;line-height:1.7;" placeholder="中文话术..."></textarea>
+        </div>
+        <div class="dm-edit-field">
+          <label>Español 话术</label>
+          <textarea class="input" id="cat-edit-es" rows="4" style="resize:vertical;font-size:13px;line-height:1.7;" placeholder="Guion en español..."></textarea>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" id="btn-cancel-cat-edit">取消</button>
+        <button class="btn btn--primary" id="btn-save-cat-edit">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/real-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/translator.js"></script>
+  <script src="js/message.js"></script>
+</body>
+</html>

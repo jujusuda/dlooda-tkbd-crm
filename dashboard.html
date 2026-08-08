@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#FAF6F6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Dlooda TKBD">
+  <link rel="manifest" href="manifest.json">
+  <title>Dlooda TKBD · 数据看板</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar"></aside>
+    <main class="main">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-header__title">数据看板</h1>
+          <p class="page-header__subtitle">达人画像 · 开发效果 · 产品 · 视频 · 复投</p>
+        </div>
+      </div>
+
+      <!-- 筛选栏 -->
+      <div id="dashboard-filter-bar"></div>
+
+      <!-- 1. 达人画像分析 -->
+      <div class="section">
+        <div class="section__header"><h2 class="section__title">达人画像分析</h2></div>
+        <div id="persona-analysis"></div>
+      </div>
+
+      <!-- 2. 开发效果分析 -->
+      <div class="section">
+        <div class="section__header"><h2 class="section__title">开发效果分析</h2></div>
+        <div id="dev-effect"></div>
+      </div>
+
+      <!-- 3. 产品分析 -->
+      <div class="section">
+        <div class="section__header"><h2 class="section__title">产品分析</h2></div>
+        <div id="product-analysis"></div>
+      </div>
+
+      <!-- 4. 视频质量分析 -->
+      <div class="section">
+        <div class="section__header"><h2 class="section__title">视频质量分析</h2></div>
+        <div id="video-quality"></div>
+      </div>
+
+      <!-- 5. 复投分析 -->
+      <div class="section">
+        <div class="section__header"><h2 class="section__title">复投分析</h2></div>
+        <div id="reinvest-analysis"></div>
+      </div>
+    </main>
+    <nav class="bottom-nav"></nav>
+  </div>
+  <script src="js/real-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

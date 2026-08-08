@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#FAF6F6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Dlooda TKBD">
+  <link rel="manifest" href="manifest.json">
+  <title>Dlooda TKBD · 产品定位</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar"></aside>
+
+    <main class="main">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-header__title">产品定位</h1>
+          <p class="page-header__subtitle">SKU 卖点 · 定位 · 适合达人 · 编辑后话术自动匹配</p>
+        </div>
+        <div class="page-header__right">
+          <button class="btn btn--primary btn--sm" id="btn-add-sku">+ 新建 SKU</button>
+        </div>
+      </div>
+
+      <!-- 筛选 -->
+      <div class="filter-tabs" id="product-filter-tabs"></div>
+
+      <!-- SKU 列表 -->
+      <div id="product-list" class="card-list"></div>
+
+    </main>
+
+    <nav class="bottom-nav"></nav>
+  </div>
+
+  <!-- 编辑弹窗 -->
+  <div class="modal-overlay" id="edit-modal" style="display:none;">
+    <div class="modal" style="max-width:600px;">
+      <div class="modal__header">
+        <h3 class="modal__title" id="modal-title">编辑 SKU</h3>
+        <button class="modal__close" id="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal__body" style="max-height:60vh;overflow-y:auto;">
+        <form id="sku-edit-form" onsubmit="return false;">
+          <input type="hidden" id="edit-sku-code">
+          <div class="form-group">
+            <label class="form-label">SKU 编号 <span class="required">*</span></label>
+            <input type="text" class="input" id="edit-sku" placeholder="如 2178" disabled>
+          </div>
+          <div class="form-group">
+            <label class="form-label">产品名称（英文）<span class="required">*</span></label>
+            <input type="text" class="input" id="edit-name" placeholder="如 Work Pants (Micro Flare)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">产品类型</label>
+            <select class="select" id="edit-type">
+              <option value="长裤">长裤</option>
+              <option value="Skort">Skort</option>
+              <option value="半裙">半裙</option>
+              <option value="上衣">上衣</option>
+              <option value="连衣裙">连衣裙</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">定位标签</label>
+            <input type="text" class="input" id="edit-positioning" placeholder="如 秋季主推爆款 / 高转化款">
+          </div>
+          <div class="form-group">
+            <label class="form-label">内部标签（BD 统一参考）</label>
+            <input type="text" class="input" id="edit-internal" placeholder="如 秋季第一主推爆款（预算最大）">
+          </div>
+          <div class="form-group">
+            <label class="form-label">核心描述（中文）</label>
+            <textarea class="textarea" id="edit-desc-cn" rows="3" placeholder="高腰微喇版型，修饰腿型..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">英文描述（话术用）</label>
+            <textarea class="textarea" id="edit-desc-en" rows="3" placeholder="signature high-waisted micro-flare fit..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">适合达人类型</label>
+            <input type="text" class="input" id="edit-creators" placeholder="如 Office, Daily, Try-on">
+          </div>
+          <div class="form-group">
+            <label class="form-label">卖点</label>
+            <textarea class="textarea" id="edit-selling" rows="2" placeholder="高腰微喇显瘦；舒适有弹力..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">痛点 / 注意事项</label>
+            <textarea class="textarea" id="edit-pain" rows="2" placeholder="如 不建议作为第一推荐SKU"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">默认佣金</label>
+            <input type="text" class="input" id="edit-commission" placeholder="如 15% + 10%">
+          </div>
+          <div class="form-group">
+            <label class="form-label">优先级</label>
+            <select class="select" id="edit-priority">
+              <option value="high">高（主推）</option>
+              <option value="medium">中</option>
+              <option value="low">低（辅助）</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" id="btn-cancel-edit">取消</button>
+        <button class="btn btn--primary" id="btn-save-sku">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/real-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/product.js"></script>
+</body>
+</html>

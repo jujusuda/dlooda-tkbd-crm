@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: dlooda-tkbd-sync
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: "echo no-build"
+    startCommand: "node server/index.js"
+    envVars:
+      - key: PORT
+        sync: false
+      - key: FEISHU_APP_ID
+        sync: false
+      - key: FEISHU_APP_SECRET
+        sync: false
+      - key: FEISHU_BASE_TOKEN
+        sync: false

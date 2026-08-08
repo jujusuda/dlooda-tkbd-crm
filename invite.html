@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#FAF6F6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Dlooda TKBD">
+  <link rel="manifest" href="manifest.json">
+  <title>Dlooda TKBD · 邀约管理</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar"></aside>
+    <main class="main">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-header__title">邀约管理</h1>
+          <p class="page-header__subtitle">按产品分类的邀约话术库</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--primary btn--sm" id="btn-new-invite">+ 新建邀约</button>
+        </div>
+      </div>
+
+      <!-- 产品通过率 -->
+      <div class="section">
+        <div class="section__header">
+          <h2 class="section__title">产品通过率</h2>
+          <span class="section__hint">通过率 = 寄样量 ÷ 邀约实际达成</span>
+        </div>
+        <div class="filter-bar" id="passrate-filter"></div>
+        <div class="card">
+          <div id="passrate-table"></div>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <span class="search-bar__icon">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+        </span>
+        <input type="text" class="input" id="invite-search" placeholder="搜索达人 / 话术内容...">
+      </div>
+
+      <!-- 邀约话术（按产品分组） -->
+      <div class="section">
+        <div class="section__header">
+          <h2 class="section__title">邀约话术（按产品）</h2>
+          <span class="section__hint">点击产品展开全部话术</span>
+        </div>
+        <div id="invite-list"></div>
+      </div>
+    </main>
+    <nav class="bottom-nav"></nav>
+  </div>
+
+  <!-- 新建邀约弹窗 -->
+  <div class="modal-overlay" id="new-invite-modal" style="display:none;">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 class="modal__title">新建邀约</h3>
+        <button class="modal__close" id="btn-close-new-invite">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div class="form-group">
+          <label class="form-label">选择 SKU <span class="required">*</span></label>
+          <select class="select" id="new-invite-sku"></select>
+          <div class="form-hint">达人申请了哪个 SKU 就选哪个，话术会匹配该产品</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">达人昵称（可选）</label>
+          <input type="text" class="input" id="new-invite-creator" placeholder="如 SarahStyle">
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" id="btn-cancel-new-invite">取消</button>
+        <button class="btn btn--primary" id="btn-manual-invite">润色并翻译</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 手动编辑邀约弹窗 -->
+  <div class="modal-overlay" id="manual-invite-modal" style="display:none;">
+    <div class="modal" style="max-width:680px;">
+      <div class="modal__header">
+        <h3 class="modal__title">邀约话术编辑</h3>
+        <button class="modal__close" id="btn-close-manual-invite">&times;</button>
+      </div>
+      <div class="modal__body">
+        <input type="hidden" id="manual-invite-sku">
+        <input type="hidden" id="manual-invite-creator-name">
+        <div class="form-group">
+          <label class="form-label">邀约话术内容</label>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:6px;">输入中文草稿，点击「AI 润色翻译」可自动润色并翻译为英文等多语言</div>
+          <textarea class="input" id="manual-invite-text" rows="10" style="resize:vertical;font-size:13px;line-height:1.7;" placeholder="输入中文草稿，例如：&#10;你好，我们是Dlooda，想邀请你合作我们的爆款work pants，佣金15%+8%，有兴趣的话请申请样品～"></textarea>
+        </div>
+        <div id="translate-result-area"></div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" id="btn-cancel-manual-invite">取消</button>
+        <button class="btn btn--secondary" id="btn-ai-translate-invite">AI 润色翻译</button>
+        <button class="btn btn--primary" id="btn-save-manual-invite">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/real-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/translator.js"></script>
+  <script src="js/invite.js"></script>
+</body>
+</html>

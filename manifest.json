@@ -1,0 +1,25 @@
+{
+  "name": "Dlooda TKBD CRM",
+  "short_name": "Dlooda TKBD",
+  "description": "TikTok Shop BD 达人商务工作台 — 达人管理、AI分析、邀约、样品追踪",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF6F6",
+  "theme_color": "#FAF6F6",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='42' fill='%23FDF3F5'/%3E%3Cpath d='M44 78 L55 35 L68 75 Z' fill='%23F5D3DA' stroke='%23D4808F' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M118 75 L131 35 L142 78 Z' fill='%23F5D3DA' stroke='%23D4808F' stroke-width='4' stroke-linejoin='round'/%3E%3Cellipse cx='93' cy='108' rx='64' ry='60' fill='%23FFFFFF' stroke='%23D4808F' stroke-width='6'/%3E%3Cpath d='M70 106 Q78 98 86 106' stroke='%235C4A4A' stroke-width='6' fill='none' stroke-linecap='round'/%3E%3Cpath d='M100 106 Q108 98 116 106' stroke='%235C4A4A' stroke-width='6' fill='none' stroke-linecap='round'/%3E%3Cpath d='M90 122 L96 122 L93 129 Z' fill='%23D4808F'/%3E%3Cpath d='M35 75 Q30 65 35 55 Q50 58 55 68 Q50 78 35 75 Z' fill='%23D4808F'/%3E%3Cpath d='M35 75 Q30 85 35 95 Q50 92 55 82 Q50 72 35 75 Z' fill='%23D4808F'/%3E%3Ccircle cx='45' cy='75' r='8' fill='%23C06B7C'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='512' height='512' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23FDF3F5'/%3E%3Cpath d='M117 208 L147 93 L182 200 Z' fill='%23F5D3DA' stroke='%23D4808F' stroke-width='10' stroke-linejoin='round'/%3E%3Cpath d='M315 200 L345 93 L375 208 Z' fill='%23F5D3DA' stroke='%23D4808F' stroke-width='10' stroke-linejoin='round'/%3E%3Cellipse cx='248' cy='288' rx='170' ry='160' fill='%23FFFFFF' stroke='%23D4808F' stroke-width='16'/%3E%3Cpath d='M187 283 Q208 261 229 283' stroke='%235C4A4A' stroke-width='16' fill='none' stroke-linecap='round'/%3E%3Cpath d='M267 283 Q288 261 309 283' stroke='%235C4A4A' stroke-width='16' fill='none' stroke-linecap='round'/%3E%3Cpath d='M240 325 L256 325 L248 344 Z' fill='%23D4808F'/%3E%3Cpath d='M93 200 Q80 173 93 147 Q133 155 147 181 Q133 208 93 200 Z' fill='%23D4808F'/%3E%3Cpath d='M93 200 Q80 227 93 253 Q133 245 147 219 Q133 192 93 200 Z' fill='%23D4808F'/%3E%3Ccircle cx='120' cy='200' r='21' fill='%23C06B7C'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

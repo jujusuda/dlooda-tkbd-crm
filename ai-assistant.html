@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#FAF6F6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Dlooda TKBD">
+  <link rel="manifest" href="manifest.json">
+  <title>Dlooda TKBD · AI 达人分析</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar"></aside>
+
+    <main class="main">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-header__title">AI 达人分析</h1>
+          <p class="page-header__subtitle">输入达人数据，自动生成评分、推荐和邀约话术</p>
+        </div>
+      </div>
+
+      <div class="ai-layout">
+        <!-- 飞书达人资料（从达人列表跳转时显示） -->
+        <div id="creator-profile" style="display:none;"></div>
+
+        <!-- 左侧：输入表单 -->
+        <div class="ai-form-panel">
+          <form id="ai-form" onsubmit="return false;">
+            <div class="form-group">
+              <label class="form-label">达人昵称 <span class="required">*</span></label>
+              <input type="text" class="input" id="input-name" placeholder="如 SarahStyle">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">TikTok 主页</label>
+              <input type="text" class="input" id="input-tiktok" placeholder="https://www.tiktok.com/@...">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">内容品类</label>
+              <select class="select" id="input-content-type">
+                <option value="">请选择</option>
+                <option value="女装">女装</option>
+                <option value="美妆">美妆</option>
+                <option value="运动户外">运动户外</option>
+                <option value="家居">家居</option>
+                <option value="时尚配件">时尚配件</option>
+                <option value="箱包">箱包</option>
+                <option value="保健">保健</option>
+                <option value="玩具和爱好">玩具和爱好</option>
+                <option value="母婴">母婴</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">备注</label>
+              <textarea class="textarea" id="input-remark" placeholder="如：回复积极、配合度高..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">推荐产品 SKU <span style="font-size:11px;color:var(--text-3);font-weight:400;">（话术基于此产品生成）</span></label>
+              <select class="select" id="input-sku">
+                <option value="">自动推荐</option>
+              </select>
+              <div class="form-hint">达人申请了哪个 SKU 就选哪个，话术会匹配该产品信息</div>
+            </div>
+
+            <hr class="divider">
+
+            <div class="form-group">
+              <label class="form-label">
+                月销售件数 <span class="required">*</span>
+                <span style="float:right;font-size:11px;color:var(--text-3);font-weight:500;">满分 40</span>
+              </label>
+              <input type="number" class="input" id="input-sales" placeholder="如 500" min="0">
+              <div class="form-hint">达人近 30 天带货销售件数</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                女装垂度 <span class="required">*</span>
+                <span style="float:right;font-size:11px;color:var(--text-3);font-weight:500;">满分 20</span>
+              </label>
+              <input type="number" class="input" id="input-vertical" placeholder="0 - 100 (%)" min="0" max="100">
+              <div class="form-hint">达人内容中女装占比</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                均播 <span class="required">*</span>
+                <span style="float:right;font-size:11px;color:var(--text-3);font-weight:500;">满分 15</span>
+              </label>
+              <input type="number" class="input" id="input-views" placeholder="如 45000" min="0">
+              <div class="form-hint">视频平均播放量</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                口播推广感 <span class="required">*</span>
+                <span style="float:right;font-size:11px;color:var(--text-3);font-weight:500;">满分 15</span>
+              </label>
+              <select class="select" id="input-promo">
+                <option value="">请选择</option>
+                <option value="5">5 — 很强，自然带节奏</option>
+                <option value="4">4 — 较强，种草感好</option>
+                <option value="3">3 — 中等，有引导但不突兀</option>
+                <option value="2">2 — 较弱，偏展示</option>
+                <option value="1">1 — 很弱，纯穿搭展示</option>
+              </select>
+              <div class="form-hint">达人视频中的口播推广能力</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                女粉占比 <span class="required">*</span>
+                <span style="float:right;font-size:11px;color:var(--text-3);font-weight:500;">满分 10</span>
+              </label>
+              <input type="number" class="input" id="input-female" placeholder="0 - 100 (%)" min="0" max="100">
+              <div class="form-hint">粉丝中女性占比</div>
+            </div>
+
+            <div style="display:flex;gap:8px;">
+              <button type="button" class="btn btn--primary btn--block" id="btn-analyze">开始分析</button>
+              <button type="button" class="btn btn--ghost" id="btn-reset">重置</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- 右侧：分析结果 -->
+        <div class="ai-result-panel" id="ai-result">
+          <div class="ai-result-empty">
+            <div class="ai-result-empty__icon">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" style="color:var(--pink-300);">
+                <ellipse cx="12" cy="16" rx="5" ry="4"/><circle cx="6" cy="10" r="2.5"/><circle cx="18" cy="10" r="2.5"/><circle cx="9" cy="5" r="2"/><circle cx="15" cy="5" r="2"/>
+              </svg>
+            </div>
+            <div class="ai-result-empty__text">填写达人信息后点击「开始分析」<br>AI 会自动生成评分、推荐和邀约话术</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <nav class="bottom-nav"></nav>
+  </div>
+
+  <script src="js/real-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/ai-assistant.js"></script>
+</body>
+</html>

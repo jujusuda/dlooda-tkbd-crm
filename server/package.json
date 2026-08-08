@@ -1,0 +1,14 @@
+{
+  "name": "dlooda-tkbd-sync",
+  "version": "1.0.0",
+  "description": "Dlooda TKBD CRM 飞书多维表格同步后端（OpenAPI 拉取 + 写回）",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "demo": "node sync.js --demo"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "dependencies": {}
+}

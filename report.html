@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#FAF6F6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Dlooda TKBD">
+  <link rel="manifest" href="manifest.json">
+  <title>Dlooda TKBD · 数据复盘</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar"></aside>
+    <main class="main">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-header__title">数据复盘</h1>
+          <p class="page-header__subtitle">出单分析 · 寄样任务 · 达人排行</p>
+        </div>
+      </div>
+
+      <!-- 视图切换 -->
+      <div class="view-tabs" id="report-view-tabs">
+        <button class="view-tab active" data-view="overview">整体概览</button>
+        <button class="view-tab" data-view="orders">出单分析</button>
+        <button class="view-tab" data-view="tasks">寄样任务</button>
+      </div>
+
+      <!-- 筛选栏 -->
+      <div id="report-filter-bar"></div>
+
+      <!-- ========== 视图1: 整体概览 ========== -->
+      <div id="view-overview" class="view-panel">
+        <!-- 关键指标 -->
+        <div class="stat-grid" id="report-metrics"></div>
+
+        <!-- 达人视频排名 -->
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">达人视频排名 TOP 20</h2>
+            <span class="section__hint">点击达人查看 SKU 明细</span>
+          </div>
+          <div class="card">
+            <div id="creator-ranking"></div>
+          </div>
+        </div>
+
+        <!-- SKU 寄样量排名 -->
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">SKU 寄样量排名</h2>
+          </div>
+          <div class="card">
+            <div id="sku-ranking"></div>
+          </div>
+        </div>
+
+        <!-- 分布图 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="report-dist">
+          <div class="section">
+            <div class="section__header">
+              <h2 class="section__title">官方等级分布</h2>
+            </div>
+            <div class="card">
+              <div id="official-dist"></div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="section__header">
+              <h2 class="section__title">履约方式分布</h2>
+            </div>
+            <div class="card">
+              <div id="method-dist"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 整体概览 -->
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">整体概览</h2>
+          </div>
+          <div class="card">
+            <div id="report-overview"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== 视图2: 出单分析 ========== -->
+      <div id="view-orders" class="view-panel" style="display:none;">
+        <!-- 出单达人排行 TOP 10 -->
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">出单达人排行 TOP 10</h2>
+            <span class="section__hint">点击展开该达人带的 SKU 及出单情况</span>
+          </div>
+          <div class="card">
+            <div id="order-creator-ranking"></div>
+          </div>
+        </div>
+
+        <!-- 复投分析 -->
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">复投分析</h2>
+          </div>
+          <div class="card">
+            <div id="reinvest-analysis"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== 视图3: 寄样任务 ========== -->
+      <div id="view-tasks" class="view-panel" style="display:none;">
+        <!-- 优先寄样提醒 -->
+        <div class="section" id="urgent-section">
+          <div class="section__header">
+            <h2 class="section__title">⚠️ 优先寄样提醒</h2>
+            <span class="section__hint">寄样量与要求差距大，需优先处理</span>
+          </div>
+          <div class="card">
+            <div id="urgent-samples"></div>
+          </div>
+        </div>
+
+        <!-- 寄样任务差距分析 -->
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">寄样任务差距分析</h2>
+            <span class="section__hint">实际寄样量 vs 要求寄样量</span>
+          </div>
+          <div class="card">
+            <div id="task-gap-analysis"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <nav class="bottom-nav"></nav>
+  </div>
+  <script src="js/real-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>
