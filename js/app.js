@@ -732,6 +732,28 @@
     if (document.body) injectBtn();
     else document.addEventListener('DOMContentLoaded', injectBtn);
     setTimeout(autoSyncIfNeeded, 1500);
+
+    // 定时自动同步：每 5 分钟从飞书拉最新数据；数据有变化且当前未在编辑时，自动刷新页面
+    (function startAutoSync() {
+      var lastStatsStr = null;
+      setInterval(function () {
+        fetch('./api/status').then(function (r) { return r.json(); }).then(function (s) {
+          if (!s || !s.configured) return;
+          fetch('./api/sync', { method: 'POST' }).then(function (r) { return r.json(); }).then(function (j) {
+            if (j && j.ok) {
+              var newStats = JSON.stringify(j.stats || {});
+              if (lastStatsStr !== null && newStats !== lastStatsStr) {
+                var ae = document.activeElement;
+                var editing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+                if (!editing) { location.reload(); }
+                else { showToast('飞书有更新，刷新页面查看最新 🎀'); }
+              }
+              lastStatsStr = newStats;
+            }
+          }).catch(function () {});
+        }).catch(function () {});
+      }, 5 * 60 * 1000);
+    })();
   })();
 
   /* ---------- 导出 ---------- */
