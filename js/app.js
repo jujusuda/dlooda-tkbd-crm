@@ -570,7 +570,19 @@
         var videos = [];
         Object.keys(r).forEach(function (k) {
           var m = /^视频(\d+)$/.exec(k);
-          if (m) { var i = parseInt(m[1], 10); var link = getCell(r, ['视频' + i]); if (link) videos.push({ url: String(link), time: parseExcelDate(getCell(r, ['视频' + i + '时间'])) }); }
+          if (m) {
+            var i = parseInt(m[1], 10);
+            // 飞书导出的超链接可能是 {link,text} 对象、附件数组或字符串
+            var link = getCell(r, ['视频' + i]);
+            if (link) {
+              if (typeof link === 'object') {
+                if (Array.isArray(link)) link = link[0];
+                link = link && (link.link || link.url || link.text) ? (link.link || link.url || link.text) : '';
+              }
+              link = String(link).trim();
+              if (link && link !== '[object Object]') videos.push({ url: link, time: parseExcelDate(getCell(r, ['视频' + i + '时间'])) });
+            }
+          }
         });
         var s = {
           creator: name, official: str(getCell(r, ['官方'])), stars: str(getCell(r, ['星级'])), creatorType: str(getCell(r, ['达人类型'])),

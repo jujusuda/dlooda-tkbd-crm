@@ -1109,6 +1109,95 @@
     };
   }
 
+  /* ========== 达人出单视频 TOP 20（含视频链接） ========== */
+  // 口径：按"达人"聚合——该达人所有寄样记录里，出单(orderCount)之和最高的前 20 名，
+  // 展示其代表视频链接（取该达人出单样品里的视频），便于 BD 直接点开看爆款视频。
+  function getTopVideoCreators(startDate, endDate, sku) {
+    var samples = filterSamples(D.samples, startDate, endDate, sku);
+    var byCreator = {};
+    samples.forEach(function (s) {
+      if (!s.videos || s.videos.length === 0) return;          // 只看有视频的
+      if (!(s.orderCount && s.orderCount > 0)) return;          // 只看有出单的
+      var name = s.creator;
+      if (!byCreator[name]) {
+        byCreator[name] = {
+          creator: name,
+          official: s.official,
+          stars: s.stars,
+          bodyType: s.bodyType,
+          age: s.age,
+          category: s.category,
+          language: s.language,
+          orderCount: 0,
+          videoUrls: [],
+          skuSet: {},
+        };
+      }
+      var c = byCreator[name];
+      c.orderCount += (Number(s.orderCount) || 0);
+      s.videos.forEach(function (v) {
+        if (v.url && v.url !== '[object Object]') {
+          c.videoUrls.push({ url: v.url, sku: s.sku, time: v.time });
+        }
+      });
+      if (s.sku) c.skuSet[s.sku] = (c.skuSet[s.sku] || 0) + 1;
+    });
+    var list = Object.keys(byCreator).map(function (k) { return byCreator[k]; });
+    list.sort(function (a, b) { return b.orderCount - a.orderCount; });
+    list = list.slice(0, 20);
+    list.forEach(function (c) {
+      c.skuList = Object.keys(c.skuSet);
+      // 去重视频链接（同达人多条重复链接只留一条，最多取 3 条展示）
+      var seen = {}, uniq = [];
+      c.videoUrls.forEach(function (v) { if (!seen[v.url]) { seen[v.url] = 1; uniq.push(v); } });
+      c.videoUrls = uniq.slice(0, 3);
+    });
+    return list;
+  }
+
+  /* ========== 视频拍摄质量画像（出单视频的达人特征分布） ========== */
+  // 数据中没有直接的"视频质量评分"，用出单视频对应达人的「官方等级 / 星级 / 身材 / 品类 / 语言」
+  // 作为拍摄质量的代理指标：高等级、高星级的达人，其视频拍摄质量通常更好。
+  function getVideoQualityProfile(startDate, endDate, sku) {
+    var samples = filterSamples(D.samples, startDate, endDate, sku);
+    var starsDist = {}, officialDist = {}, bodyDist = {}, categoryDist = {}, languageDist = {};
+    var total = 0;
+    samples.forEach(function (s) {
+      if (!s.videos || s.videos.length === 0) return;
+      if (!(s.orderCount && s.orderCount > 0)) return;          // 只看有出单的视频
+      total++;
+      if (s.stars) starsDist[s.stars] = (starsDist[s.stars] || 0) + 1;
+      if (s.official) officialDist[s.official] = (officialDist[s.official] || 0) + 1;
+      if (s.bodyType) bodyDist[s.bodyType] = (bodyDist[s.bodyType] || 0) + 1;
+      if (s.category) {
+        String(s.category).split(',').forEach(function (cat) {
+          cat = cat.trim(); if (cat) categoryDist[cat] = (categoryDist[cat] || 0) + 1;
+        });
+      }
+      if (s.language) languageDist[s.language] = (languageDist[s.language] || 0) + 1;
+    });
+    // 计算"高质量"占比：官方等级 L4 及以上 + 星级 4★/5★ 视为高质量拍摄
+    var highOfficial = 0, highStars = 0;
+    Object.keys(officialDist).forEach(function (k) {
+      var lv = parseInt(String(k).replace(/[^0-9]/g, ''), 10) || 0;
+      if (lv >= 4) highOfficial += officialDist[k];
+    });
+    Object.keys(starsDist).forEach(function (k) {
+      var n = parseInt(String(k).replace(/[^0-9]/g, ''), 10) || 0;
+      if (n >= 4) highStars += starsDist[k];
+    });
+    return {
+      total: total,
+      starsDist: starsDist,
+      officialDist: officialDist,
+      bodyDist: bodyDist,
+      categoryDist: categoryDist,
+      languageDist: languageDist,
+      highOfficialRate: total > 0 ? Math.round(highOfficial / total * 1000) / 10 : 0,
+      highStarsRate: total > 0 ? Math.round(highStars / total * 1000) / 10 : 0,
+    };
+  }
+
   // 达人画像分析（支持筛选）
   function getCreatorPersonaAnalysis(startDate, endDate, sku) {
     var samples = filterSamples(D.samples, startDate, endDate, sku);
@@ -1821,6 +1910,8 @@
     // 深度分析 (v3)
     getSampleDashboard: getSampleDashboard,
     getVideoAnalytics: getVideoAnalytics,
+    getTopVideoCreators: getTopVideoCreators,
+    getVideoQualityProfile: getVideoQualityProfile,
     getCreatorPersonaAnalysis: getCreatorPersonaAnalysis,
     getDevEffectAnalysis: getDevEffectAnalysis,
     getProductAnalysis: getProductAnalysis,

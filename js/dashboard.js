@@ -176,10 +176,33 @@
     container.innerHTML = html;
   }
 
+  // 把分布对象渲染成带占比数字的条形
+  function qualityBars(title, dist) {
+    var entries = Object.keys(dist || {}).map(function (k) { return [k, dist[k]]; })
+      .sort(function (a, b) { return b[1] - a[1]; });
+    if (entries.length === 0) return '';
+    var total = entries.reduce(function (s, e) { return s + e[1]; }, 0) || 1;
+    var rows = entries.map(function (e) {
+      var pct = Math.round(e[1] / total * 100);
+      return '<div class="bar-row">'
+        + '<span class="bar-label">' + App.escapeHtml(e[0]) + '</span>'
+        + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:var(--pink-400);">' + (pct >= 12 ? '<span class="bar-pct">' + pct + '%</span>' : '') + '</div></div>'
+        + '<span class="bar-count">' + e[1] + ' · ' + pct + '%</span>'
+        + '</div>';
+    }).join('');
+    return '<div style="font-size:12px;font-weight:700;color:var(--pink-600);margin:12px 0 6px;">' + title + '</div>' + rows;
+  }
+
+  function safeUrl(u) {
+    return String(u || '').replace(/[<>"']/g, function (m) { return { '<': '%3C', '>': '%3E', '"': '%22', "'": '%27' }[m]; });
+  }
+
   function renderVideoQuality() {
     var container = document.getElementById('video-quality');
     if (!container) return;
     var analytics = Data.getVideoAnalytics(filterState.startDate, filterState.endDate, filterState.sku);
+    var topCreators = Data.getTopVideoCreators(filterState.startDate, filterState.endDate, filterState.sku);
+    var profile = Data.getVideoQualityProfile(filterState.startDate, filterState.endDate, filterState.sku);
 
     var html = '<div class="stat-grid" style="margin-bottom:16px;">'
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-primary);">' + App.formatNumber(analytics.total) + '</div><div class="stat-card__label">视频总数</div></div>'
@@ -188,55 +211,59 @@
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + App.formatNumber(analytics.uniqueCreators) + '</div><div class="stat-card__label">有视频达人</div></div>'
       + '</div>';
 
-    // SKU 视频出单排行
-    if (analytics.skuRanking.length > 0) {
-      html += '<div class="card" style="margin-bottom:12px;">'
-        + '<div class="card__header"><h3 class="card__title">SKU 视频出单排行 TOP 8</h3></div>'
-        + '<div style="padding:8px 0;">';
-      // 按视频出单数量降序，同数量按定位档
-      var skuRank = (analytics.skuRanking || []).slice().sort(function (a, b) {
-        if (b.orderedCount !== a.orderedCount) return b.orderedCount - a.orderedCount;
-        var ta = Data.getSKUPositionTier(a.sku), tb = Data.getSKUPositionTier(b.sku);
-        if (ta !== tb) return ta - tb;
-        return b.videoCount - a.videoCount;
-      });
-      var maxO = skuRank[0] ? (skuRank[0].orderedCount || 1) : 1;
-      skuRank.slice(0, 8).forEach(function (s, i) {
-        var pct = Math.round(s.orderedCount / maxO * 100);
-        html += '<div style="margin-bottom:8px;">'
-          + '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;">'
-          + '<span style="font-weight:600;color:var(--text-1);">#' + (i+1) + ' SKU ' + App.escapeHtml(s.sku) + '</span>'
-          + '<span><span style="color:var(--pink-500);">' + s.orderedCount + '出单</span> · <span style="color:var(--c-info);">' + s.videoCount + '视频</span> · <span style="color:var(--c-success);">' + s.orderRate + '%</span></span>'
+    // 达人出单视频 TOP 20（含视频链接）
+    html += '<div class="card" style="margin-bottom:12px;">'
+      + '<div class="card__header"><h3 class="card__title">达人出单视频 TOP 20 🔥</h3></div>'
+      + '<div style="padding:10px 12px;">';
+    if (topCreators.length === 0) {
+      html += '<div style="padding:16px;color:var(--text-3);font-size:13px;text-align:center;">暂无出单视频数据<br><span style="font-size:11px;">（视频链接已在飞书同步中修复，重新同步后即可显示）</span></div>';
+    } else {
+      topCreators.forEach(function (c, i) {
+        var badge = c.official ? '<span style="font-size:10px;color:var(--pink-600);background:var(--bg-pink-soft);padding:1px 6px;border-radius:8px;margin-right:4px;">' + App.escapeHtml(c.official) + '</span>' : '';
+        var stars = c.stars ? '<span style="font-size:10px;color:var(--c-warning);margin-right:4px;">' + App.escapeHtml(c.stars) + '</span>' : '';
+        var skuTags = (c.skuList || []).slice(0, 4).map(function (sk) {
+          return '<span style="font-size:10px;color:var(--text-2);background:var(--bg-2);padding:1px 5px;border-radius:6px;margin-right:3px;">SKU ' + App.escapeHtml(sk) + '</span>';
+        }).join('');
+        var links = (c.videoUrls || []).map(function (v, idx) {
+          return '<a href="' + safeUrl(v.url) + '" target="_blank" rel="noopener" style="display:inline-block;font-size:11px;color:#fff;background:var(--pink-500);padding:2px 8px;border-radius:8px;text-decoration:none;margin:3px 4px 0 0;">🔗 视频' + (idx + 1) + '</a>';
+        }).join('');
+        html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-1);">'
+          + '<div style="width:24px;flex:0 0 24px;text-align:center;font-weight:700;color:var(--pink-500);font-size:14px;">#' + (i + 1) + '</div>'
+          + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-size:13px;font-weight:600;color:var(--text-1);margin-bottom:3px;">' + badge + stars + App.escapeHtml(c.creator) + '</div>'
+          + '<div style="margin-bottom:4px;">' + skuTags + '</div>'
+          + '<div>' + links + '</div>'
           + '</div>'
-          + '<div style="height:6px;background:var(--bg-pink-soft);border-radius:3px;overflow:hidden;">'
-          + '<div style="height:100%;width:' + pct + '%;background:var(--pink-400);border-radius:3px;transition:width .6s ease;"></div>'
-          + '</div></div>';
-      });
-      html += '</div></div>';
-    }
-
-    // 颜色排行
-    if (analytics.colorRanking.length > 0) {
-      html += '<div class="card">'
-        + '<div class="card__header"><h3 class="card__title">颜色分布 TOP 8</h3></div>'
-        + '<div style="padding:8px 0;">';
-      var totalC = analytics.colorRanking.reduce(function (s, c) { return s + c.count; }, 0) || 1;
-      var colorMap = { '黑': '#333', '白': '#eee', '灰': '#999', '蓝': '#4A90D9', '淡蓝': '#B0D4E8', '粉': '#F5B0BC', '绿': '#7EC850', '棕': '#8B6F47', '卡其': '#C3B091', '杏': '#D4A574' };
-      analytics.colorRanking.slice(0, 8).forEach(function (c) {
-        var pct = Math.round(c.count / totalC * 100);
-        var bg = colorMap[c.color] || 'var(--pink-300)';
-        var textColor = (c.color === '白' || c.color === '杏') ? 'var(--text-1)' : '#fff';
-        html += '<div class="bar-row">'
-          + '<span class="bar-label">' + App.escapeHtml(c.color) + '</span>'
-          + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + bg + ';">' + (pct >= 12 ? '<span class="bar-pct" style="color:' + textColor + ';">' + pct + '%</span>' : '') + '</div></div>'
-          + '<span class="bar-count">' + c.count + ' · ' + pct + '%</span>'
+          + '<div style="flex:0 0 auto;text-align:right;">'
+          + '<div style="font-size:16px;font-weight:700;color:var(--c-success);">' + c.orderCount + '</div>'
+          + '<div style="font-size:10px;color:var(--text-3);">出单</div>'
+          + '</div>'
           + '</div>';
       });
-      if (analytics.topColor) {
-        html += '<div style="margin-top:8px;padding:8px;background:var(--bg-pink-soft);border-radius:8px;font-size:12px;color:var(--pink-600);">最容易出单颜色：' + App.escapeHtml(analytics.topColor.color) + '</div>';
-      }
-      html += '</div></div>';
     }
+    html += '</div></div>';
+
+    // 视频拍摄质量分析（基于出单视频的达人画像）
+    html += '<div class="card">'
+      + '<div class="card__header"><h3 class="card__title">视频拍摄质量分析 🎬</h3></div>'
+      + '<div style="padding:10px 12px;">';
+    if (profile.total === 0) {
+      html += '<div style="padding:16px;color:var(--text-3);font-size:13px;text-align:center;">暂无出单视频数据</div>';
+    } else {
+      html += '<div style="display:flex;gap:10px;margin-bottom:4px;">'
+        + '<div style="flex:1;background:var(--bg-pink-soft);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--pink-600);">' + profile.highStarsRate + '%</div><div style="font-size:11px;color:var(--text-2);">高星级(4-5★)占比</div></div>'
+        + '<div style="flex:1;background:var(--bg-pink-soft);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--pink-600);">' + profile.highOfficialRate + '%</div><div style="font-size:11px;color:var(--text-2);">高等级(L4+)占比</div></div>'
+        + '</div>';
+      html += qualityBars('按星级', profile.starsDist);
+      html += qualityBars('按官方等级', profile.officialDist);
+      html += qualityBars('按身材', profile.bodyDist);
+      html += qualityBars('按品类', profile.categoryDist);
+      html += qualityBars('按语言', profile.languageDist);
+      html += '<div style="margin-top:10px;padding:8px 10px;background:var(--bg-pink-soft);border-radius:8px;font-size:12px;color:var(--pink-600);line-height:1.6;">'
+        + '📌 说明：数据暂无视频质量评分字段，以上用「出单视频对应达人的官方等级 / 星级 / 身材 / 品类 / 语言」作为拍摄质量的代理指标——高等级、高星级达人通常拍摄更专业、转化更好。BD 可点开上方 TOP 20 视频直观判断风格。'
+        + '</div>';
+    }
+    html += '</div></div>';
 
     container.innerHTML = html;
   }

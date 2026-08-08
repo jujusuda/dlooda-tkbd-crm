@@ -22,6 +22,21 @@ function getField(rec, fmap, key) {
   return val === undefined ? null : val;
 }
 
+// 飞书「视频」字段是超链接类型，值为 {link, text} 对象；
+// 也可能是附件数组 [{url}] 或纯字符串。统一提取出可用 URL。
+function extractUrl(u) {
+  if (!u) return '';
+  if (typeof u === 'string') return u.trim();
+  if (Array.isArray(u)) {
+    const first = u[0];
+    return first ? extractUrl(first) : '';
+  }
+  if (typeof u === 'object') {
+    return (u.link || u.url || u.text || '').toString().trim();
+  }
+  return String(u).trim();
+}
+
 function num(v) {
   if (v === null || v === undefined || v === '') return null;
   const n = Number(v);
@@ -44,9 +59,9 @@ function buildFromTables(tables, cfgObj) {
       if (m) idxs.push(parseInt(m[1], 10));
     });
     idxs.sort((a, b) => a - b).forEach((i) => {
-      const url = rec.fields['视频' + i];
+      const url = extractUrl(rec.fields['视频' + i]);
       const time = rec.fields['视频' + i + '时间'];
-      if (url) videos.push({ url: String(url), time: parseDate(time) });
+      if (url) videos.push({ url: url, time: parseDate(time) });
     });
     const sample = {
       _rid: rid,

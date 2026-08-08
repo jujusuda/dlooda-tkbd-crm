@@ -6,3 +6,4 @@ node_modules/
 Thumbs.db
 start.bat
 server/.env
+__pycache__/

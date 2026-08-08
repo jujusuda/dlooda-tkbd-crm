@@ -25,8 +25,13 @@ for row in ws.iter_rows(min_row=2, values_only=True):
     for i in range(18, min(45, len(row)), 2):
         vlink = row[i] if i < len(row) else None
         vtime = row[i + 1] if i + 1 < len(row) else None
-        if vlink and str(vlink).strip():
-            videos.append({'url': str(vlink).strip(), 'time': dt_str(vtime)})
+        if vlink:
+            # 飞书导出的超链接可能是 {link, text} 对象或字符串
+            if isinstance(vlink, dict):
+                vlink = vlink.get('link') or vlink.get('url') or vlink.get('text') or ''
+            vlink = str(vlink).strip()
+            if vlink:
+                videos.append({'url': vlink, 'time': dt_str(vtime)})
 
     sample = {
         'creator': name,
