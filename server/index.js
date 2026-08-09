@@ -10,10 +10,40 @@ const ROOT = path.join(__dirname, '..');
 const cfgPath = path.join(__dirname, 'config.json');
 const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
 
+// ---- 零依赖 .env 加载器 ----
+// 密钥只放在被 .gitignore 忽略的 .env 里，永远不写进 config.json（仓库是 public）
+// 优先级：真实环境变量 > server/.env > 项目根 .env
+function loadEnvFile(file) {
+  let text;
+  try { text = fs.readFileSync(file, 'utf8'); } catch (e) { return false; }
+  text.split(/\r?\n/).forEach(function (line) {
+    line = line.trim();
+    if (!line || line.charAt(0) === '#') return;
+    const i = line.indexOf('=');
+    if (i < 0) return;
+    const k = line.slice(0, i).trim();
+    let v = line.slice(i + 1).trim();
+    // 去掉可能包裹的引号
+    if (v.length >= 2 && ((v[0] === '"' && v[v.length - 1] === '"') || (v[0] === "'" && v[v.length - 1] === "'"))) {
+      v = v.slice(1, -1);
+    }
+    if (k && !(k in process.env)) process.env[k] = v;
+  });
+  return true;
+}
+const envLoaded = [];
+if (loadEnvFile(path.join(__dirname, '.env'))) envLoaded.push('server/.env');
+if (loadEnvFile(path.join(ROOT, '.env'))) envLoaded.push('.env');
+
 // 允许用环境变量注入密钥（PaaS 部署时避免把 App Secret 写进仓库）
-if (process.env.FEISHU_APP_ID) cfg.feishu.appId = process.env.FEISHU_APP_ID;
-if (process.env.FEISHU_APP_SECRET) cfg.feishu.appSecret = process.env.FEISHU_APP_SECRET;
-if (process.env.FEISHU_BASE_TOKEN) cfg.feishu.baseAppToken = process.env.FEISHU_BASE_TOKEN;
+// 同时兼容 FEISHU_* 与 LARK_* 两套命名，以及 BASE_TOKEN / BASE_APP_TOKEN 两种写法
+const E = process.env;
+const envAppId = E.FEISHU_APP_ID || E.LARK_APP_ID;
+const envSecret = E.FEISHU_APP_SECRET || E.LARK_APP_SECRET;
+const envBase = E.FEISHU_BASE_APP_TOKEN || E.FEISHU_BASE_TOKEN || E.LARK_BASE_APP_TOKEN || E.LARK_BASE_TOKEN;
+if (envAppId) cfg.feishu.appId = envAppId;
+if (envSecret) cfg.feishu.appSecret = envSecret;
+if (envBase) cfg.feishu.baseAppToken = envBase;
 
 const PORT = process.env.PORT || (cfg.server && cfg.server.port) || 3000;
 const HOST = (cfg.server && cfg.server.host) || '0.0.0.0';
@@ -95,6 +125,18 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+function mask(v) {
+  if (!v) return '\x1b[31m(未配置)\x1b[0m';
+  return '\x1b[32m' + String(v).slice(0, 4) + '****(len ' + String(v).length + ')\x1b[0m';
+}
+
 server.listen(PORT, HOST, () => {
+  const f = cfg.feishu || {};
   console.log('Dlooda TKBD sync server -> http://' + (HOST === '0.0.0.0' ? 'localhost' : HOST) + ':' + PORT);
+  console.log('  .env 已加载: ' + (envLoaded.length ? envLoaded.join(' + ') : '(无 .env 文件，仅用系统环境变量)'));
+  console.log('  appId        : ' + mask(f.appId));
+  console.log('  appSecret    : ' + mask(f.appSecret));
+  console.log('  baseAppToken : ' + mask(f.baseAppToken));
+  const ok = !!(f.appId && f.appSecret && f.baseAppToken);
+  console.log('  同步状态     : ' + (ok ? '\x1b[32m已就绪，可拉取/写回飞书\x1b[0m' : '\x1b[33m凭据不全，/api/sync 与 /api/push 会报错\x1b[0m'));
 });

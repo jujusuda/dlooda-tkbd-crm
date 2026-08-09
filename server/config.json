@@ -1,9 +1,10 @@
 {
+  "_README": "本文件会提交到 public 仓库，禁止填写任何密钥。appId / appSecret / baseAppToken 一律从项目根目录 .env 读取（.env 已被 .gitignore 忽略）。.env 所需字段：FEISHU_APP_ID / FEISHU_APP_SECRET / FEISHU_BASE_APP_TOKEN",
   "server": { "port": 3000, "host": "0.0.0.0" },
   "feishu": {
     "appId": "",
     "appSecret": "",
-    "baseAppToken": "TBu5bPDU0apfCPs5ppacyHtdn4g",
+    "baseAppToken": "",
     "tables": {
       "daily": {
         "tableId": "tblsbvn8WWvviBmg",
