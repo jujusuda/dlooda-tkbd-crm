@@ -106,6 +106,12 @@
 - 前端接线：`App.pushToFeishu(table,recordId,fields)`（app.js）；邀约页保存话术时若匹配飞书邀约记录则写回"话术"列；全局浮动「🔄 同步飞书」按钮（仅配置后出现）+ 每5分钟自动同步
 - **前置依赖（用户需提供）**：飞书自建应用 + 多维表格读写权限 + 把应用添加为该 base 的文档应用；还需 base app_token 与 6 张表 table_id
 - **关键约束**：纯前端无法直连飞书，必须走后端代理（飞书不允许浏览器跨域直调 + 需保密 appSecret）
+- **凭据管理（2026-08-09 定案，不可违反）**：GitHub 仓库是 **public**，且 `server/config.json` 被 git 追踪 → **该文件永远不填任何密钥**（appId/appSecret/baseAppToken 全部留空，只保留 tableId + 字段映射）。
+  - 唯一密钥来源：项目根 `.env`（已 gitignore），字段 `FEISHU_APP_ID` / `FEISHU_APP_SECRET` / `FEISHU_BASE_APP_TOKEN`
+  - `server/index.js` 内置零依赖 `.env` 加载器（Node16 无 dotenv），优先级：真实环境变量 > `server/.env` > 根 `.env`；变量名兼容 `FEISHU_*`/`LARK_*` 与 `BASE_TOKEN`/`BASE_APP_TOKEN`
+  - 启动 `node server/index.js` 会打印掩码凭据 + 「同步状态：已就绪/凭据不全」
+  - 换凭据只改 `.env`，不动代码；提交前用 `.env` 真实值扫描待提交文件确认无泄露
+- **凭据有效性（2026-08-09 实测）**：用户决定**不重置** secret，现有凭据有效，tenant_token 获取 + 读表（每日寄样 2845 条）均成功 → 双向同步可用
 - 验证：demo 映射管线通过（_rid/视频/聚合/定位均正确）；无凭据时 /api/status 返回 configured:false、/api/sync|push 优雅报错
 
 ## 复投分析业务规则（2026-08-09 用户最终确认，不可擅改）
