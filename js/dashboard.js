@@ -273,11 +273,22 @@
     if (!container) return;
     var data = Data.getReinvestAnalysis(filterState.startDate, filterState.endDate, filterState.sku);
 
-    var html = '<div class="stat-grid" style="margin-bottom:16px;">'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-primary);">' + data.reinvestTotal + '</div><div class="stat-card__label">复投人数</div></div>'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-success);">' + data.reinvestSuccess + '</div><div class="stat-card__label">成功人数</div></div>'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + data.overallRate + '%</div><div class="stat-card__label">整体复投率</div></div>'
+    var html = '<div class="stat-grid" style="margin-bottom:12px;">'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-primary);">' + data.reinvestTotal + '</div><div class="stat-card__label">复投声明数</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-success);">' + data.reinvestSuccess + '</div><div class="stat-card__label">复投成功</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-danger);">' + data.reinvestFailed + '</div><div class="stat-card__label">未成功</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-warning);">' + data.reinvestWatching + '</div><div class="stat-card__label">观察中(' + data.watchDays + '天内)</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + data.overallRate + '%</div><div class="stat-card__label">复投成功率</div></div>'
       + '</div>';
+
+    // 口径说明
+    html += '<div class="card" style="margin-bottom:12px;"><div style="padding:10px 14px;font-size:12px;color:var(--text-2);line-height:1.7;">'
+      + '<b style="color:var(--text-1);">判定规则</b>：以飞书「是否复投」字段的 <b>已推XXXX</b> 为复投声明 → '
+      + '该达人<b>之后</b>再寄样该 SKU 且<b>系统通过</b>（手动/自动）＝ 复投成功（不要求发视频）。<br>'
+      + '声明后不满 ' + data.watchDays + ' 天且尚未合作的记为「观察中」，不计入成功率分母；'
+      + '成功率 = 成功 ÷ (成功 + 未成功) = ' + data.reinvestSuccess + ' ÷ ' + data.settledTotal + '。'
+      + '<span style="color:var(--text-3);">（占全部声明为 ' + data.rawRate + '%，数据基准日 ' + App.escapeHtml(data.dataMaxDate) + '）</span>'
+      + '</div></div>';
 
     if (data.bySKU.length > 0) {
       // 按产品定位排序：爆品 → 销售 → 测品 → 撤退，同档按复投数降序
@@ -286,19 +297,51 @@
         if (ta !== tb) return ta - tb;
         return b.reinvest - a.reinvest;
       });
-      html += '<div class="card"><div class="card__header"><h3 class="card__title">各 SKU 复投率</h3></div><div style="padding:8px 0;">';
+      html += '<div class="card" style="margin-bottom:12px;"><div class="card__header"><h3 class="card__title">各 SKU 复投转化</h3>'
+        + '<span style="font-size:11px;color:var(--text-3);">'
+        + '<span style="color:var(--c-success);">■</span>成功 '
+        + '<span style="color:var(--c-danger);">■</span>未成功 '
+        + '<span style="color:var(--c-warning);">■</span>观察中</span>'
+        + '</div><div style="padding:8px 0;">';
       reinvestList.forEach(function (r) {
         var pct = r.rate;
-        var color = pct >= 50 ? 'var(--c-success)' : pct >= 30 ? 'var(--c-warning)' : 'var(--c-danger)';
+        var color = pct >= 20 ? 'var(--c-success)' : pct >= 10 ? 'var(--c-warning)' : 'var(--c-danger)';
+        var tot = r.reinvest || 1;
+        var wS = (r.success / tot * 100), wF = (r.failed / tot * 100), wW = (r.watching / tot * 100);
         html += '<div style="margin-bottom:10px;">'
-          + '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;">'
-          + '<span style="font-weight:600;color:var(--text-1);">SKU ' + App.escapeHtml(r.sku) + ' · ' + App.escapeHtml(r.productName) + '</span>'
-          + '<span><span style="color:var(--text-2);">' + r.reinvest + '复投</span> · <span style="color:var(--c-success);">' + r.success + '成功</span> · <span style="color:' + color + ';font-weight:700;">' + pct + '%</span></span>'
+          + '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">'
+          + '<span style="font-weight:600;color:var(--text-1);">SKU ' + App.escapeHtml(r.sku) + (r.productName ? ' · ' + App.escapeHtml(r.productName) : '') + '</span>'
+          + '<span><span style="color:var(--text-2);">' + r.reinvest + '声明</span> · '
+          + '<span style="color:var(--c-success);">' + r.success + '成功</span> · '
+          + '<span style="color:' + color + ';font-weight:700;">' + pct + '%</span></span>'
           + '</div>'
-          + '<div style="height:8px;background:var(--bg-pink-soft);border-radius:4px;overflow:hidden;">'
-          + '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:4px;transition:width .6s ease;"></div>'
+          + '<div style="height:8px;background:var(--bg-pink-soft);border-radius:4px;overflow:hidden;display:flex;">'
+          + '<div style="height:100%;width:' + wS + '%;background:var(--c-success);transition:width .6s ease;"></div>'
+          + '<div style="height:100%;width:' + wF + '%;background:var(--c-danger);opacity:.55;transition:width .6s ease;"></div>'
+          + '<div style="height:100%;width:' + wW + '%;background:var(--c-warning);opacity:.7;transition:width .6s ease;"></div>'
           + '</div></div>';
       });
+      html += '</div></div>';
+
+      // 复投成功明细
+      var wins = data.details.filter(function (d) { return d.success; });
+      html += '<div class="card"><div class="card__header"><h3 class="card__title">复投成功明细</h3>'
+        + '<span style="font-size:11px;color:var(--text-3);">共 ' + wins.length + ' 条，显示最近 30 条</span></div>'
+        + '<div style="padding:4px 0;">';
+      if (wins.length === 0) {
+        html += '<div style="padding:14px;color:var(--text-3);font-size:13px;text-align:center;">当前筛选下暂无复投成功记录</div>';
+      } else {
+        wins.slice(0, 30).forEach(function (d) {
+          html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--border-1);font-size:12px;flex-wrap:wrap;">'
+            + '<span style="font-weight:600;color:var(--text-1);min-width:130px;">' + App.escapeHtml(d.creator) + '</span>'
+            + '<span style="color:var(--text-3);">' + App.escapeHtml(d.fromSKU) + ' 时标注</span>'
+            + '<span style="background:var(--bg-pink-soft);color:var(--pink-600);padding:1px 7px;border-radius:8px;font-weight:600;">已推 ' + App.escapeHtml(d.targetSKU) + '</span>'
+            + '<span style="color:var(--text-3);">' + App.escapeHtml((d.declareTime || '').slice(0, 10)) + '</span>'
+            + '<span style="color:var(--c-success);font-weight:600;">→ ' + App.escapeHtml((d.successTime || '').slice(0, 10)) + ' 合作</span>'
+            + '<span style="color:var(--text-3);">(' + App.escapeHtml(String(d.approval || '')) + '通过)</span>'
+            + '</div>';
+        });
+      }
       html += '</div></div>';
     } else {
       html += '<div class="card"><div style="padding:16px;color:var(--text-3);font-size:13px;text-align:center;">暂无复投数据</div></div>';

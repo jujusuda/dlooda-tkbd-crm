@@ -1405,80 +1405,180 @@
     });
   }
 
-  // 复投分析（支持筛选）
-  // 复投定义：某达人履约了SKU-A后，再寄样SKU-B，如果SKU-B也履约了=复投成功
-  function getReinvestAnalysis(startDate, endDate, sku) {
-    var samples = filterSamples(D.samples, startDate, endDate, sku);
+  // 是否"系统通过"（复投成功判定口径：只看通过，不看是否发视频）
+  // 飞书「通过」字段取值：手动 / 自动 / 官方自动 / 空
+  function isApproved(s) {
+    var a = s && s.approval;
+    if (a === undefined || a === null) return false;
+    if (Array.isArray(a)) a = a.join('');
+    a = String(a).trim();
+    return a !== '';
+  }
 
-    // 按达人分组，按寄样时间排序
+  // 解析飞书「是否复投」字段里的 前缀+SKU 标记
+  // 该字段在不同数据管线下格式不一：
+  //   - 飞书 API / regen：数组 ["已推2178","已推2190"]
+  //   - Excel 上传：字符串 "已推2178,已推2190" 或 Python 字面量 "['已推2178', '已推2190']"
+  // 统一拼成文本后用全局正则提取，天然跳过 "已推（颜色" 这类脏数据（（不是字母数字）
+  function parseTaggedSKUs(value, prefix) {
+    if (!value) return [];
+    var text = Array.isArray(value) ? value.join(',') : String(value);
+    if (!text) return [];
+    var re = new RegExp(prefix + '\\s*([A-Za-z0-9]+)', 'g');
+    var out = [];
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      var target = m[1];
+      if (target && out.indexOf(target) < 0) out.push(target);
+    }
+    return out;
+  }
+
+  // 已复投（已推XXXX）→ 复投声明
+  function parseReinvestTargets(s) {
+    return parseTaggedSKUs(s && s.reinvest, '已推');
+  }
+
+  // 待合作XXXX（已计划但尚未推，仅作参考，不计入复投声明）
+  function parsePendingTargets(s) {
+    return parseTaggedSKUs(s && s.reinvest, '待合作');
+  }
+
+  // 复投分析（支持筛选）
+  // 业务规则（用户确认）：
+  //   1) 复投声明 = 飞书「是否复投」字段出现「已推XXXX」（如已推2190、已推2189）
+  //   2) 复投成功 = 该达人在声明之后，又寄样了该目标SKU 且「通过」非空（手动/自动/官方自动）
+  //      —— 只要系统通过即算成功，不要求发视频
+  //   3) 时间必须晚于声明所在的那条寄样记录（按达人时间线顺序判定）
+  // 同一达人对同一目标SKU多次声明时，按最早一次声明计（去重）
+  function getReinvestAnalysis(startDate, endDate, sku) {
+    // 后续"是否合作上"必须在全量时间线里找，否则会被时间窗截断而漏判
+    var all = D.samples || [];
+
+    // 数据最新日期作为"今天"的基准（比系统时间稳健）
+    var dataMaxDate = '';
+    all.forEach(function (s) {
+      if (s.sampleTime && s.sampleTime > dataMaxDate) dataMaxDate = s.sampleTime;
+    });
+    dataMaxDate = dataMaxDate.slice(0, 10);
+    var WATCH_DAYS = 30; // 声明后 30 天内还没动静 → 算"观察中"，超过则算未成功
+
+    function daysBetween(d1, d2) {
+      if (!d1 || !d2) return 0;
+      var a = new Date(d1 + 'T00:00:00');
+      var b = new Date(d2 + 'T00:00:00');
+      return Math.round((b - a) / 86400000);
+    }
+
+    // 按达人分组（规范化去掉前后空格/大小写差异，避免同一人被拆成两条时间线）
     var byCreator = {};
-    samples.forEach(function (s) {
+    var displayName = {};
+    all.forEach(function (s) {
       if (!s.creator) return;
-      if (!byCreator[s.creator]) byCreator[s.creator] = [];
-      byCreator[s.creator].push(s);
+      var key = String(s.creator).trim().toLowerCase();
+      if (!byCreator[key]) { byCreator[key] = []; displayName[key] = String(s.creator).trim(); }
+      byCreator[key].push(s);
     });
 
-    var reinvestTotal = 0;      // 复投寄样数
-    var reinvestSuccess = 0;    // 复投成功数（后续SKU也履约了）
+    var reinvestTotal = 0;      // 复投声明数（去重后的 达人×目标SKU）
+    var reinvestSuccess = 0;    // 复投成功数（声明后合作上了）
+    var reinvestFailed = 0;     // 未成功（超过观察期仍没合作上）
+    var reinvestWatching = 0;   // 观察中（声明还不满 30 天）
+    var pendingTotal = 0;       // 「待合作」声明数（参考）
     var bySKU = {};
+    var details = [];
 
-    Object.keys(byCreator).forEach(function (name) {
-      var creatorSamples = byCreator[name].slice().sort(function (a, b) {
+    Object.keys(byCreator).forEach(function (key) {
+      var name = displayName[key];
+      var line = byCreator[key].slice().sort(function (a, b) {
         return (a.sampleTime || '') > (b.sampleTime || '') ? 1 : -1;
       });
 
-      // 追踪已履约的SKU
-      var fulfilledSKUs = {};
-
-      for (var i = 0; i < creatorSamples.length; i++) {
-        var s = creatorSamples[i];
-        if (!s.sku) continue;
-
-        // 检查之前是否有不同SKU的履约记录
-        var hasPreviousFulfilled = false;
-        Object.keys(fulfilledSKUs).forEach(function (prevSKU) {
-          if (prevSKU !== s.sku && fulfilledSKUs[prevSKU]) {
-            hasPreviousFulfilled = true;
-          }
+      // 收集该达人的复投声明：目标SKU -> 最早声明所在的索引
+      var declared = {};
+      var pendingSet = {};
+      for (var i = 0; i < line.length; i++) {
+        parseReinvestTargets(line[i]).forEach(function (t) {
+          if (declared[t] === undefined) declared[t] = i;
         });
-
-        if (hasPreviousFulfilled) {
-          // 这是一个复投寄样
-          reinvestTotal++;
-          var isFulfilled = s.fulfillMethod === '视频' || (s.fulfillMethod && s.fulfillMethod.indexOf('直播') >= 0);
-          if (isFulfilled) {
-            reinvestSuccess++;
-          }
-
-          // 按SKU统计
-          if (!bySKU[s.sku]) bySKU[s.sku] = { reinvest: 0, success: 0, total: 0 };
-          bySKU[s.sku].reinvest++;
-          if (isFulfilled) bySKU[s.sku].success++;
-        }
-
-        // 更新已履约SKU
-        if (s.fulfillMethod === '视频' || (s.fulfillMethod && s.fulfillMethod.indexOf('直播') >= 0)) {
-          fulfilledSKUs[s.sku] = true;
-        }
+        parsePendingTargets(line[i]).forEach(function (t) { pendingSet[t] = true; });
       }
+      pendingTotal += Object.keys(pendingSet).length;
+
+      Object.keys(declared).forEach(function (target) {
+        var declIdx = declared[target];
+        var declSample = line[declIdx];
+        var declTime = declSample.sampleTime || '';
+
+        // 时间窗筛选作用于"声明时间"；SKU筛选作用于"复投的目标SKU"
+        if (startDate && declTime && declTime.slice(0, 10) < startDate) return;
+        if (endDate && declTime && declTime.slice(0, 10) > endDate) return;
+        if (sku && target !== sku) return;
+
+        // 在声明之后的记录里找：目标SKU 且 系统通过（只看通过，不要求发视频）
+        var success = false;
+        var successSample = null;
+        for (var j = declIdx + 1; j < line.length; j++) {
+          if (line[j].sku !== target) continue;
+          if (!isApproved(line[j])) continue;
+          success = true;
+          successSample = line[j];
+          break;
+        }
+
+        // 三态：成功 / 观察中（声明还不满30天）/ 未成功
+        var status = 'success';
+        if (!success) {
+          var age = daysBetween(declTime.slice(0, 10), dataMaxDate);
+          status = age <= WATCH_DAYS ? 'watching' : 'failed';
+        }
+
+        reinvestTotal++;
+        if (status === 'success') reinvestSuccess++;
+        else if (status === 'watching') reinvestWatching++;
+        else reinvestFailed++;
+
+        if (!bySKU[target]) bySKU[target] = { reinvest: 0, success: 0, failed: 0, watching: 0, total: 0 };
+        bySKU[target].reinvest++;
+        if (status === 'success') bySKU[target].success++;
+        else if (status === 'watching') bySKU[target].watching++;
+        else bySKU[target].failed++;
+
+        details.push({
+          creator: name,
+          fromSKU: declSample.sku || '',
+          targetSKU: target,
+          declareTime: declTime,
+          success: success,
+          status: status,
+          successTime: successSample ? (successSample.sampleTime || '') : '',
+          approval: successSample ? successSample.approval : '',
+        });
+      });
     });
 
-    // 统计每SKU总数
-    samples.forEach(function (s) {
+    // 统计每SKU总寄样数（受时间窗筛选，不受SKU筛选影响，用于展示分母参考）
+    filterSamples(all, startDate, endDate, null).forEach(function (s) {
       if (!s.sku) return;
-      if (!bySKU[s.sku]) bySKU[s.sku] = { reinvest: 0, success: 0, total: 0 };
+      if (!bySKU[s.sku]) bySKU[s.sku] = { reinvest: 0, success: 0, failed: 0, watching: 0, total: 0 };
       bySKU[s.sku].total++;
     });
 
     var skuReinvest = Object.entries(bySKU).map(function (entry) {
       var d = getSKUDetail(entry[0]);
+      var v = entry[1];
+      var settled = v.success + v.failed; // 已出结果的（排除观察中）
       return {
         sku: entry[0],
         productName: d.productName || '',
-        reinvest: entry[1].reinvest,
-        success: entry[1].success,
-        rate: entry[1].reinvest > 0 ? Math.round(entry[1].success / entry[1].reinvest * 100) : 0,
-        total: entry[1].total,
+        reinvest: v.reinvest,
+        success: v.success,
+        failed: v.failed,
+        watching: v.watching,
+        // rate = 已出结果中的成功率（观察中的不计入分母，避免低估）
+        rate: settled > 0 ? Math.round(v.success / settled * 100) : 0,
+        rawRate: v.reinvest > 0 ? Math.round(v.success / v.reinvest * 100) : 0,
+        total: v.total,
       };
     }).filter(function (r) { return r.reinvest > 0; }).sort(function (a, b) {
       // 先按产品定位档位（爆品→销售→测品→撤退），同档按复投数降序
@@ -1487,11 +1587,27 @@
       return b.reinvest - a.reinvest;
     });
 
+    details.sort(function (a, b) {
+      return (a.declareTime || '') > (b.declareTime || '') ? -1 : 1;
+    });
+
+    var settledTotal = reinvestSuccess + reinvestFailed;
+
     return {
-      reinvestTotal: reinvestTotal,
-      reinvestSuccess: reinvestSuccess,
-      overallRate: reinvestTotal > 0 ? Math.round(reinvestSuccess / reinvestTotal * 100) : 0,
+      reinvestTotal: reinvestTotal,          // 复投声明总数
+      reinvestSuccess: reinvestSuccess,      // 声明后合作上了
+      reinvestFailed: reinvestFailed,        // 超过观察期仍未合作
+      reinvestWatching: reinvestWatching,    // 观察中（声明不满30天）
+      settledTotal: settledTotal,            // 已出结果数
+      // 主口径：已出结果中的成功率（观察中不计入分母）
+      overallRate: settledTotal > 0 ? Math.round(reinvestSuccess / settledTotal * 100) : 0,
+      // 参考口径：占全部声明的比例
+      rawRate: reinvestTotal > 0 ? Math.round(reinvestSuccess / reinvestTotal * 100) : 0,
+      watchDays: WATCH_DAYS,
+      dataMaxDate: dataMaxDate,
+      pendingTotal: pendingTotal,
       bySKU: skuReinvest,
+      details: details,
     };
   }
 
