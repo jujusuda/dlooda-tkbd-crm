@@ -288,6 +288,10 @@
       + '声明后不满 ' + data.watchDays + ' 天且尚未合作的记为「观察中」，不计入成功率分母；'
       + '成功率 = 成功 ÷ (成功 + 未成功) = ' + data.reinvestSuccess + ' ÷ ' + data.settledTotal + '。'
       + '<span style="color:var(--text-3);">（占全部声明为 ' + data.rawRate + '%，数据基准日 ' + App.escapeHtml(data.dataMaxDate) + '）</span>'
+      + (data.medianDays ? '<br><b style="color:var(--text-1);">转化节奏</b>：成功复投从声明到合作上，'
+          + '中位数 <b style="color:var(--pink-600);">' + data.medianDays + ' 天</b>，'
+          + '其中 <b>' + data.withinWatchRate + '%</b> 在 ' + data.watchDays + ' 天观察期内完成 —— '
+          + '<span style="color:var(--text-3);">剩余部分是更晚才转化的，所以「未成功」里仍可能有后续翻盘。</span>' : '')
       + '</div></div>';
 
     if (data.bySKU.length > 0) {
@@ -338,6 +342,7 @@
             + '<span style="background:var(--bg-pink-soft);color:var(--pink-600);padding:1px 7px;border-radius:8px;font-weight:600;">已推 ' + App.escapeHtml(d.targetSKU) + '</span>'
             + '<span style="color:var(--text-3);">' + App.escapeHtml((d.declareTime || '').slice(0, 10)) + '</span>'
             + '<span style="color:var(--c-success);font-weight:600;">→ ' + App.escapeHtml((d.successTime || '').slice(0, 10)) + ' 合作</span>'
+            + (d.costDays != null ? '<span style="background:var(--bg-pink-soft);color:var(--text-2);padding:1px 6px;border-radius:8px;">耗时 ' + d.costDays + ' 天</span>' : '')
             + '<span style="color:var(--text-3);">(' + App.escapeHtml(String(d.approval || '')) + '通过)</span>'
             + '</div>';
         });

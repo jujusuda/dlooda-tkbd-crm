@@ -1485,6 +1485,7 @@
     var reinvestFailed = 0;     // 未成功（超过观察期仍没合作上）
     var reinvestWatching = 0;   // 观察中（声明还不满 30 天）
     var pendingTotal = 0;       // 「待合作」声明数（参考）
+    var successDays = [];       // 成功案例的转化耗时（天），用于算中位数
     var bySKU = {};
     var details = [];
 
@@ -1544,6 +1545,13 @@
         else if (status === 'watching') bySKU[target].watching++;
         else bySKU[target].failed++;
 
+        // 成功案例记录转化耗时（声明 → 合作上，天）
+        var costDays = null;
+        if (status === 'success' && successSample && successSample.sampleTime) {
+          var dd = daysBetween(declTime.slice(0, 10), successSample.sampleTime.slice(0, 10));
+          if (dd >= 0) { costDays = dd; successDays.push(dd); }
+        }
+
         details.push({
           creator: name,
           fromSKU: declSample.sku || '',
@@ -1553,6 +1561,7 @@
           status: status,
           successTime: successSample ? (successSample.sampleTime || '') : '',
           approval: successSample ? successSample.approval : '',
+          costDays: costDays,
         });
       });
     });
@@ -1593,12 +1602,20 @@
 
     var settledTotal = reinvestSuccess + reinvestFailed;
 
+    // 成功案例转化耗时：中位数 + 观察期内完成占比（用于校验观察期是否合理）
+    successDays.sort(function (a, b) { return a - b; });
+    var medianDays = successDays.length ? successDays[Math.floor(successDays.length / 2)] : 0;
+    var withinWatch = successDays.filter(function (n) { return n <= WATCH_DAYS; }).length;
+    var withinWatchRate = successDays.length ? Math.round(withinWatch / successDays.length * 100) : 0;
+
     return {
       reinvestTotal: reinvestTotal,          // 复投声明总数
       reinvestSuccess: reinvestSuccess,      // 声明后合作上了
       reinvestFailed: reinvestFailed,        // 超过观察期仍未合作
       reinvestWatching: reinvestWatching,    // 观察中（声明不满30天）
       settledTotal: settledTotal,            // 已出结果数
+      medianDays: medianDays,                // 成功复投的转化耗时中位数（天）
+      withinWatchRate: withinWatchRate,      // 成功案例中在观察期内完成的占比(%)
       // 主口径：已出结果中的成功率（观察中不计入分母）
       overallRate: settledTotal > 0 ? Math.round(reinvestSuccess / settledTotal * 100) : 0,
       // 参考口径：占全部声明的比例
