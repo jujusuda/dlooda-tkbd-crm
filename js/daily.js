@@ -1,7 +1,7 @@
 /* ================================================================
-   Dlooda TKBD CRM — 日报生成 (v4)
-   基于当日实际完成情况：寄样/视频/开发达人/自动通过
-   日报预览按当天寄样量逐条生成明细
+   Dlooda TKBD CRM — 日报生成 (v5)
+   今日工作完成 6 项支持手动覆盖（按日期 localStorage 持久化）
+   补充说明改为可增删改的条目列表，自动进入日报预览
    ================================================================ */
 
 (function (global) {
@@ -12,6 +12,21 @@
 
   // null = 今天；否则为 YYYY-MM-DD
   var currentDailyDate = null;
+  // 正在编辑的补充说明条目索引（-1 表示无）
+  var editingNoteIndex = -1;
+
+  var STORAGE_OVERRIDES = 'dlooda.daily.overrides'; // { 'YYYY-MM-DD': { key: n } }
+  var STORAGE_NOTES = 'dlooda.daily.notes';          // { 'YYYY-MM-DD': [str, ...] }
+
+  // 今日工作完成 6 项定义（顺序与日报预览一致）
+  var STAT_DEFS = [
+    { key: 'sample',     label: '今日寄样',     autoKey: 'todaySampleCount',     unit: '条' },
+    { key: 'video',      label: '今日登记视频', autoKey: 'todayVideoCount',      unit: '个', subKey: 'todayVideoCreatorCount', subUnit: '位达人' },
+    { key: 'newCreator', label: '今日开发达人', autoKey: 'todayNewCreatorCount', unit: '位' },
+    { key: 'auto',       label: '今日自动通过', autoKey: 'todayAutoCount',       unit: '位' },
+    { key: 'ordered',    label: '今日出单',     autoKey: 'todayOrderedCount',    unit: '条' },
+    { key: 'invite',     label: '今日邀约',     autoKey: 'todayInviteCount',     unit: '条' }
+  ];
 
   function getDailyData() {
     return Data.getDailyReportData(currentDailyDate);
@@ -23,7 +38,53 @@
     return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
   }
 
-  /* ---------- 今日工作概览 ---------- */
+  /* ---------- localStorage 读写 ---------- */
+  function getOverrides(dateStr) {
+    var all = App.loadStorage(STORAGE_OVERRIDES, {});
+    return all[dateStr] || null;
+  }
+  function setOverride(dateStr, key, value) {
+    var all = App.loadStorage(STORAGE_OVERRIDES, {});
+    if (!all[dateStr]) all[dateStr] = {};
+    if (value == null || value === '' || isNaN(parseInt(value, 10))) {
+      delete all[dateStr][key];
+    } else {
+      all[dateStr][key] = parseInt(value, 10);
+    }
+    if (Object.keys(all[dateStr]).length === 0) delete all[dateStr];
+    App.saveStorage(STORAGE_OVERRIDES, all);
+  }
+  function resetOverrides(dateStr) {
+    var all = App.loadStorage(STORAGE_OVERRIDES, {});
+    delete all[dateStr];
+    App.saveStorage(STORAGE_OVERRIDES, all);
+  }
+
+  function getNotesArr(dateStr) {
+    var all = App.loadStorage(STORAGE_NOTES, {});
+    return all[dateStr] || [];
+  }
+  function setNotesArr(dateStr, arr) {
+    var all = App.loadStorage(STORAGE_NOTES, {});
+    if (!arr || arr.length === 0) delete all[dateStr];
+    else all[dateStr] = arr;
+    App.saveStorage(STORAGE_NOTES, all);
+  }
+
+  // 计算某指标的有效展示值（手动覆盖优先，否则系统统计）
+  function getStatView(def, d, overrides) {
+    var autoVal = d[def.autoKey] || 0;
+    var overridden = overrides && overrides[def.key] != null;
+    var value = overridden ? overrides[def.key] : autoVal;
+    var subText = '';
+    if (def.subKey) {
+      var subAuto = d[def.subKey] || 0;
+      subText = overridden ? '（手动调整）' : '（' + subAuto + ' ' + def.subUnit + '）';
+    }
+    return { autoVal: autoVal, value: value, overridden: overridden, subText: subText };
+  }
+
+  /* ---------- 今日工作完成（可编辑） ---------- */
   function renderTodayStats() {
     var d = getDailyData();
     var container = document.getElementById('today-stats');
@@ -32,23 +93,133 @@
     var subtitle = document.getElementById('daily-date-subtitle');
     if (subtitle) subtitle.textContent = d.date + ' 工作汇总';
 
-    container.innerHTML = ''
-      + '<div class="stat-card">'
-      +   '<div class="stat-card__value" style="color:var(--pink-500);">' + d.todaySampleCount + '</div>'
-      +   '<div class="stat-card__label">今日寄样</div>'
-      + '</div>'
-      + '<div class="stat-card">'
-      +   '<div class="stat-card__value" style="color:var(--c-info);">' + d.todayVideoCount + '</div>'
-      +   '<div class="stat-card__label">今日登记视频</div>'
-      + '</div>'
-      + '<div class="stat-card">'
-      +   '<div class="stat-card__value" style="color:var(--c-warning);">' + d.todayNewCreatorCount + '</div>'
-      +   '<div class="stat-card__label">今日开发达人</div>'
-      + '</div>'
-      + '<div class="stat-card">'
-      +   '<div class="stat-card__value" style="color:var(--c-success);">' + d.todayAutoCount + '</div>'
-      +   '<div class="stat-card__label">今日自动通过</div>'
-      + '</div>';
+    var dateStr = d.todayStr;
+    var overrides = getOverrides(dateStr) || {};
+
+    var rows = STAT_DEFS.map(function (def) {
+      var v = getStatView(def, d, overrides);
+      var badge = v.overridden
+        ? '<span class="badge badge--pink" style="font-size:10px;margin-left:4px;">手动</span>'
+        : '<span style="font-size:10px;color:var(--text-3);margin-left:4px;">自动</span>';
+      return ''
+        + '<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border-1);">'
+        +   '<div style="flex:1;min-width:0;">'
+        +     '<div style="font-size:13px;font-weight:600;color:var(--text-1);">' + def.label + badge + '</div>'
+        +   '</div>'
+        +   '<div style="font-size:11px;color:var(--text-3);width:72px;text-align:right;">系统 ' + v.autoVal + '</div>'
+        +   '<input type="number" min="0" step="1" data-stat="' + def.key + '" value="' + v.value + '" style="width:70px;text-align:center;padding:6px 4px;border:1px solid var(--border-2);border-radius:6px;font-size:13px;font-weight:600;color:var(--text-1);background:#fff;">'
+        +   '<span style="font-size:11px;color:var(--text-3);width:28px;">' + def.unit + '</span>'
+        +   (def.subKey ? '<span style="font-size:11px;color:var(--c-info);width:104px;">' + v.subText + '</span>' : '<span style="width:104px;"></span>')
+        + '</div>';
+    }).join('');
+
+    container.innerHTML = rows;
+
+    Array.prototype.forEach.call(container.querySelectorAll('input[data-stat]'), function (inp) {
+      inp.addEventListener('change', function () {
+        var key = inp.getAttribute('data-stat');
+        setOverride(dateStr, key, inp.value);
+        renderTodayStats();
+        renderPreview();
+      });
+    });
+  }
+
+  /* ---------- 补充说明条目列表（增删改） ---------- */
+  function renderNotesList() {
+    var d = getDailyData();
+    var dateStr = d.todayStr;
+    var notes = getNotesArr(dateStr);
+    var container = document.getElementById('daily-notes-list');
+    if (!container) return;
+
+    if (notes.length === 0) {
+      container.innerHTML = '<div style="font-size:12px;color:var(--text-3);padding:6px 0;">暂无补充说明，在上方输入并点「添加」</div>';
+      return;
+    }
+
+    container.innerHTML = notes.map(function (n, i) {
+      if (i === editingNoteIndex) {
+        return ''
+          + '<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-1);">'
+          +   '<input type="text" id="note-edit-input" value="' + App.escapeHtml(n) + '" style="flex:1;padding:6px 8px;border:1px solid var(--pink-500);border-radius:6px;font-size:13px;color:var(--text-1);">'
+          +   '<button class="filter-btn" data-act="save-note" data-idx="' + i + '">保存</button>'
+          +   '<button class="filter-btn" data-act="cancel-note">取消</button>'
+          + '</div>';
+      }
+      return ''
+        + '<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-1);">'
+        +   '<span style="flex:1;font-size:13px;color:var(--text-1);">' + App.escapeHtml(n) + '</span>'
+        +   '<button class="filter-btn" data-act="edit-note" data-idx="' + i + '">编辑</button>'
+        +   '<button class="filter-btn" data-act="del-note" data-idx="' + i + '">删除</button>'
+        + '</div>';
+    }).join('');
+
+    Array.prototype.forEach.call(container.querySelectorAll('[data-act]'), function (btn) {
+      var act = btn.getAttribute('data-act');
+      var idx = parseInt(btn.getAttribute('data-idx'), 10);
+      if (act === 'edit-note') {
+        btn.addEventListener('click', function () {
+          editingNoteIndex = idx;
+          renderNotesList();
+          var inp = document.getElementById('note-edit-input');
+          if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+        });
+      } else if (act === 'del-note') {
+        btn.addEventListener('click', function () {
+          var arr = getNotesArr(dateStr);
+          arr.splice(idx, 1);
+          setNotesArr(dateStr, arr);
+          renderNotesList();
+          renderPreview();
+          App.showToast('已删除补充说明');
+        });
+      } else if (act === 'save-note') {
+        btn.addEventListener('click', function () { commitNoteEdit(dateStr, idx); });
+      } else if (act === 'cancel-note') {
+        btn.addEventListener('click', function () {
+          editingNoteIndex = -1;
+          renderNotesList();
+        });
+      }
+    });
+
+    var editInp = document.getElementById('note-edit-input');
+    if (editInp) {
+      editInp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); commitNoteEdit(dateStr, editingNoteIndex); }
+        else if (e.key === 'Escape') { editingNoteIndex = -1; renderNotesList(); }
+      });
+    }
+  }
+
+  function commitNoteEdit(dateStr, idx) {
+    var inp = document.getElementById('note-edit-input');
+    var val = inp ? inp.value.trim() : '';
+    if (!val) { App.showToast('内容不能为空'); return; }
+    var arr = getNotesArr(dateStr);
+    if (idx >= 0 && idx < arr.length) arr[idx] = val;
+    setNotesArr(dateStr, arr);
+    editingNoteIndex = -1;
+    renderNotesList();
+    renderPreview();
+    App.showToast('已保存');
+  }
+
+  function addNote() {
+    var d = getDailyData();
+    var dateStr = d.todayStr;
+    var inp = document.getElementById('daily-note-input');
+    if (!inp) return;
+    var val = inp.value.trim();
+    if (!val) { App.showToast('请输入补充说明内容'); return; }
+    var arr = getNotesArr(dateStr);
+    arr.push(val);
+    setNotesArr(dateStr, arr);
+    inp.value = '';
+    renderNotesList();
+    renderPreview();
+    App.showToast('已添加');
   }
 
   /* ---------- 今日寄样SKU分布 ---------- */
@@ -174,8 +345,10 @@
   }
 
   /* ---------- 日报文本生成 ---------- */
-  function generateReportText(notes) {
+  function generateReportText() {
     var d = getDailyData();
+    var dateStr = d.todayStr;
+    var overrides = getOverrides(dateStr) || {};
     var lines = [];
 
     lines.push('【Dlooda TKBD 日报】' + d.date);
@@ -183,12 +356,12 @@
     lines.push('━━━━━━━━━━━━━━━━━━');
     lines.push('');
     lines.push('一、今日工作完成');
-    lines.push('  - 今日寄样：' + d.todaySampleCount + ' 条');
-    lines.push('  - 今日登记视频：' + d.todayVideoCount + ' 个（' + d.todayVideoCreatorCount + ' 位达人）');
-    lines.push('  - 今日开发达人：' + d.todayNewCreatorCount + ' 位');
-    lines.push('  - 今日自动通过：' + d.todayAutoCount + ' 位');
-    lines.push('  - 今日出单：' + d.todayOrderedCount + ' 条');
-    lines.push('  - 今日邀约：' + d.todayInviteCount + ' 条');
+    STAT_DEFS.forEach(function (def) {
+      var v = getStatView(def, d, overrides);
+      var line = '  - ' + def.label + '：' + v.value + ' ' + def.unit;
+      if (def.subKey) line += v.subText;
+      lines.push(line);
+    });
     lines.push('');
 
     // 今日寄样明细（按当天寄样量逐条列出）
@@ -262,11 +435,15 @@
       lines.push('');
     }
 
-    if (notes && notes.trim()) {
+    // 补充说明（条目列表）
+    var notes = getNotesArr(dateStr);
+    if (notes && notes.length > 0) {
       lines.push('━━━━━━━━━━━━━━━━━━');
       lines.push('');
       lines.push('八、补充说明');
-      lines.push('  ' + notes.trim());
+      notes.forEach(function (n, i) {
+        lines.push('  ' + (i + 1) + '. ' + n);
+      });
       lines.push('');
     }
 
@@ -278,14 +455,9 @@
   }
 
   function renderPreview() {
-    var notesInput = document.getElementById('daily-notes');
-    var notes = notesInput ? notesInput.value : '';
-    var text = generateReportText(notes);
-
+    var text = generateReportText();
     var preview = document.getElementById('daily-preview');
-    if (preview) {
-      preview.textContent = text;
-    }
+    if (preview) preview.textContent = text;
   }
 
   function copyReport() {
@@ -314,13 +486,18 @@
     var btnToday = document.getElementById('btn-daily-today');
     var btnPrev = document.getElementById('btn-daily-prev');
     var btnNext = document.getElementById('btn-daily-next');
+    var btnReset = document.getElementById('btn-reset-stats');
+    var btnAddNote = document.getElementById('btn-add-note');
+    var noteInput = document.getElementById('daily-note-input');
 
     function rerender() {
+      editingNoteIndex = -1;
       renderTodayStats();
       renderTodaySKUDist();
       renderTodaySamplesList();
       renderTodayNewCreators();
       renderOverallStats();
+      renderNotesList();
       renderPreview();
     }
 
@@ -346,6 +523,19 @@
       if (dateInput) dateInput.value = currentDailyDate;
       rerender();
     });
+    if (btnReset) btnReset.addEventListener('click', function () {
+      var ds = getDailyData().todayStr;
+      resetOverrides(ds);
+      renderTodayStats();
+      renderPreview();
+      App.showToast('已重置为系统统计');
+    });
+    if (btnAddNote) btnAddNote.addEventListener('click', addNote);
+    if (noteInput) {
+      noteInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); addNote(); }
+      });
+    }
   }
 
   function init() {
@@ -354,18 +544,12 @@
     renderTodaySamplesList();
     renderTodayNewCreators();
     renderOverallStats();
+    renderNotesList();
     renderPreview();
     bindDateControls();
 
-    var notesInput = document.getElementById('daily-notes');
-    if (notesInput) {
-      notesInput.addEventListener('input', renderPreview);
-    }
-
     var copyBtn = document.getElementById('btn-copy-daily');
-    if (copyBtn) {
-      copyBtn.addEventListener('click', copyReport);
-    }
+    if (copyBtn) copyBtn.addEventListener('click', copyReport);
   }
 
   if (document.readyState === 'loading') {

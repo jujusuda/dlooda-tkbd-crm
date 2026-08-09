@@ -34,7 +34,7 @@
       <div class="page-header">
         <div class="page-header__left">
           <h1 class="page-header__title">数据复盘</h1>
-          <p class="page-header__subtitle">SKU 出单率趋势 · 升降归因 · 寄样任务</p>
+          <p class="page-header__subtitle">SKU 出单率趋势 · 升降归因</p>
         </div>
       </div>
 
@@ -42,7 +42,6 @@
       <div class="view-tabs" id="report-view-tabs">
         <button class="view-tab active" data-view="trend">SKU 出单率趋势</button>
         <button class="view-tab" data-view="attribution">升降归因</button>
-        <button class="view-tab" data-view="tasks">寄样任务</button>
       </div>
 
       <!-- 筛选栏 -->
@@ -71,24 +70,6 @@
           </div>
         </div>
         <div id="attribution-content"></div>
-      </div>
-
-      <!-- ========== 视图3: 寄样任务 ========== -->
-      <div id="view-tasks" class="view-panel" style="display:none;">
-        <div class="section" id="urgent-section">
-          <div class="section__header">
-            <h2 class="section__title">⚠️ 优先寄样提醒</h2>
-            <span class="section__hint">寄样量与要求差距大，需优先处理</span>
-          </div>
-          <div class="card"><div id="urgent-samples"></div></div>
-        </div>
-        <div class="section">
-          <div class="section__header">
-            <h2 class="section__title">寄样任务差距分析</h2>
-            <span class="section__hint">实际寄样量 vs 要求寄样量</span>
-          </div>
-          <div class="card"><div id="task-gap-analysis"></div></div>
-        </div>
       </div>
     </main>
     <nav class="bottom-nav"></nav>

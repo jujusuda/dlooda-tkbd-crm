@@ -1,6 +1,7 @@
 /* ================================================================
-   Dlooda TKBD CRM — 数据复盘 (v4)
-   聚焦：SKU 出单率趋势 / 升降归因 / 寄样任务
+   Dlooda TKBD CRM — 数据复盘 (v5)
+   聚焦：SKU 出单率趋势 / 升降归因
+   （寄样任务已迁出，见独立模块 task.html）
    ================================================================ */
 
 (function (global) {
@@ -20,7 +21,7 @@
     tabs.forEach(function (t) {
       t.classList.toggle('active', t.getAttribute('data-view') === view);
     });
-    ['trend', 'attribution', 'tasks'].forEach(function (v) {
+    ['trend', 'attribution'].forEach(function (v) {
       var el = document.getElementById('view-' + v);
       if (el) el.style.display = v === view ? '' : 'none';
     });
@@ -247,116 +248,11 @@
   }
 
   /* ================================================================
-     视图3: 寄样任务（保留原有）
-     ================================================================ */
-  function renderUrgentSamples() {
-    var container = document.getElementById('urgent-samples');
-    if (!container) return;
-
-    var tasks = Data.getTaskGapAnalysis();
-    var urgent = tasks.filter(function (t) { return t.isUrgent; });
-
-    if (urgent.length === 0) {
-      container.innerHTML = '<div class="empty-state"><div class="empty-state__text">暂无紧急寄样任务 🎉</div></div>';
-      return;
-    }
-
-    var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
-
-    urgent.forEach(function (t) {
-      var gapPct = t.gapPct;
-      var gapColor = gapPct < 30 ? 'var(--c-danger)' : gapPct < 60 ? 'var(--c-warning)' : 'var(--pink-500)';
-      var priorityBg = t.priority === 'P0' ? 'var(--c-danger)' : 'var(--c-warning)';
-
-      html += ''
-        + '<div style="padding:14px;background:linear-gradient(135deg,var(--bg-pink-soft),#fff);border-radius:12px;border:2px solid ' + gapColor + ';">'
-        +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
-        +     '<div style="display:flex;align-items:center;gap:8px;">'
-        +       '<span style="font-size:10px;padding:2px 8px;background:' + priorityBg + ';color:#fff;border-radius:4px;font-weight:700;">' + t.priority + '</span>'
-        +       '<span style="font-size:14px;font-weight:700;color:var(--text-1);">SKU ' + App.escapeHtml(t.sku) + '</span>'
-        +       (t.positioning ? '<span style="font-size:10px;padding:1px 5px;background:var(--pink-300);color:#fff;border-radius:3px;">' + App.escapeHtml(t.positioning) + '</span>' : '')
-        +     '</div>'
-        +     '<div style="text-align:right;">'
-        +       '<span style="font-size:20px;font-weight:800;color:' + gapColor + ';">' + t.gap + '</span>'
-        +       '<span style="font-size:11px;color:var(--text-3);"> 差距</span>'
-        +     '</div>'
-        +   '</div>'
-        +   (t.productName ? '<div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">' + App.escapeHtml(t.productName) + '</div>' : '')
-        +   '<div style="display:flex;align-items:center;gap:8px;">'
-        +     '<span style="font-size:11px;color:var(--text-2);">要求: <b>' + t.target + '</b></span>'
-        +     '<span style="font-size:11px;color:var(--text-3);">→</span>'
-        +     '<span style="font-size:11px;color:var(--text-2);">实际: <b>' + t.actualSamples + '</b></span>'
-        +     '<span style="font-size:11px;color:var(--text-3);">→</span>'
-        +     '<span style="font-size:11px;font-weight:700;color:' + gapColor + ';">完成 ' + gapPct + '%</span>'
-        +   '</div>'
-        +   '<div style="height:8px;background:#fff;border-radius:4px;overflow:hidden;margin-top:8px;">'
-        +     '<div style="height:100%;width:' + Math.min(gapPct, 100) + '%;background:' + gapColor + ';border-radius:4px;transition:width .6s ease;"></div>'
-        +   '</div>'
-        + '</div>';
-    });
-
-    html += '</div>';
-    container.innerHTML = html;
-  }
-
-  function renderTaskGap() {
-    var container = document.getElementById('task-gap-analysis');
-    if (!container) return;
-
-    var tasks = Data.getTaskGapAnalysis();
-    if (tasks.length === 0) {
-      container.innerHTML = '<div class="empty-state"><div class="empty-state__text">暂无寄样任务</div></div>';
-      return;
-    }
-
-    var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
-      + '<thead><tr style="border-bottom:2px solid var(--border-1);">'
-      +   '<th style="padding:8px;text-align:left;color:var(--text-3);font-weight:600;">优先级</th>'
-      +   '<th style="padding:8px;text-align:left;color:var(--text-3);font-weight:600;">SKU</th>'
-      +   '<th style="padding:8px;text-align:left;color:var(--text-3);font-weight:600;">定位</th>'
-      +   '<th style="padding:8px;text-align:center;color:var(--text-3);font-weight:600;">要求量</th>'
-      +   '<th style="padding:8px;text-align:center;color:var(--text-3);font-weight:600;">实际量</th>'
-      +   '<th style="padding:8px;text-align:center;color:var(--text-3);font-weight:600;">差距</th>'
-      +   '<th style="padding:8px;text-align:center;color:var(--text-3);font-weight:600;">完成率</th>'
-      + '</tr></thead><tbody>';
-
-    tasks.forEach(function (t) {
-      var gapColor = t.gap > 0 ? (t.gapPct < 30 ? 'var(--c-danger)' : t.gapPct < 60 ? 'var(--c-warning)' : 'var(--pink-500)') : 'var(--c-success)';
-      var gapText = t.gap > 0 ? '-' + t.gap : '✓';
-      var priorityBg = t.priority === 'P0' ? 'var(--c-danger)' : t.priority === 'P1' ? 'var(--c-warning)' : 'var(--c-info)';
-      var rowHighlight = t.isUrgent ? 'background:var(--bg-pink-soft);' : '';
-
-      html += ''
-        + '<tr style="border-bottom:1px solid var(--border-1);' + rowHighlight + '">'
-        +   '<td style="padding:8px;"><span style="font-size:10px;padding:2px 6px;background:' + priorityBg + ';color:#fff;border-radius:4px;font-weight:600;">' + App.escapeHtml(t.priority || '—') + '</span></td>'
-        +   '<td style="padding:8px;font-weight:600;color:var(--text-1);">SKU ' + App.escapeHtml(t.sku) + (t.productName ? '<br><span style="font-size:10px;color:var(--text-3);font-weight:400;">' + App.escapeHtml(t.productName) + '</span>' : '') + '</td>'
-        +   '<td style="padding:8px;">' + (t.positioning ? '<span style="font-size:10px;padding:1px 5px;background:var(--pink-300);color:#fff;border-radius:3px;">' + App.escapeHtml(t.positioning) + '</span>' : '—') + '</td>'
-        +   '<td style="padding:8px;text-align:center;color:var(--text-2);">' + t.target + '</td>'
-        +   '<td style="padding:8px;text-align:center;color:var(--text-2);">' + t.actualSamples + '</td>'
-        +   '<td style="padding:8px;text-align:center;font-weight:700;color:' + gapColor + ';">' + gapText + '</td>'
-        +   '<td style="padding:8px;text-align:center;">'
-        +     '<div style="display:flex;align-items:center;gap:4px;justify-content:center;">'
-        +       '<div style="width:50px;height:6px;background:var(--bg-pink-soft);border-radius:3px;overflow:hidden;">'
-        +         '<div style="height:100%;width:' + Math.min(t.gapPct, 100) + '%;background:' + gapColor + ';border-radius:3px;"></div>'
-        +       '</div>'
-        +       '<span style="font-size:11px;font-weight:600;color:' + gapColor + ';min-width:30px;">' + t.gapPct + '%</span>'
-        +     '</div>'
-        +   '</td>'
-        + '</tr>';
-    });
-
-    html += '</tbody></table></div>';
-    container.innerHTML = html;
-  }
-
-  /* ================================================================
      主渲染
      ================================================================ */
   function render() {
     renderTrendView();
     renderAttributionView();
-    renderUrgentSamples();
-    renderTaskGap();
   }
 
   function init() {

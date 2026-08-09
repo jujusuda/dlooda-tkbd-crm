@@ -33,12 +33,18 @@
         <button class="filter-btn" id="btn-daily-next">后一天</button>
       </div>
 
-      <!-- 今日工作概览 -->
+      <!-- 今日工作完成（可手动调整） -->
       <div class="section">
         <div class="section__header">
-          <h2 class="section__title">今日工作概览</h2>
+          <h2 class="section__title">今日工作完成</h2>
+          <span class="section__hint">系统统计可手动覆盖，按日期保存</span>
         </div>
-        <div class="stat-grid" id="today-stats"></div>
+        <div class="card">
+          <div id="today-stats"></div>
+          <div style="margin-top:12px;text-align:right;">
+            <button class="filter-btn" id="btn-reset-stats">重置为系统统计</button>
+          </div>
+        </div>
       </div>
 
       <!-- 今日寄样SKU分布 -->
@@ -81,14 +87,18 @@
         <div class="stat-grid" id="overall-stats"></div>
       </div>
 
-      <!-- 补充说明 -->
+      <!-- 补充说明（可增删改的条目列表） -->
       <div class="section">
         <div class="card">
-          <div class="form-group" style="margin-bottom:0;">
-            <label class="form-label">补充说明（可选）</label>
-            <textarea class="textarea" id="daily-notes" placeholder="今天有什么特别的事情需要补充？如：某达人反馈、突发情况、次日计划..." style="min-height:60px;"></textarea>
-            <div class="form-hint">输入后日报预览会实时更新</div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label">补充说明（可逐条增删改）</label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" class="filter-input" id="daily-note-input" placeholder="输入一条补充说明，回车或点添加..." style="flex:1;">
+              <button class="btn btn--primary btn--sm" id="btn-add-note">添加</button>
+            </div>
+            <div class="form-hint">每条独立保存，可编辑 / 删除，自动进入日报预览</div>
           </div>
+          <div id="daily-notes-list"></div>
         </div>
       </div>
 

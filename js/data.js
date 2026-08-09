@@ -515,6 +515,20 @@
     return samples.length;
   }
 
+  // 获取某 SKU 今日的实际寄样完成量（用于寄样任务表「今日已完成」列）
+  // 与日报口径一致：寄样时间有 1 天误差，因此同时计入今天和前一天
+  // 兼容"2026-08-09 09:09"这种带时分格式
+  function getTaskTodaySamples(sku) {
+    var today = getTodayStr();
+    var prevDay = new Date(today + 'T00:00:00');
+    prevDay.setDate(prevDay.getDate() - 1);
+    var prevDayStr = prevDay.getFullYear() + '-' + ('0' + (prevDay.getMonth() + 1)).slice(-2) + '-' + ('0' + prevDay.getDate()).slice(-2);
+    return D.samples.filter(function (s) {
+      return s.sku === sku && s.sampleTime &&
+        (s.sampleTime.startsWith(today) || s.sampleTime.startsWith(prevDayStr));
+    }).length;
+  }
+
   // 本月剩余工作日天数（含今天，剔除周末），用于计算"剩余平均寄样量"
   // 例：本月还剩 16 个工作日，剩余 86 件 → 平均每天需寄 86/16 ≈ 5.4 件
   function getRemainingWorkdays(month) {
@@ -2029,6 +2043,7 @@
     getTasksByMonth: getTasksByMonth,
     getCurrentMonthTasks: getCurrentMonthTasks,
     getTaskActualSamples: getTaskActualSamples,
+    getTaskTodaySamples: getTaskTodaySamples,
     getRemainingWorkdays: getRemainingWorkdays,
     getTaskStats: getTaskStats,
     // 视频

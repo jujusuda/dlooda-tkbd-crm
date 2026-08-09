@@ -51,6 +51,7 @@
         +         '<th style="padding:10px 8px;text-align:left;font-weight:600;color:var(--text-3);">定位</th>'
         +         '<th style="padding:10px 8px;text-align:center;font-weight:600;color:var(--text-3);">要求量</th>'
         +         '<th style="padding:10px 8px;text-align:center;font-weight:600;color:var(--text-3);">已完成</th>'
+        +         '<th style="padding:10px 8px;text-align:center;font-weight:600;color:var(--pink-500);">今日已完成</th>'
         +         '<th style="padding:10px 8px;text-align:center;font-weight:600;color:var(--text-3);">剩余平均寄样量</th>'
         +         '<th style="padding:10px 8px;text-align:center;font-weight:600;color:var(--text-3);">通过率</th>'
         +         '<th style="padding:10px 8px;text-align:center;font-weight:600;color:var(--text-3);">差距</th>'
@@ -109,6 +110,11 @@
           +   '<td style="padding:10px 8px;">' + (t.positioning ? '<span style="font-size:10px;padding:2px 6px;background:' + posColor + ';color:#fff;border-radius:3px;font-weight:600;">' + App.escapeHtml(t.positioning) + '</span>' : '—') + '</td>'
           +   '<td style="padding:10px 8px;text-align:center;color:var(--text-2);font-weight:600;">' + (t.target || 0) + '</td>'
           +   '<td style="padding:10px 8px;text-align:center;color:var(--text-2);font-weight:600;">' + completed + '</td>'
+          +   (function () {
+                var todayDone = Data.getTaskTodaySamples(t.sku);
+                var todayColor = todayDone > 0 ? 'var(--pink-500)' : 'var(--text-3)';
+                return '<td style="padding:10px 8px;text-align:center;font-weight:700;color:' + todayColor + ';" title="今日(含前1天)该 SKU 已寄样条数">' + todayDone + '</td>';
+              })()
           +   (function () {
                 var txt;
                 if (remaining <= 0) txt = '✓';
