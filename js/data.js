@@ -737,6 +737,24 @@
     return y + '-' + m + '-' + day;
   }
 
+  // 日报"今日"锚定：实时时钟偶尔会跑到数据前面（例如今天 8/11，但数据只同步到 8/10），
+  // 此时若直接用实时今天，今日寄样/视频/邀约会全部为空，用户以为功能坏了。
+  // 策略：实时今天在数据里有任何活动就用实时今天；否则回退到数据里最新的业务日
+  // （= max(最新寄样日, 最新邀约日)），保证"今日"永远反映最近一次同步的快照。
+  var _dataTodayCache = null;
+  function getDataToday() {
+    var live = getTodayStr();
+    var hasLive = D.samples.some(function (s) { return s.sampleTime && s.sampleTime.indexOf(live) === 0; })
+               || D.invites.some(function (i) { return i.date && i.date.indexOf(live) === 0; });
+    if (hasLive) return live;
+    if (_dataTodayCache) return _dataTodayCache;
+    var maxDate = '';
+    D.samples.forEach(function (s) { if (s.sampleTime && s.sampleTime > maxDate) maxDate = s.sampleTime; });
+    D.invites.forEach(function (i) { if (i.date && i.date > maxDate) maxDate = i.date; });
+    _dataTodayCache = maxDate ? maxDate.slice(0, 10) : live;
+    return _dataTodayCache;
+  }
+
   // 在 "YYYY-MM-DD" 上加减天数，返回同样格式
   function shiftDate(dateStr, days) {
     var d = new Date(dateStr + 'T00:00:00');
@@ -749,7 +767,10 @@
   var VIDEO_LAG_DAYS = 2;
 
   function getDailyReportData(dateStr) {
-    var today = dateStr || getTodayStr();
+    // 未指定日期时（=打开日报默认视图），把"今日"锚定到数据里最新的业务日，
+    // 避免实时时钟跑到数据前面导致今日寄样/视频/邀约全部为空。
+    var anchored = !dateStr;
+    var today = dateStr || getDataToday();
     var displayDate = new Date(today + 'T00:00:00').toLocaleDateString('zh-CN');
     var report = getReportData();
 
@@ -849,6 +870,8 @@
       // 视频统计实际匹配的日期（= today - 2 天），用于界面标注，避免用户以为统计错了
       videoStatDate: videoStatDate,
       videoLagDays: VIDEO_LAG_DAYS,
+      // 当日锚定标记：若"今日"被回退到数据最新业务日（实时时钟跑到数据前面），界面需提示
+      todayAnchored: anchored && today !== getTodayStr(),
       todayNewCreatorCount: todayNewCreators.length,
       todayNewCreators: todayNewCreators,
       todayAutoCount: todayAutoApproved.length,
