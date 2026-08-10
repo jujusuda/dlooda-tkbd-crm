@@ -6,17 +6,59 @@ const path = require('path');
 const feishu = require('./feishu');
 
 // 飞书日期字段可能是毫秒时间戳(数字)或字符串，统一成 "YYYY-MM-DD HH:MM" / "YYYY-MM-DD"
+// 时间戳按 UTC+8 解析（飞书 base 时区为中国），避免部署到 UTC 服务器时整体偏移一天
+const TZ_OFFSET_MS = 8 * 3600 * 1000;
 function parseDate(v) {
   if (v === null || v === undefined || v === '') return null;
   if (typeof v === 'number') {
-    const d = new Date(v);
+    const d = new Date(v + TZ_OFFSET_MS);
     if (isNaN(d.getTime())) return String(v);
     const p = (n) => (n < 10 ? '0' + n : '' + n);
-    const date = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
-    const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0 || d.getSeconds() !== 0;
-    return hasTime ? (date + ' ' + p(d.getHours()) + ':' + p(d.getMinutes())) : date;
+    const date = d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate());
+    const hasTime = d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0 || d.getUTCSeconds() !== 0;
+    return hasTime ? (date + ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes())) : date;
   }
   return String(v).trim();
+}
+
+// 视频时间列名：第1个叫「视频时间」，之后是「视频时间2」「视频时间3」……
+// 注意不是「视频N时间」——曾因写错这个名字导致所有 video.time 为 null
+function videoTimeKey(i) {
+  return i === 1 ? '视频时间' : '视频时间' + i;
+}
+
+// 从一条记录里抽取视频列表。
+// 链接列（视频N）目前飞书只开到 3 个，但时间列（视频时间N）可到 30 个，
+// 所以只要 链接 或 时间 任一存在就算一条视频，否则会漏掉 1000+ 条只有时间的记录。
+function extractVideos(fields) {
+  const f = fields || {};
+  let maxIdx = 0;
+  Object.keys(f).forEach((fn) => {
+    let m = /^视频(\d+)$/.exec(fn);
+    if (m) { maxIdx = Math.max(maxIdx, parseInt(m[1], 10)); return; }
+    m = /^视频时间(\d*)$/.exec(fn);
+    if (m) maxIdx = Math.max(maxIdx, m[1] ? parseInt(m[1], 10) : 1);
+  });
+  const videos = [];
+  for (let i = 1; i <= maxIdx; i++) {
+    const rawUrl = f['视频' + i];
+    const rawTime = f[videoTimeKey(i)];
+    if (rawUrl === undefined && rawTime === undefined) continue;
+    const url = extractUrl(rawUrl);
+    const time = parseDate(rawTime);
+    if (!url && !time) continue;
+    videos.push({ url: url, time: time });
+  }
+  return videos;
+}
+
+// 飞书超链接列返回 {link,text} 对象，直接 String() 会变成 "[object Object]"
+function extractUrl(u) {
+  if (!u) return '';
+  if (typeof u === 'string') return u.trim();
+  if (Array.isArray(u)) return u.length ? extractUrl(u[0]) : '';
+  if (typeof u === 'object') return String(u.link || u.url || u.text || '').trim();
+  return String(u).trim();
 }
 
 function getField(rec, fmap, key) {
@@ -44,19 +86,8 @@ function buildFromTables(tables, cfg) {
     const name = getField(rec, dailyF, 'creator');
     if (!name) return null;
 
-    // 视频列：扫描字段名匹配 视频N / 视频N时间（飞书列名可配，这里按模式匹配更稳）
-    const videos = [];
-    const fnames = Object.keys(rec.fields || {});
-    const idxs = [];
-    fnames.forEach((fn) => {
-      const m = /^视频(\d+)$/.exec(fn);
-      if (m) idxs.push(parseInt(m[1], 10));
-    });
-    idxs.sort((a, b) => a - b).forEach((i) => {
-      const url = rec.fields['视频' + i];
-      const time = rec.fields['视频' + i + '时间'];
-      if (url) videos.push({ url: String(url), time: parseDate(time) });
-    });
+    // 视频列：链接「视频N」+ 时间「视频时间」/「视频时间N」
+    const videos = extractVideos(rec.fields);
 
     const sample = {
       _rid: rid,
@@ -199,15 +230,27 @@ function buildFromTables(tables, cfg) {
   return { data, stats };
 }
 
-function writeRealData(data, stats, root) {
-  const content =
-    '// Auto-generated from Feishu Bitable (OpenAPI)\n' +
+// 把对象序列化成 JS 里的 JSON.parse('...') 参数。
+// V8 解析 JSON 字符串比解析等价的对象字面量快约 4 倍，去掉缩进后体积也小 1/3，
+// 这两点直接决定了切换页面的流畅度（3.24MB/118ms -> 2.08MB/26ms）。
+function jsLiteral(obj) {
+  const lit = JSON.stringify(JSON.stringify(obj));
+  // U+2028/U+2029 在旧版 JS 字符串字面量里非法，显式转义
+  return lit.replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+}
+
+function buildRealDataContent(data, stats) {
+  return '// Auto-generated from Feishu Bitable (OpenAPI)\n' +
     '// Generated: ' + new Date().toISOString().slice(0, 10) + '\n' +
-    '// DO NOT EDIT MANUALLY - regenerate via server sync\n\n' +
-    'window.REAL_DATA = ' + JSON.stringify(data, null, 2) + ';\n' +
-    '\nwindow.REAL_DATA_STATS = ' + JSON.stringify(stats, null, 2) + ';\n';
+    '// DO NOT EDIT MANUALLY - regenerate via server sync\n' +
+    '// 数据用 JSON.parse 包裹以加快解析（勿改回对象字面量，会明显变卡）\n\n' +
+    'window.REAL_DATA = JSON.parse(' + jsLiteral(data) + ');\n\n' +
+    'window.REAL_DATA_STATS = JSON.parse(' + jsLiteral(stats) + ');\n';
+}
+
+function writeRealData(data, stats, root) {
   const out = path.join(root, 'js', 'real-data.js');
-  fs.writeFileSync(out, content, 'utf8');
+  fs.writeFileSync(out, buildRealDataContent(data, stats), 'utf8');
   return out;
 }
 
@@ -247,4 +290,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { buildFromTables, writeRealData, syncFromFeishu, parseDate };
+module.exports = { buildFromTables, writeRealData, syncFromFeishu, parseDate, extractVideos, videoTimeKey };

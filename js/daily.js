@@ -21,11 +21,11 @@
   // 今日工作完成 6 项定义（顺序与日报预览一致）
   var STAT_DEFS = [
     { key: 'sample',     label: '今日寄样',     autoKey: 'todaySampleCount',     unit: '条' },
-    { key: 'video',      label: '今日登记视频', autoKey: 'todayVideoCount',      unit: '个', subKey: 'todayVideoCreatorCount', subUnit: '位达人' },
+    { key: 'video',      label: '今日登记视频', autoKey: 'todayVideoCount',      unit: '个', subKey: 'todayVideoCreatorCount', subUnit: '位达人', hint: 'video' },
     { key: 'newCreator', label: '今日开发达人', autoKey: 'todayNewCreatorCount', unit: '位' },
     { key: 'auto',       label: '今日自动通过', autoKey: 'todayAutoCount',       unit: '位' },
     { key: 'ordered',    label: '今日出单',     autoKey: 'todayOrderedCount',    unit: '条' },
-    { key: 'invite',     label: '今日邀约',     autoKey: 'todayInviteCount',     unit: '条' }
+    { key: 'invite',     label: '今日邀约计划', autoKey: 'todayInviteCount',     unit: '条', subKey: 'todayInviteReach', subUnit: '人触达' }
   ];
 
   function getDailyData() {
@@ -101,10 +101,18 @@
       var badge = v.overridden
         ? '<span class="badge badge--pink" style="font-size:10px;margin-left:4px;">手动</span>'
         : '<span style="font-size:10px;color:var(--text-3);margin-left:4px;">自动</span>';
+      // 视频统计口径说明：视频时间比登记日早 2 天（美国时区 -1 天 + 系统抓取延迟 1 天）
+      var hintHtml = '';
+      if (def.hint === 'video' && d.videoStatDate) {
+        hintHtml = '<div style="font-size:10px;color:var(--text-3);margin-top:2px;">'
+          + '统计视频时间 = ' + d.videoStatDate + '（登记日 -' + (d.videoLagDays || 2) + '天：美国时区晚1天 + 抓取延迟1天）'
+          + '</div>';
+      }
       return ''
         + '<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border-1);">'
         +   '<div style="flex:1;min-width:0;">'
         +     '<div style="font-size:13px;font-weight:600;color:var(--text-1);">' + def.label + badge + '</div>'
+        +     hintHtml
         +   '</div>'
         +   '<div style="font-size:11px;color:var(--text-3);width:72px;text-align:right;">系统 ' + v.autoVal + '</div>'
         +   '<input type="number" min="0" step="1" data-stat="' + def.key + '" value="' + v.value + '" style="width:70px;text-align:center;padding:6px 4px;border:1px solid var(--border-2);border-radius:6px;font-size:13px;font-weight:600;color:var(--text-1);background:#fff;">'
@@ -351,11 +359,18 @@
     var overrides = getOverrides(dateStr) || {};
     var lines = [];
 
+    // 动态章节编号：插入/删除章节时序号自动连续，不用手工改
+    var CN_NUM = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
+    var secIdx = 0;
+    function section(title) {
+      lines.push('━━━━━━━━━━━━━━━━━━');
+      lines.push('');
+      lines.push((CN_NUM[secIdx++] || (secIdx)) + '、' + title);
+    }
+
     lines.push('【Dlooda TKBD 日报】' + d.date);
     lines.push('');
-    lines.push('━━━━━━━━━━━━━━━━━━');
-    lines.push('');
-    lines.push('一、今日工作完成');
+    section('今日工作完成');
     STAT_DEFS.forEach(function (def) {
       var v = getStatView(def, d, overrides);
       var line = '  - ' + def.label + '：' + v.value + ' ' + def.unit;
@@ -366,9 +381,7 @@
 
     // 今日寄样明细（按当天寄样量逐条列出）
     if (d.todaySamplesList && d.todaySamplesList.length > 0) {
-      lines.push('━━━━━━━━━━━━━━━━━━');
-      lines.push('');
-      lines.push('二、今日寄样明细（共 ' + d.todaySamplesList.length + ' 条）');
+      section('今日寄样明细（共 ' + d.todaySamplesList.length + ' 条）');
       d.todaySamplesList.forEach(function (s, i) {
         var detail = Data.getSKUDetail(s.sku) || {};
         var meta = [];
@@ -381,11 +394,19 @@
       lines.push('');
     }
 
+    // 今日登记视频明细（视频时间 = 登记日 -2 天）
+    if (d.todayVideosList && d.todayVideosList.length > 0) {
+      section('今日登记视频（共 ' + d.todayVideosList.length + ' 个 · 视频时间 ' + d.videoStatDate + '）');
+      d.todayVideosList.forEach(function (v, i) {
+        var detail = Data.getSKUDetail(v.sku) || {};
+        lines.push('  ' + (i + 1) + '. ' + v.creator + ' — SKU ' + v.sku + (detail.productName ? ' ' + detail.productName : ''));
+      });
+      lines.push('');
+    }
+
     // 今日寄样SKU分布
     if (d.todaySKURanking.length > 0) {
-      lines.push('━━━━━━━━━━━━━━━━━━');
-      lines.push('');
-      lines.push('三、今日寄样 SKU 分布');
+      section('今日寄样 SKU 分布');
       d.todaySKURanking.forEach(function (s, i) {
         lines.push('  ' + (i + 1) + '. SKU ' + s.sku + ' - ' + s.count + ' 条');
       });
@@ -394,9 +415,7 @@
 
     // 今日开发达人
     if (d.todayNewCreators.length > 0) {
-      lines.push('━━━━━━━━━━━━━━━━━━');
-      lines.push('');
-      lines.push('四、今日开发达人');
+      section('今日开发达人');
       d.todayNewCreators.forEach(function (name, i) {
         lines.push('  ' + (i + 1) + '. ' + name);
       });
@@ -404,9 +423,7 @@
     }
 
     // 整体数据
-    lines.push('━━━━━━━━━━━━━━━━━━');
-    lines.push('');
-    lines.push('五、整体数据');
+    section('整体数据');
     lines.push('  - 达人总数：' + d.totalCreators + ' 位');
     lines.push('  - 寄样总数：' + d.totalSamples + ' 条');
     lines.push('  - 视频总数：' + d.totalVideos + ' 个');
@@ -416,9 +433,7 @@
 
     // TOP 排名
     if (d.creatorRanking.length > 0) {
-      lines.push('━━━━━━━━━━━━━━━━━━');
-      lines.push('');
-      lines.push('六、TOP 达人（按视频数）');
+      section('TOP 达人（按视频数）');
       d.creatorRanking.forEach(function (c, i) {
         lines.push('  ' + (i + 1) + '. ' + c.name + ' (' + (c.official || '') + ' ' + (c.stars || '') + ') - ' + c.videoCount + '个视频');
       });
@@ -426,9 +441,7 @@
     }
 
     if (d.skuRanking.length > 0) {
-      lines.push('━━━━━━━━━━━━━━━━━━');
-      lines.push('');
-      lines.push('七、TOP SKU（按寄样量）');
+      section('TOP SKU（按寄样量）');
       d.skuRanking.forEach(function (s, i) {
         lines.push('  ' + (i + 1) + '. SKU ' + s.sku + ' (' + (s.positioning || '') + ') - ' + s.sampleCount + '次寄样');
       });
@@ -438,9 +451,7 @@
     // 补充说明（条目列表）
     var notes = getNotesArr(dateStr);
     if (notes && notes.length > 0) {
-      lines.push('━━━━━━━━━━━━━━━━━━');
-      lines.push('');
-      lines.push('八、补充说明');
+      section('补充说明');
       notes.forEach(function (n, i) {
         lines.push('  ' + (i + 1) + '. ' + n);
       });

@@ -475,15 +475,45 @@
       barBlock('出单语言分布', d.orderByLang, '有出单的寄样 ' + orderCount + ' 条') + skuHtml;
   }
 
+  // 各区块与渲染函数的映射，便于按需渲染
+  var SECTION_RENDERERS = {
+    'section-persona': function () { safeRender('persona-analysis', renderPersona); },
+    'section-language': function () { safeRender('language-distribution', renderLanguage); },
+    'section-dev': function () { safeRender('dev-effect', renderDevEffect); },
+    'section-trend': function () { safeRender('trend-analysis', renderTrend); },
+    'section-product': function () { safeRender('product-analysis', renderProductAnalysis); },
+    'section-fulfill': function () { safeRender('fulfill-method', renderFulfillMethod); },
+    'section-video': function () { safeRender('video-quality', renderVideoQuality); },
+    'section-reinvest': function () { safeRender('reinvest-analysis', renderReinvest); },
+  };
+
+  // 只渲染当前可见区块（其它区块在空闲时后台预渲染，点击切换即瞬间完成）
+  function getActiveSection() {
+    var active = document.querySelector('.analysis-tab.active');
+    return active ? active.getAttribute('data-target') : 'section-persona';
+  }
+
+  function renderActiveOnly() {
+    var target = getActiveSection();
+    if (SECTION_RENDERERS[target]) SECTION_RENDERERS[target]();
+  }
+
+  function renderSection(id) {
+    if (SECTION_RENDERERS[id]) SECTION_RENDERERS[id]();
+  }
+
   function renderAll() {
-    safeRender('persona-analysis', renderPersona);
-    safeRender('language-distribution', renderLanguage);
-    safeRender('dev-effect', renderDevEffect);
-    safeRender('trend-analysis', renderTrend);
-    safeRender('product-analysis', renderProductAnalysis);
-    safeRender('fulfill-method', renderFulfillMethod);
-    safeRender('video-quality', renderVideoQuality);
-    safeRender('reinvest-analysis', renderReinvest);
+    // 1) 立即渲染当前区块，保证首屏秒开
+    renderActiveOnly();
+    // 2) 后台空闲预渲染其余区块，之后切换标签无需再计算
+    var active = getActiveSection();
+    Object.keys(SECTION_RENDERERS).forEach(function (id) {
+      if (id === active) return;
+      if (typeof requestIdleCallback === 'function') {
+        try { requestIdleCallback(function () { renderSection(id); }, { timeout: 1500 }); return; } catch (e) {}
+      }
+      setTimeout(function () { renderSection(id); }, 0);
+    });
   }
 
   function init() {
@@ -493,6 +523,13 @@
       filterState.startDate = startDate;
       filterState.endDate = endDate;
       renderAll();
+    });
+    // 切换标签时只渲染目标区块（已由后台预渲染的会瞬间显示）
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.analysis-tab'));
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        renderSection(tab.getAttribute('data-target'));
+      });
     });
     initAnalysisTabs();
     renderAll();

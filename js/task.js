@@ -15,6 +15,17 @@
     '09': '九月', '10': '十月', '11': '十一月', '12': '十二月'
   };
 
+  // 总计摘要小卡片
+  function summaryChip(label, value, unit, color) {
+    return ''
+      + '<div style="flex:1;min-width:110px;background:var(--bg-1);border:1px solid var(--border-1);border-radius:10px;padding:10px 12px;">'
+      +   '<div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">' + label + '</div>'
+      +   '<div style="font-size:19px;font-weight:700;color:' + color + ';line-height:1.1;">' + value
+      +     '<span style="font-size:11px;font-weight:600;color:var(--text-3);margin-left:2px;">' + unit + '</span>'
+      +   '</div>'
+      + '</div>';
+  }
+
   function render() {
     var container = document.getElementById('task-list');
     if (!container) return;
@@ -80,6 +91,9 @@
         });
       } catch (e) {}
 
+      // 月度合计累加器（用于表格底部总计行）
+      var sumTarget = 0, sumCompleted = 0, sumTodayDone = 0, sumRemaining = 0;
+
       sortedTasks.forEach(function (t, i) {
         var actualSamples = Data.getTaskActualSamples(t.sku, month);
         // 已完成：飞书填写值优先，否则取实际寄样数据（寄样数据即已完成）
@@ -100,6 +114,10 @@
         var isUrgent = gap > 0 && (t.priority === 'P0' || t.priority === 'P1');
         var rowHighlight = isUrgent ? 'background:var(--bg-pink-soft);' : '';
 
+        sumTarget += (t.target || 0);
+        sumCompleted += completed;
+        sumRemaining += remaining;
+
         html += ''
           + '<tr style="border-bottom:1px solid var(--border-1);' + rowHighlight + '">'
           +   '<td style="padding:10px 8px;"><span style="font-size:10px;padding:3px 8px;background:' + priorityBg + ';color:#fff;border-radius:4px;font-weight:700;">' + App.escapeHtml(t.priority || '—') + '</span></td>'
@@ -111,9 +129,10 @@
           +   '<td style="padding:10px 8px;text-align:center;color:var(--text-2);font-weight:600;">' + (t.target || 0) + '</td>'
           +   '<td style="padding:10px 8px;text-align:center;color:var(--text-2);font-weight:600;">' + completed + '</td>'
           +   (function () {
-                var todayDone = Data.getTaskTodaySamples(t.sku);
+                var todayDone = Data.getTaskTodaySamples(t.sku, month);
+                sumTodayDone += todayDone;
                 var todayColor = todayDone > 0 ? 'var(--pink-500)' : 'var(--text-3)';
-                return '<td style="padding:10px 8px;text-align:center;font-weight:700;color:' + todayColor + ';" title="今日(含前1天)该 SKU 已寄样条数">' + todayDone + '</td>';
+                return '<td style="padding:10px 8px;text-align:center;font-weight:700;color:' + todayColor + ';" title="今日(含前1天)该 SKU 已寄样条数，仅统计归属 ' + month + ' 的记录">' + todayDone + '</td>';
               })()
           +   (function () {
                 var txt;
@@ -145,7 +164,49 @@
           + '</tr>';
       });
 
-      html += '</tbody></table></div></div>';
+      // ===== 月度总计行 =====
+      var totalPct = sumTarget > 0 ? Math.round(sumCompleted / sumTarget * 100) : 0;
+      var totalColor = totalPct >= 100 ? 'var(--c-success)'
+        : totalPct >= 60 ? 'var(--pink-500)'
+        : totalPct >= 30 ? 'var(--c-warning)' : 'var(--c-danger)';
+      var totalGap = sumTarget - sumCompleted;
+      var workdaysLeftM = Data.getRemainingWorkdays(month);
+      var totalAvgDaily = (workdaysLeftM > 0 && sumRemaining > 0) ? (sumRemaining / workdaysLeftM) : null;
+
+      html += ''
+        + '</tbody>'
+        + '<tfoot>'
+        +   '<tr style="border-top:2px solid var(--pink-200);background:var(--bg-pink-soft);font-weight:700;">'
+        +     '<td colspan="3" style="padding:12px 8px;text-align:right;color:var(--text-1);">本月总计</td>'
+        +     '<td style="padding:12px 8px;text-align:center;color:var(--text-1);" title="本月目标寄样总量">' + sumTarget + '</td>'
+        +     '<td style="padding:12px 8px;text-align:center;color:var(--text-1);" title="本月实际已完成总量">' + sumCompleted + '</td>'
+        +     '<td style="padding:12px 8px;text-align:center;color:' + (sumTodayDone > 0 ? 'var(--pink-500)' : 'var(--text-3)') + ';" title="今日(含前1天)完成总量">' + sumTodayDone + '</td>'
+        +     '<td style="padding:12px 8px;text-align:center;color:var(--text-2);" title="剩余 ' + sumRemaining + ' 件 ÷ 剩余 ' + workdaysLeftM + ' 个工作日">' + (totalAvgDaily != null ? totalAvgDaily.toFixed(1) : '✓') + '</td>'
+        +     '<td style="padding:12px 8px;text-align:center;color:var(--text-3);">—</td>'
+        +     '<td style="padding:12px 8px;text-align:center;color:' + totalColor + ';">' + (totalGap > 0 ? '-' + totalGap : '✓') + '</td>'
+        +     '<td style="padding:12px 8px;text-align:center;">'
+        +       '<div style="display:flex;align-items:center;gap:4px;justify-content:center;">'
+        +         '<div style="width:50px;height:8px;background:#fff;border-radius:4px;overflow:hidden;">'
+        +           '<div style="height:100%;width:' + Math.min(totalPct, 100) + '%;background:' + totalColor + ';border-radius:4px;"></div>'
+        +         '</div>'
+        +         '<span style="font-size:11px;font-weight:700;color:' + totalColor + ';min-width:32px;">' + totalPct + '%</span>'
+        +       '</div>'
+        +     '</td>'
+        +   '</tr>'
+        + '</tfoot>';
+
+      html += '</table></div>';
+
+      // 总计摘要卡（比表格行更醒目，一眼看清目标/实际/今日）
+      html += ''
+        + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">'
+        +   summaryChip('本月目标', sumTarget, '件', 'var(--text-1)')
+        +   summaryChip('实际完成', sumCompleted, '件', totalColor)
+        +   summaryChip('今日完成', sumTodayDone, '件', sumTodayDone > 0 ? 'var(--pink-500)' : 'var(--text-3)')
+        +   summaryChip('完成进度', totalPct, '%', totalColor)
+        + '</div>';
+
+      html += '</div>';
     });
 
     container.innerHTML = html;

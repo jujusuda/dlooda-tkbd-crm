@@ -196,6 +196,8 @@
     try {
       global.localStorage.setItem('dlooda_sku_overrides', JSON.stringify(overrides));
     } catch (e) {}
+    // SKU 信息变了，依赖它的分析结果缓存必须作废，否则产品页改完仍显示旧名称/定位
+    clearCache();
   }
 
   function getAllSKUDetails() {
@@ -518,14 +520,19 @@
   // 获取某 SKU 今日的实际寄样完成量（用于寄样任务表「今日已完成」列）
   // 与日报口径一致：寄样时间有 1 天误差，因此同时计入今天和前一天
   // 兼容"2026-08-09 09:09"这种带时分格式
-  function getTaskTodaySamples(sku) {
+  //
+  // month（可选，"YYYY-MM"）：限定只统计落在该月的记录。
+  // 寄样任务表按月分组，若不限定，7 月的表格也会显示今天的数字，造成误读；
+  // 另外跨月边界（如 8/1 的前一天是 7/31）也靠这个参数正确归属到各自月份。
+  function getTaskTodaySamples(sku, month) {
     var today = getTodayStr();
-    var prevDay = new Date(today + 'T00:00:00');
-    prevDay.setDate(prevDay.getDate() - 1);
-    var prevDayStr = prevDay.getFullYear() + '-' + ('0' + (prevDay.getMonth() + 1)).slice(-2) + '-' + ('0' + prevDay.getDate()).slice(-2);
+    var prevDayStr = shiftDate(today, -1);
     return D.samples.filter(function (s) {
-      return s.sku === sku && s.sampleTime &&
-        (s.sampleTime.startsWith(today) || s.sampleTime.startsWith(prevDayStr));
+      if (s.sku !== sku || !s.sampleTime) return false;
+      var hit = s.sampleTime.startsWith(today) || s.sampleTime.startsWith(prevDayStr);
+      if (!hit) return false;
+      if (month && s.sampleTime.slice(0, 7) !== month) return false;
+      return true;
     }).length;
   }
 
@@ -730,15 +737,24 @@
     return y + '-' + m + '-' + day;
   }
 
+  // 在 "YYYY-MM-DD" 上加减天数，返回同样格式
+  function shiftDate(dateStr, days) {
+    var d = new Date(dateStr + 'T00:00:00');
+    d.setDate(d.getDate() + days);
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+
+  // 视频时间滞后天数：美国时区比北京晚 1 天 + 系统抓取延迟 1 天 = 2 天。
+  // 即"今天登记的视频"，其视频时间字段显示的是 2 天前的日期。
+  var VIDEO_LAG_DAYS = 2;
+
   function getDailyReportData(dateStr) {
     var today = dateStr || getTodayStr();
     var displayDate = new Date(today + 'T00:00:00').toLocaleDateString('zh-CN');
     var report = getReportData();
 
     // 当日寄样（寄样时间有1天误差，所以也检查前1天）
-    var prevDay = new Date(today + 'T00:00:00');
-    prevDay.setDate(prevDay.getDate() - 1);
-    var prevDayStr = prevDay.getFullYear() + '-' + ('0' + (prevDay.getMonth() + 1)).slice(-2) + '-' + ('0' + prevDay.getDate()).slice(-2);
+    var prevDayStr = shiftDate(today, -1);
     var todaySamples = D.samples.filter(function (s) {
       if (!s.sampleTime) return false;
       return s.sampleTime.startsWith(today) || s.sampleTime.startsWith(prevDayStr);
@@ -758,18 +774,28 @@
       };
     });
 
-    // 当日登记视频（按视频发布时间，非登记时间；同一天可有多条）
+    // 当日登记视频
+    // 关键：视频时间比"今天登记"早 VIDEO_LAG_DAYS 天 —— 美国时区比北京晚 1 天，
+    // 达人发布后系统还要再过 1 天才抓取到，合计 2 天。
+    // 所以 8/10 登记的视频，视频时间字段显示的是 8/8。直接用 today 匹配会永远是 0。
+    var videoStatDate = shiftDate(today, -VIDEO_LAG_DAYS);
     var todayVideos = 0;
     var todayVideoCreators = {};
+    var todayVideosList = [];
     D.samples.forEach(function (s) {
-      if (s.videos) {
-        s.videos.forEach(function (v) {
-          if (v.time && v.time.startsWith(today)) {
-            todayVideos++;
-            todayVideoCreators[s.creator] = true;
-          }
-        });
-      }
+      if (!s.videos) return;
+      s.videos.forEach(function (v) {
+        if (v.time && v.time.startsWith(videoStatDate)) {
+          todayVideos++;
+          todayVideoCreators[s.creator] = true;
+          todayVideosList.push({
+            creator: s.creator,
+            sku: s.sku,
+            url: v.url || '',
+            time: v.time,
+          });
+        }
+      });
     });
 
     // 当日开发达人（当天首次出现在寄样记录中的达人）
@@ -793,12 +819,15 @@
       return s.orderCount && s.orderCount > 0;
     });
 
-    // 当日邀约（按achieved字段统计达人数）
+    // 当日邀约。注意：invites 一行 = 一个邀约计划（SKU 维度），
+    // achieved 字段是该计划的「累计触达人数」（对照 planTarget，动辄上千），不是当天新增条数。
+    // 早期把 achieved 直接累加当作「今日邀约 N 条」，会得到 3 万+ 的荒谬值，这里拆成两个指标。
+    // 邀约日期是人工填写，无系统时区滞后，故只取当天（不像寄样那样带 prevDay 容错）。
     var todayInvites = D.invites.filter(function (i) {
-      return i.date && (i.date.startsWith(today) || i.date.startsWith(prevDayStr));
+      return i.date && i.date.startsWith(today);
     });
-    var todayInviteAchieved = 0;
-    todayInvites.forEach(function (i) { if (i.achieved) todayInviteAchieved += i.achieved; });
+    var todayInviteReach = 0;
+    todayInvites.forEach(function (i) { if (i.achieved) todayInviteReach += i.achieved; });
 
     // 当日寄样的SKU分布
     var todayBySKU = {};
@@ -816,11 +845,19 @@
       todaySampleCount: todaySamples.length,
       todayVideoCount: todayVideos,
       todayVideoCreatorCount: Object.keys(todayVideoCreators).length,
+      todayVideosList: todayVideosList,
+      // 视频统计实际匹配的日期（= today - 2 天），用于界面标注，避免用户以为统计错了
+      videoStatDate: videoStatDate,
+      videoLagDays: VIDEO_LAG_DAYS,
       todayNewCreatorCount: todayNewCreators.length,
       todayNewCreators: todayNewCreators,
       todayAutoCount: todayAutoApproved.length,
       todayOrderedCount: todayOrdered.length,
-      todayInviteCount: todayInviteAchieved,
+      todayInviteCount: todayInvites.length,   // 今日新建邀约计划数（条）
+      todayInviteReach: todayInviteReach,      // 这些计划的累计触达人数（人）
+      todayInvitesList: todayInvites.map(function (i) {
+        return { sku: i.sku, commission: i.commission, planTarget: i.planTarget, achieved: i.achieved };
+      }),
       todaySKURanking: todaySKURanking,
       todaySamplesList: todaySamplesList,
       // 整体数据（用于对比）
@@ -921,6 +958,8 @@
     var uniqueCreators = {};
     var reinvestCount = 0;
 
+    // 单次遍历同时聚合「总体统计」与「每个达人」的统计，避免二次全量 filter（O(n²)→O(n)）
+    var perCreator = {};
     samples.forEach(function (s) {
       var method = s.fulfillMethod;
       if (method === '视频') { fulfilled++; withVideo++; }
@@ -934,21 +973,25 @@
       if (s.orderCount && s.orderCount > 0) ordered++;
       if (s.reinvest) reinvestCount++;
       uniqueCreators[s.creator] = (uniqueCreators[s.creator] || 0) + 1;
+
+      if (!perCreator[s.creator]) perCreator[s.creator] = { sampleCount: 0, ordered: 0, fulfilled: 0, unfulfilled: 0 };
+      var pc = perCreator[s.creator];
+      pc.sampleCount++;
+      if (s.orderCount && s.orderCount > 0) pc.ordered++;
+      if (method === '视频' || (method && method.indexOf('直播') >= 0)) pc.fulfilled++;
+      if (method === '未履约' || !method) pc.unfulfilled++;
     });
 
-    // 达人列表（按合作次数排序）
-    var creatorList = Object.keys(uniqueCreators).map(function (name) {
-      var creatorSamples = samples.filter(function (s) { return s.creator === name; });
-      var cOrdered = creatorSamples.filter(function (s) { return s.orderCount && s.orderCount > 0; }).length;
-      var cFulfilled = creatorSamples.filter(function (s) { return s.fulfillMethod === '视频' || (s.fulfillMethod && s.fulfillMethod.indexOf('直播') >= 0); }).length;
-      var cUnfulfilled = creatorSamples.filter(function (s) { return s.fulfillMethod === '未履约' || !s.fulfillMethod; }).length;
+    // 达人列表（按合作次数排序）—— 直接读取已聚合的 perCreator，不再二次 filter
+    var creatorList = Object.keys(perCreator).map(function (name) {
+      var pc = perCreator[name];
       var creator = getCreatorByName(name);
       return {
         name: name,
-        sampleCount: uniqueCreators[name],
-        ordered: cOrdered,
-        fulfilled: cFulfilled,
-        unfulfilled: cUnfulfilled,
+        sampleCount: pc.sampleCount,
+        ordered: pc.ordered,
+        fulfilled: pc.fulfilled,
+        unfulfilled: pc.unfulfilled,
         official: creator ? creator.official : null,
         stars: creator ? creator.stars : null,
         bodyType: creator ? creator.bodyType : null,
@@ -1975,7 +2018,9 @@
     return matched.slice(0, 3);
   }
 
+  // 写入型操作后统一清缓存（addCreator 会改动 D.creators）
   function addCreator(creator) {
+    clearCache();
     // 飞书接入后替换为API写入
     var newCreator = Object.assign({
       name: '',
@@ -2001,8 +2046,64 @@
     return true;
   }
 
+  /* ========== 结果缓存（性能） ==========
+     REAL_DATA 在页面生命周期内不变，但页面常反复调用同一个分析函数
+     （典型：daily.js 里 getDailyReportData 被调 10 次 × 74ms ≈ 740ms），
+     这是"切换模块很卡"的主因。这里给纯计算函数加一层记忆化。
+
+     注意：只包裹「仅读取 REAL_DATA」的纯函数。
+     产品页编辑 SKU 会写 localStorage，保存后需调用 Data.clearCache() 让缓存失效。 */
+  var _memoStore = {};
+
+  function memo(name, fn) {
+    return function () {
+      var key = name;
+      if (arguments.length) {
+        // 参数少且都是标量/数组，JSON 化做 key 足够且开销可忽略
+        try { key += ':' + JSON.stringify(Array.prototype.slice.call(arguments)); }
+        catch (e) { return fn.apply(null, arguments); } // 有循环引用就不缓存
+      }
+      if (Object.prototype.hasOwnProperty.call(_memoStore, key)) return _memoStore[key];
+      var val = fn.apply(null, arguments);
+      _memoStore[key] = val;
+      return val;
+    };
+  }
+
+  function clearCache() {
+    _memoStore = {};
+  }
+
+  // 重新绑定为记忆化版本。函数声明创建的是可重新赋值的绑定，
+  // 因此 data.js 内部的相互调用（如 getDailyReportData 内部调 getReportData）也会命中缓存。
+  getReportData = memo('getReportData', getReportData);
+  getDailyReportData = memo('getDailyReportData', getDailyReportData);
+  getCreators = memo('getCreators', getCreators);
+  getVideos = memo('getVideos', getVideos);
+  getSamples = memo('getSamples', getSamples);
+  getInvites = memo('getInvites', getInvites);
+  getReinvestAnalysis = memo('getReinvestAnalysis', getReinvestAnalysis);
+  getInvitePassRate = memo('getInvitePassRate', getInvitePassRate);
+  getTaskGapAnalysis = memo('getTaskGapAnalysis', getTaskGapAnalysis);
+  getSampleDashboard = memo('getSampleDashboard', getSampleDashboard);
+  getVideoAnalytics = memo('getVideoAnalytics', getVideoAnalytics);
+  getTopVideoCreators = memo('getTopVideoCreators', getTopVideoCreators);
+  getVideoQualityProfile = memo('getVideoQualityProfile', getVideoQualityProfile);
+  getCreatorPersonaAnalysis = memo('getCreatorPersonaAnalysis', getCreatorPersonaAnalysis);
+  getDevEffectAnalysis = memo('getDevEffectAnalysis', getDevEffectAnalysis);
+  getProductAnalysis = memo('getProductAnalysis', getProductAnalysis);
+  getTrendAnalysis = memo('getTrendAnalysis', getTrendAnalysis);
+  getLanguageDistribution = memo('getLanguageDistribution', getLanguageDistribution);
+  getFulfillmentRate = memo('getFulfillmentRate', getFulfillmentRate);
+  getDashboardData = memo('getDashboardData', getDashboardData);
+  getTasksByMonth = memo('getTasksByMonth', getTasksByMonth);
+  getTaskActualSamples = memo('getTaskActualSamples', getTaskActualSamples);
+  getTaskTodaySamples = memo('getTaskTodaySamples', getTaskTodaySamples);
+  getAllSKUDetails = memo('getAllSKUDetails', getAllSKUDetails);
+
   /* ========== 导出 ========== */
   global.DloodaData = {
+    clearCache: clearCache,
     // 达人
     getCreators: getCreators,
     getCreatorByName: getCreatorByName,

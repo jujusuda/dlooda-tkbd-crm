@@ -3,7 +3,7 @@
    PWA 离线缓存 · 应用外壳预缓存
    ================================================================ */
 
-var CACHE_VERSION = 'dlooda-tkbd-v5';
+var CACHE_VERSION = 'dlooda-tkbd-v6';
 
 /* 需要预缓存的应用外壳文件 */
 var APP_SHELL = [
@@ -101,24 +101,25 @@ self.addEventListener('fetch', function (event) {
     return;
   }
 
-  // 网络优先：先请求最新文件；失败（离线）才回退缓存
+  // 缓存优先 + 后台再验证（stale-while-revalidate）：
+  // 先立即从缓存返回 → 切换模块秒开；同时在后台静默更新缓存，下次访问即最新数据。
+  // 仍保留 ?reset=1 一键清缓存开关。
   event.respondWith(
-    fetch(request).then(function (response) {
-      // 成功则写入缓存，供离线使用
-      if (response && response.status === 200 && response.type === 'basic') {
-        var copy = response.clone();
-        caches.open(CACHE_VERSION).then(function (cache) {
-          cache.put(request, copy).catch(function () {});
-        });
-      }
-      return response;
-    }).catch(function () {
-      return caches.match(request).then(function (cached) {
-        if (cached) return cached;
-        // 离线且首页无缓存：回退到首页 HTML
-        if (request.mode === 'navigate') return caches.match('./index.html');
-        return new Response('', { status: 504, statusText: 'Offline' });
+    caches.match(request).then(function (cached) {
+      var networkFetch = fetch(request).then(function (response) {
+        // 成功则写入缓存，供下次秒开
+        if (response && response.status === 200 && response.type === 'basic') {
+          var copy = response.clone();
+          caches.open(CACHE_VERSION).then(function (cache) {
+            cache.put(request, copy).catch(function () {});
+          });
+        }
+        return response;
+      }).catch(function () {
+        return cached || (request.mode === 'navigate' ? caches.match('./index.html') : new Response('', { status: 504, statusText: 'Offline' }));
       });
+      // 命中缓存 → 立即返回缓存内容，后台刷新；未命中 → 直接走网络
+      return cached || networkFetch;
     })
   );
 });

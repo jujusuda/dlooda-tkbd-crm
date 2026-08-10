@@ -85,15 +85,55 @@ def extract_url(u):
         return (u.get('link') or u.get('url') or u.get('text') or '').strip()
     return str(u).strip()
 
+TZ_CN = datetime.timezone(datetime.timedelta(hours=8))
+
 def parse_date(v):
+    """飞书日期字段统一解析。时间戳显式按 UTC+8（飞书 base 时区）转换，
+    避免依赖本机时区；整点 00:00 的日期字段只输出日期部分。"""
     if v is None or v == '':
         return None
     if isinstance(v, (int, float)):
         try:
-            return datetime.datetime.fromtimestamp(v / 1000).strftime('%Y-%m-%d %H:%M') if v > 1e12 else datetime.datetime.fromtimestamp(v).strftime('%Y-%m-%d')
+            ts = v / 1000 if v > 1e12 else v
+            d = datetime.datetime.fromtimestamp(ts, TZ_CN)
+            if d.hour == 0 and d.minute == 0 and d.second == 0:
+                return d.strftime('%Y-%m-%d')
+            return d.strftime('%Y-%m-%d %H:%M')
         except Exception:
             return str(v)
     return str(v).strip()
+
+
+def video_time_key(i):
+    """视频时间列名：第1个叫「视频时间」，之后是「视频时间2」「视频时间3」……
+    注意不是「视频N时间」——曾因写错这个名字导致所有 video.time 为 null。"""
+    return '视频时间' if i == 1 else '视频时间' + str(i)
+
+
+def extract_videos(f):
+    """链接列（视频N）飞书只开到 3 个，时间列（视频时间N）可到 30 个，
+    所以只要 链接 或 时间 任一存在就算一条视频，否则会漏掉 1000+ 条只有时间的记录。"""
+    max_idx = 0
+    for k in f:
+        m = re.match(r'^视频(\d+)$', k)
+        if m:
+            max_idx = max(max_idx, int(m.group(1)))
+            continue
+        m = re.match(r'^视频时间(\d*)$', k)
+        if m:
+            max_idx = max(max_idx, int(m.group(1)) if m.group(1) else 1)
+    videos = []
+    for i in range(1, max_idx + 1):
+        raw_u = f.get('视频' + str(i))
+        raw_t = f.get(video_time_key(i))
+        if raw_u is None and raw_t is None:
+            continue
+        u = extract_url(raw_u)
+        t = parse_date(raw_t)
+        if not u and not t:
+            continue
+        videos.append({'url': u, 'time': t})
+    return videos
 
 def num(v):
     if v in (None, '', 0, 0.0):
@@ -105,13 +145,7 @@ def num(v):
 
 def build_sample(rec, F):
     f = rec.get('fields', {})
-    videos = []
-    idxs = sorted(int(m.group(1)) for k in f for m in [re.match(r'^视频(\d+)$', k)] if m)
-    for i in idxs:
-        u = extract_url(f.get('视频' + str(i)))
-        t = parse_date(f.get('视频' + str(i) + '时间'))
-        if u:
-            videos.append({'url': u, 'time': t})
+    videos = extract_videos(f)
     return {
         '_rid': rec.get('record_id'), 'creator': g(f, F['creator']), 'official': g(f, F['official']),
         'stars': g(f, F['stars']), 'creatorType': g(f, F['creatorType']),
@@ -197,15 +231,24 @@ stats = {'creatorCount': len(creators), 'sampleCount': len(samples), 'pendingCou
 data = {'creators': creators, 'samples': samples, 'pending': pending, 'invites': invites,
         'tasks': tasks, 'skus': products, 'offline': offline}
 
+def js_literal(obj):
+    """把对象序列化成 JS 里的 JSON.parse('...') 参数。
+    V8 解析 JSON 字符串比解析等价的对象字面量快约 4 倍，去掉缩进后体积也小 1/3，
+    这两点直接决定了切换页面的流畅度（3.24MB/118ms -> 2.08MB/26ms）。"""
+    compact = json.dumps(obj, ensure_ascii=False, separators=(',', ':'))
+    # 再 dumps 一次得到合法的 JS 字符串字面量（引号/反斜杠已转义）
+    lit = json.dumps(compact, ensure_ascii=False)
+    # U+2028/U+2029 在旧版 JS 字符串字面量里非法，显式转义
+    return lit.replace('\u2028', '\\u2028').replace('\u2029', '\\u2029')
+
+
 with open(OUT, 'w', encoding='utf-8') as fp:
     fp.write('// Auto-generated from Feishu Bitable (OpenAPI)\n')
     fp.write('// Generated: ' + stats['syncedAt'] + '\n')
-    fp.write('// DO NOT EDIT MANUALLY - regenerate via server sync\n\n')
-    fp.write('window.REAL_DATA = ')
-    json.dump(data, fp, ensure_ascii=False, indent=2)
-    fp.write(';\n\nwindow.REAL_DATA_STATS = ')
-    json.dump(stats, fp, ensure_ascii=False, indent=2)
-    fp.write(';\n')
+    fp.write('// DO NOT EDIT MANUALLY - regenerate via server sync\n')
+    fp.write('// 数据用 JSON.parse 包裹以加快解析（勿改回对象字面量，会明显变卡）\n\n')
+    fp.write('window.REAL_DATA = JSON.parse(' + js_literal(data) + ');\n\n')
+    fp.write('window.REAL_DATA_STATS = JSON.parse(' + js_literal(stats) + ');\n')
 
 valid = sum(1 for s in samples for v in s['videos'] if v['url'] and v['url'] != '[object Object]')
 print('生成完成。有效视频链接: %d / %d' % (valid, stats['videoCount']))
