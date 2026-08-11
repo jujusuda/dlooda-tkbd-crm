@@ -774,11 +774,13 @@
     var displayDate = new Date(today + 'T00:00:00').toLocaleDateString('zh-CN');
     var report = getReportData();
 
-    // 当日寄样（寄样时间有1天误差，所以也检查前1天）
+    // 当日寄样：飞书「寄样时间」是美国日期，比北京晚 1 天。
+    // 所以日报日期 D 对应的寄样记录，其实是 sampleTime = D-1 的那批。
+    // 例如 8/10 的日报，寄样日期是 8/9。
     var prevDayStr = shiftDate(today, -1);
     var todaySamples = D.samples.filter(function (s) {
       if (!s.sampleTime) return false;
-      return s.sampleTime.startsWith(today) || s.sampleTime.startsWith(prevDayStr);
+      return s.sampleTime.startsWith(prevDayStr);
     });
 
     // 当日寄样明细（逐条列出，用于日报「按当天寄样量生成」）
@@ -796,35 +798,50 @@
     });
 
     // 当日登记视频
-    // 关键：视频时间比"今天登记"早 VIDEO_LAG_DAYS 天 —— 美国时区比北京晚 1 天，
+    // 关键1：视频时间比"今天登记"早 VIDEO_LAG_DAYS 天 —— 美国时区比北京晚 1 天，
     // 达人发布后系统还要再过 1 天才抓取到，合计 2 天。
-    // 所以 8/10 登记的视频，视频时间字段显示的是 8/8。直接用 today 匹配会永远是 0。
-    // 另外：数据同步有延迟，若 today-2 当天没有视频，则回退到数据里最新的视频日期，
-    // 保证"今日视频"永远显示最新一批视频，而不是空白。
+    // 所以 8/11 的日报，视频时间字段显示的是 8/9。
+    // 关键2："登记"指的是飞书行的「更新时间」；看板/日报要与飞书「每日寄样」表
+    // 中「更新时间 = 今天」且「视频时间 = 今天-2」的行保持一致。
+    // 若今天没有登记视频，回退到数据里最新的视频日期，保证不空白。
     var expectedVideoDate = shiftDate(today, -VIDEO_LAG_DAYS);
     var videoStatDate = expectedVideoDate;
     var todayVideos = 0;
     var todayVideoCreators = {};
     var todayVideosList = [];
 
-    // 先尝试 today - VIDEO_LAG_DAYS
-    D.samples.forEach(function (s) {
-      if (!s.videos) return;
-      s.videos.forEach(function (v) {
-        if (v.time && v.time.startsWith(videoStatDate)) {
-          todayVideos++;
-          todayVideoCreators[s.creator] = true;
-          todayVideosList.push({
-            creator: s.creator,
-            sku: s.sku,
-            url: v.url || '',
-            time: v.time,
-          });
-        }
+    function collectVideos(registrationDate, targetVideoDate) {
+      var count = 0;
+      var creators = {};
+      var list = [];
+      D.samples.forEach(function (s) {
+        if (!s.videos) return;
+        // 只看「更新时间」落在 registrationDate 的寄样行；空 updateTime 退到 sampleTime
+        var regTime = s.updateTime || s.sampleTime || '';
+        if (!regTime.startsWith(registrationDate)) return;
+        s.videos.forEach(function (v) {
+          if (v.time && v.time.startsWith(targetVideoDate)) {
+            count++;
+            creators[s.creator] = true;
+            list.push({
+              creator: s.creator,
+              sku: s.sku,
+              url: v.url || '',
+              time: v.time,
+            });
+          }
+        });
       });
-    });
+      return { count: count, creators: creators, list: list };
+    }
 
-    // 若预期日期没有视频，回退到数据里最新的视频日期
+    // 先尝试 today 登记、videoStatDate 的视频
+    var primary = collectVideos(today, videoStatDate);
+    todayVideos = primary.count;
+    todayVideoCreators = primary.creators;
+    todayVideosList = primary.list;
+
+    // 若预期日期没有视频，回退到数据里最新的视频日期（全库搜索，不限制 updateTime）
     var videoDateFallback = false;
     if (todayVideos === 0) {
       var maxVideoDate = '';
@@ -839,21 +856,28 @@
         if (fallbackDate !== videoStatDate) {
           videoStatDate = fallbackDate;
           videoDateFallback = true;
-          D.samples.forEach(function (s) {
-            if (!s.videos) return;
-            s.videos.forEach(function (v) {
-              if (v.time && v.time.startsWith(videoStatDate)) {
-                todayVideos++;
-                todayVideoCreators[s.creator] = true;
-                todayVideosList.push({
-                  creator: s.creator,
-                  sku: s.sku,
-                  url: v.url || '',
-                  time: v.time,
-                });
-              }
+          var fallbackRes = collectVideos(today, videoStatDate);
+          todayVideos = fallbackRes.count;
+          todayVideoCreators = fallbackRes.creators;
+          todayVideosList = fallbackRes.list;
+          // 若按 today 的 updateTime 仍为空，直接取该视频日期的全部视频
+          if (todayVideos === 0) {
+            D.samples.forEach(function (s) {
+              if (!s.videos) return;
+              s.videos.forEach(function (v) {
+                if (v.time && v.time.startsWith(videoStatDate)) {
+                  todayVideos++;
+                  todayVideoCreators[s.creator] = true;
+                  todayVideosList.push({
+                    creator: s.creator,
+                    sku: s.sku,
+                    url: v.url || '',
+                    time: v.time,
+                  });
+                }
+              });
             });
-          });
+          }
         }
       }
     }
