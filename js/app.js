@@ -310,6 +310,11 @@
     var startEl = document.getElementById(containerId + '-start');
     var endEl = document.getElementById(containerId + '-end');
 
+    // 所有日期选择器统一限制：今天及之前（不能选未来）
+    var maxDate = Data ? Data.getTodayStr() : '';
+    if (startEl) startEl.max = maxDate;
+    if (endEl) endEl.max = maxDate;
+
     if (skuSel) {
       skuSel.addEventListener('change', function () {
         state.sku = skuSel.value;
@@ -344,7 +349,9 @@
           var m = ('0' + (d.getMonth() + 1)).slice(-2);
           state.startDate = y + '-' + m + '-01';
           var lastDay = new Date(y, d.getMonth() + 1, 0).getDate();
-          state.endDate = y + '-' + m + '-' + ('0' + lastDay).slice(-2);
+          var monthEnd = y + '-' + m + '-' + ('0' + lastDay).slice(-2);
+          // 结束日期不能超过今天
+          state.endDate = maxDate && monthEnd > maxDate ? maxDate : monthEnd;
           if (startEl) startEl.value = state.startDate;
           if (endEl) endEl.value = state.endDate;
           trigger();

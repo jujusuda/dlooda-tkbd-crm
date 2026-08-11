@@ -799,10 +799,15 @@
     // 关键：视频时间比"今天登记"早 VIDEO_LAG_DAYS 天 —— 美国时区比北京晚 1 天，
     // 达人发布后系统还要再过 1 天才抓取到，合计 2 天。
     // 所以 8/10 登记的视频，视频时间字段显示的是 8/8。直接用 today 匹配会永远是 0。
-    var videoStatDate = shiftDate(today, -VIDEO_LAG_DAYS);
+    // 另外：数据同步有延迟，若 today-2 当天没有视频，则回退到数据里最新的视频日期，
+    // 保证"今日视频"永远显示最新一批视频，而不是空白。
+    var expectedVideoDate = shiftDate(today, -VIDEO_LAG_DAYS);
+    var videoStatDate = expectedVideoDate;
     var todayVideos = 0;
     var todayVideoCreators = {};
     var todayVideosList = [];
+
+    // 先尝试 today - VIDEO_LAG_DAYS
     D.samples.forEach(function (s) {
       if (!s.videos) return;
       s.videos.forEach(function (v) {
@@ -818,6 +823,40 @@
         }
       });
     });
+
+    // 若预期日期没有视频，回退到数据里最新的视频日期
+    var videoDateFallback = false;
+    if (todayVideos === 0) {
+      var maxVideoDate = '';
+      D.samples.forEach(function (s) {
+        if (!s.videos) return;
+        s.videos.forEach(function (v) {
+          if (v.time && v.time > maxVideoDate) maxVideoDate = v.time;
+        });
+      });
+      if (maxVideoDate) {
+        var fallbackDate = maxVideoDate.slice(0, 10);
+        if (fallbackDate !== videoStatDate) {
+          videoStatDate = fallbackDate;
+          videoDateFallback = true;
+          D.samples.forEach(function (s) {
+            if (!s.videos) return;
+            s.videos.forEach(function (v) {
+              if (v.time && v.time.startsWith(videoStatDate)) {
+                todayVideos++;
+                todayVideoCreators[s.creator] = true;
+                todayVideosList.push({
+                  creator: s.creator,
+                  sku: s.sku,
+                  url: v.url || '',
+                  time: v.time,
+                });
+              }
+            });
+          });
+        }
+      }
+    }
 
     // 当日开发达人（当天首次出现在寄样记录中的达人）
     var previousCreatorSet = {};
@@ -867,9 +906,10 @@
       todayVideoCount: todayVideos,
       todayVideoCreatorCount: Object.keys(todayVideoCreators).length,
       todayVideosList: todayVideosList,
-      // 视频统计实际匹配的日期（= today - 2 天），用于界面标注，避免用户以为统计错了
+      // 视频统计实际匹配的日期（= today - 2 天，或最新视频日期），用于界面标注，避免用户以为统计错了
       videoStatDate: videoStatDate,
       videoLagDays: VIDEO_LAG_DAYS,
+      videoDateFallback: videoDateFallback,
       // 当日锚定标记：若"今日"被回退到数据最新业务日（实时时钟跑到数据前面），界面需提示
       todayAnchored: anchored && today !== getTodayStr(),
       todayNewCreatorCount: todayNewCreators.length,

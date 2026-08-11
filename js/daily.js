@@ -25,7 +25,7 @@
     { key: 'newCreator', label: '今日开发达人', autoKey: 'todayNewCreatorCount', unit: '位' },
     { key: 'auto',       label: '今日自动通过', autoKey: 'todayAutoCount',       unit: '位' },
     { key: 'ordered',    label: '今日出单',     autoKey: 'todayOrderedCount',    unit: '条' },
-    { key: 'invite',     label: '今日邀约计划', autoKey: 'todayInviteCount',     unit: '条', subKey: 'todayInviteReach', subUnit: '人触达' }
+    { key: 'invite',     label: '今日邀约达人数', autoKey: 'todayInviteReach',    unit: '人', subKey: 'todayInviteCount', subUnit: '个计划' }
   ];
 
   function getDailyData() {
@@ -107,8 +107,11 @@
         var anchorNote = d.todayAnchored
           ? ' <span style="color:var(--c-warning);">（数据最新日 ' + d.todayStr + '，实时今天 ' + Data.getTodayStr() + ' 暂无数据）</span>'
           : '';
+        var fallbackNote = d.videoDateFallback
+          ? ' <span style="color:var(--c-warning);">（' + d.videoStatDate + ' 为最新视频日期）</span>'
+          : '';
         hintHtml = '<div style="font-size:10px;color:var(--text-3);margin-top:2px;">'
-          + '统计视频时间 = ' + d.videoStatDate + '（登记日 -' + (d.videoLagDays || 2) + '天：美国时区晚1天 + 抓取延迟1天）' + anchorNote
+          + '统计视频时间 = ' + d.videoStatDate + '（登记日 -' + (d.videoLagDays || 2) + '天：美国时区晚1天 + 抓取延迟1天）' + anchorNote + fallbackNote
           + '</div>';
       }
       return ''
@@ -516,6 +519,7 @@
     }
 
     if (dateInput) {
+      dateInput.max = Data.getTodayStr();
       if (!currentDailyDate) dateInput.value = Data.getTodayStr();
       dateInput.addEventListener('change', function () {
         currentDailyDate = dateInput.value || null;
@@ -533,7 +537,10 @@
       rerender();
     });
     if (btnNext) btnNext.addEventListener('click', function () {
-      currentDailyDate = shiftDate(currentDailyDate || Data.getTodayStr(), 1);
+      // 不能选今天以后：若已在今天（或之后），不再后翻
+      var base = currentDailyDate || Data.getTodayStr();
+      if (base >= Data.getTodayStr()) return;
+      currentDailyDate = shiftDate(base, 1);
       if (dateInput) dateInput.value = currentDailyDate;
       rerender();
     });

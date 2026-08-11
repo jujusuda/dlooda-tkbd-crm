@@ -232,7 +232,10 @@
 
     var dateInput = document.getElementById('todo-date-input');
     if (dateInput) {
+      dateInput.max = getTodayStr();
       dateInput.addEventListener('change', function () {
+        // 不能选今天以后
+        if (dateInput.value && dateInput.value > getTodayStr()) dateInput.value = getTodayStr();
         if (dateInput.value) setDate(dateInput.value);
       });
     }
@@ -244,7 +247,11 @@
     if (btnPrev) btnPrev.addEventListener('click', function () { shiftDate(-1); });
 
     var btnNext = document.getElementById('btn-next-day');
-    if (btnNext) btnNext.addEventListener('click', function () { shiftDate(1); });
+    if (btnNext) btnNext.addEventListener('click', function () {
+      // 不能选今天以后
+      if (currentDate >= getTodayStr()) return;
+      shiftDate(1);
+    });
 
     var btnAdd = document.getElementById('btn-add-task');
     if (btnAdd) btnAdd.addEventListener('click', openAddTaskModal);
