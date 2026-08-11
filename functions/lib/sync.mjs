@@ -55,13 +55,23 @@ function buildFromTables(tables, cfgObj) {
     const fnames = Object.keys(rec.fields || {});
     const idxs = [];
     fnames.forEach((fn) => {
-      const m = /^视频(\d+)$/.exec(fn);
-      if (m) idxs.push(parseInt(m[1], 10));
+      // 视频链接列：第1个叫「视频」，之后是「视频2」「视频3」……
+      const m = /^视频(\d*)$/.exec(fn);
+      if (m) idxs.push(m[1] ? parseInt(m[1], 10) : 1);
+      // 视频时间列：第1个叫「视频时间」，之后是「视频时间2」「视频时间3」……
+      // （注意不是「视频N时间」——曾因写错这个名字导致所有 video.time 为 null）
+      const mt = /^视频时间(\d*)$/.exec(fn);
+      if (mt) idxs.push(mt[1] ? parseInt(mt[1], 10) : 1);
     });
-    idxs.sort((a, b) => a - b).forEach((i) => {
-      const url = extractUrl(rec.fields['视频' + i]);
-      const time = rec.fields['视频' + i + '时间'];
-      if (url) videos.push({ url: url, time: parseDate(time) });
+    const uniqueIdxs = Array.from(new Set(idxs)).sort((a, b) => a - b);
+    uniqueIdxs.forEach((i) => {
+      const urlKey = i === 1 ? '视频' : '视频' + i;
+      const timeKey = i === 1 ? '视频时间' : '视频时间' + i;
+      const url = extractUrl(rec.fields[urlKey]);
+      const time = rec.fields[timeKey];
+      // 链接列飞书只开到 3 个，时间列可到 30 个；
+      // 只要 链接 或 时间 任一存在就算一条视频，否则会漏掉只有时间的记录。
+      if (url || time) videos.push({ url: url || '', time: parseDate(time) });
     });
     const sample = {
       _rid: rid,

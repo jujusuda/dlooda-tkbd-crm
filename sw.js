@@ -3,7 +3,7 @@
    PWA 离线缓存 · 应用外壳预缓存
    ================================================================ */
 
-var CACHE_VERSION = 'dlooda-tkbd-v9';
+var CACHE_VERSION = 'dlooda-tkbd-v10';
 
 /* 需要预缓存的应用外壳文件 */
 var APP_SHELL = [
@@ -101,33 +101,10 @@ self.addEventListener('fetch', function (event) {
     return;
   }
 
-  // ===== 混合缓存策略 =====
-  // · js/real-data.js（约 2.8MB，体积大且只随同步变）：缓存优先 + 后台再验证（stale-while-revalidate），
-  //   切换模块秒开，后台静默更新。
-  // · 其余所有资源（html/css/其它 js）：网络优先（network-first），保证代码改动刷新即生效，
-  //   不再被旧缓存"卡"住看不到新功能。
-  var isBigData = /\/js\/real-data\.js(\?|$)/.test(url.pathname);
-
-  if (isBigData) {
-    // 缓存优先，后台再验证
-    event.respondWith(
-      caches.match(request).then(function (cached) {
-        var networkFetch = fetch(request).then(function (response) {
-          if (response && response.status === 200 && response.type === 'basic') {
-            var copy = response.clone();
-            caches.open(CACHE_VERSION).then(function (cache) { cache.put(request, copy).catch(function () {}); });
-          }
-          return response;
-        }).catch(function () {
-          return cached || (request.mode === 'navigate' ? caches.match('./index.html') : new Response('', { status: 504, statusText: 'Offline' }));
-        });
-        return cached || networkFetch;
-      })
-    );
-    return;
-  }
-
-  // 代码/页面/样式：网络优先，确保每次都拿到最新文件
+  // ===== 网络优先策略 =====
+  // 经过实践：real-data.js 被 Cloudflare KV 缓存且会频繁更新（/api/sync 后），
+  // 如果继续缓存优先，用户触发同步后仍看到旧数据，必须改为网络优先。
+  // 离线时自动回退到缓存，仍可使用。
   event.respondWith(
     fetch(request).then(function (response) {
       if (response && response.status === 200 && response.type === 'basic') {
