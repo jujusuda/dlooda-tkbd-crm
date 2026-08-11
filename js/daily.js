@@ -21,7 +21,7 @@
   // 今日工作完成 6 项定义（顺序与日报预览一致）
   var STAT_DEFS = [
     { key: 'sample',     label: '今日寄样',     autoKey: 'todaySampleCount',     unit: '条' },
-    { key: 'video',      label: '今日登记视频', autoKey: 'todayVideoCount',      unit: '个', subKey: 'todayVideoCreatorCount', subUnit: '位达人', hint: 'video' },
+    { key: 'video',      label: '今日登记视频', autoKey: 'todayVideoCreatorCount', unit: '位达人', subKey: 'todayVideoCount', subUnit: '条视频', hint: 'video' },
     { key: 'newCreator', label: '今日开发达人', autoKey: 'todayNewCreatorCount', unit: '位' },
     { key: 'auto',       label: '今日自动通过', autoKey: 'todayAutoCount',       unit: '位' },
     { key: 'ordered',    label: '今日出单',     autoKey: 'todayOrderedCount',    unit: '条' },
@@ -402,7 +402,7 @@
 
     // 今日登记视频明细（视频时间 = 登记日 -2 天）
     if (d.todayVideosList && d.todayVideosList.length > 0) {
-      section('今日登记视频（共 ' + d.todayVideosList.length + ' 个 · 视频时间 ' + d.videoStatDate + '）');
+      section('今日登记视频（共 ' + d.todayVideoCreatorCount + ' 位达人 · ' + d.todayVideosList.length + ' 条视频 · 视频时间 ' + d.videoStatDate + '）');
       d.todayVideosList.forEach(function (v, i) {
         var detail = Data.getSKUDetail(v.sku) || {};
         lines.push('  ' + (i + 1) + '. ' + v.creator + ' — SKU ' + v.sku + (detail.productName ? ' ' + detail.productName : ''));
