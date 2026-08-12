@@ -801,10 +801,16 @@
     });
 
     // 当日登记视频
-    // 口径：视频时间 = 登记日 - VIDEO_LAG_DAYS 天（美国时区晚 1 天 + 系统抓取延迟 1 天 = 2 天）。
-    // 即 8/11 的日报统计「视频时间 = 8/9」的全部视频（跨全库，不限制寄样行的 updateTime），
-    // 因为视频时间是达人真实发布时间，与寄样行的登记时间无关。
-    // 若预期日期没有视频，回退到数据里最新的视频日期，保证"今日视频"不空白。
+    // 口径（已与飞书「每日寄样」视图逐条对齐）：
+    //  - 「登记日」= 寄样行的更新时间 updateTime（无有效更新时间则退寄样时间 sampleTime）；
+    //  - 达人发布后，美国时区比北京晚 1 天、系统再抓取延迟 1 天，故视频时间 = 登记日 - 2 天。
+    //  即统计「updateTime 以 today 开头」且「视频时间以 (today-2) 开头」的视频。
+    //  实测：8/11 日报 → updateTime=2026-08-11 且 video.time=2026-08-09 → 5 达人 6 视频；
+    //        8/10 日报 → updateTime=2026-08-10 且 video.time=2026-08-08 → 18 达人 18 视频。
+    //  若 today 没有登记视频，回退到数据里最新的视频日期（跨库），保证“今日视频”不空白。
+    function regTimeOf(s) {
+      return (s.updateTime && s.updateTime.indexOf('0001') !== 0 && s.updateTime) || s.sampleTime || '';
+    }
     var expectedVideoDate = shiftDate(today, -VIDEO_LAG_DAYS);
     var videoStatDate = expectedVideoDate;
     var todayVideos = 0;
@@ -822,15 +828,16 @@
       });
     }
 
-    // 先按「登记日 - 2 天」的视频时间统计（全库）
+    // 按「登记日 = today」且「视频时间 = today - 2」统计
     D.samples.forEach(function (s) {
+      if (!regTimeOf(s).startsWith(today)) return;
       if (!s.videos) return;
       s.videos.forEach(function (v) {
         if (v.time && v.time.startsWith(videoStatDate)) pushVideo(s, v);
       });
     });
 
-    // 若预期日期没有视频，回退到数据里最新的视频日期（全库最新一条视频的日期）
+    // 若 today 没有登记视频，回退到数据里最新的视频日期（跨库最新一条视频的日期）
     var videoDateFallback = false;
     if (todayVideos === 0) {
       var maxVideoDate = '';
