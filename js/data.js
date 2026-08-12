@@ -739,19 +739,22 @@
 
   // 日报"今日"锚定：实时时钟偶尔会跑到数据前面（例如今天 8/11，但数据只同步到 8/10），
   // 此时若直接用实时今天，今日寄样/视频/邀约会全部为空，用户以为功能坏了。
-  // 策略：实时今天在数据里有任何活动就用实时今天；否则回退到数据里最新的业务日
-  // （= max(最新寄样日, 最新邀约日)），保证"今日"永远反映最近一次同步的快照。
+  // 策略：实时今天在数据里有"实际寄样活动"就用实时今天；否则回退到数据里最新的可出报告日
+  // （= 最新寄样日 + 1 天，抵消美国日期滞后）。
+  // 注意：邀约表里有 8/12/8/13 的"未来计划"（achieved=0），不能把它们当作"今天有数据"，
+  // 否则默认视图会被拽到空的一天。锚定只看 samples。
   var _dataTodayCache = null;
   function getDataToday() {
     var live = getTodayStr();
-    var hasLive = D.samples.some(function (s) { return s.sampleTime && s.sampleTime.indexOf(live) === 0; })
-               || D.invites.some(function (i) { return i.date && i.date.indexOf(live) === 0; });
+    // 寄样是美国日期，比北京晚 1 天：实时今天对应的寄样批次是 sampleTime = live - 1
+    var livePrev = shiftDate(live, -1);
+    var hasLive = D.samples.some(function (s) { return s.sampleTime && s.sampleTime.indexOf(livePrev) === 0; });
     if (hasLive) return live;
     if (_dataTodayCache) return _dataTodayCache;
-    var maxDate = '';
-    D.samples.forEach(function (s) { if (s.sampleTime && s.sampleTime > maxDate) maxDate = s.sampleTime; });
-    D.invites.forEach(function (i) { if (i.date && i.date > maxDate) maxDate = i.date; });
-    _dataTodayCache = maxDate ? maxDate.slice(0, 10) : live;
+    var maxSample = '';
+    D.samples.forEach(function (s) { if (s.sampleTime && s.sampleTime > maxSample) maxSample = s.sampleTime; });
+    // 最新可出报告日 = 最新寄样日 + 1 天（抵消美国日期滞后）
+    _dataTodayCache = maxSample ? shiftDate(maxSample.slice(0, 10), 1) : live;
     return _dataTodayCache;
   }
 
@@ -798,50 +801,36 @@
     });
 
     // 当日登记视频
-    // 关键1：视频时间比"今天登记"早 VIDEO_LAG_DAYS 天 —— 美国时区比北京晚 1 天，
-    // 达人发布后系统还要再过 1 天才抓取到，合计 2 天。
-    // 所以 8/11 的日报，视频时间字段显示的是 8/9。
-    // 关键2："登记"指的是飞书行的「更新时间」；看板/日报要与飞书「每日寄样」表
-    // 中「更新时间 = 今天」且「视频时间 = 今天-2」的行保持一致。
-    // 若今天没有登记视频，回退到数据里最新的视频日期，保证不空白。
+    // 口径：视频时间 = 登记日 - VIDEO_LAG_DAYS 天（美国时区晚 1 天 + 系统抓取延迟 1 天 = 2 天）。
+    // 即 8/11 的日报统计「视频时间 = 8/9」的全部视频（跨全库，不限制寄样行的 updateTime），
+    // 因为视频时间是达人真实发布时间，与寄样行的登记时间无关。
+    // 若预期日期没有视频，回退到数据里最新的视频日期，保证"今日视频"不空白。
     var expectedVideoDate = shiftDate(today, -VIDEO_LAG_DAYS);
     var videoStatDate = expectedVideoDate;
     var todayVideos = 0;
     var todayVideoCreators = {};
     var todayVideosList = [];
 
-    function collectVideos(registrationDate, targetVideoDate) {
-      var count = 0;
-      var creators = {};
-      var list = [];
-      D.samples.forEach(function (s) {
-        if (!s.videos) return;
-        // 只看「更新时间」落在 registrationDate 的寄样行；空 updateTime 退到 sampleTime
-        var regTime = s.updateTime || s.sampleTime || '';
-        if (!regTime.startsWith(registrationDate)) return;
-        s.videos.forEach(function (v) {
-          if (v.time && v.time.startsWith(targetVideoDate)) {
-            count++;
-            creators[s.creator] = true;
-            list.push({
-              creator: s.creator,
-              sku: s.sku,
-              url: v.url || '',
-              time: v.time,
-            });
-          }
-        });
+    function pushVideo(s, v) {
+      todayVideos++;
+      todayVideoCreators[s.creator] = true;
+      todayVideosList.push({
+        creator: s.creator,
+        sku: s.sku,
+        url: v.url || '',
+        time: v.time,
       });
-      return { count: count, creators: creators, list: list };
     }
 
-    // 先尝试 today 登记、videoStatDate 的视频
-    var primary = collectVideos(today, videoStatDate);
-    todayVideos = primary.count;
-    todayVideoCreators = primary.creators;
-    todayVideosList = primary.list;
+    // 先按「登记日 - 2 天」的视频时间统计（全库）
+    D.samples.forEach(function (s) {
+      if (!s.videos) return;
+      s.videos.forEach(function (v) {
+        if (v.time && v.time.startsWith(videoStatDate)) pushVideo(s, v);
+      });
+    });
 
-    // 若预期日期没有视频，回退到数据里最新的视频日期（全库搜索，不限制 updateTime）
+    // 若预期日期没有视频，回退到数据里最新的视频日期（全库最新一条视频的日期）
     var videoDateFallback = false;
     if (todayVideos === 0) {
       var maxVideoDate = '';
@@ -856,28 +845,12 @@
         if (fallbackDate !== videoStatDate) {
           videoStatDate = fallbackDate;
           videoDateFallback = true;
-          var fallbackRes = collectVideos(today, videoStatDate);
-          todayVideos = fallbackRes.count;
-          todayVideoCreators = fallbackRes.creators;
-          todayVideosList = fallbackRes.list;
-          // 若按 today 的 updateTime 仍为空，直接取该视频日期的全部视频
-          if (todayVideos === 0) {
-            D.samples.forEach(function (s) {
-              if (!s.videos) return;
-              s.videos.forEach(function (v) {
-                if (v.time && v.time.startsWith(videoStatDate)) {
-                  todayVideos++;
-                  todayVideoCreators[s.creator] = true;
-                  todayVideosList.push({
-                    creator: s.creator,
-                    sku: s.sku,
-                    url: v.url || '',
-                    time: v.time,
-                  });
-                }
-              });
+          D.samples.forEach(function (s) {
+            if (!s.videos) return;
+            s.videos.forEach(function (v) {
+              if (v.time && v.time.startsWith(videoStatDate)) pushVideo(s, v);
             });
-          }
+          });
         }
       }
     }
