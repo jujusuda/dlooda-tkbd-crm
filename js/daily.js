@@ -107,11 +107,11 @@
         var anchorNote = d.todayAnchored
           ? ' <span style="color:var(--c-warning);">（数据最新日 ' + d.todayStr + '，实时今天 ' + Data.getTodayStr() + ' 暂无数据）</span>'
           : '';
-        var fallbackNote = d.videoDateFallback
-          ? ' <span style="color:var(--c-warning);">（' + d.videoStatDate + ' 为最新视频日期）</span>'
+        var zeroNote = d.todayVideoCount === 0
+          ? ' <span style="color:var(--c-warning);">（该日暂无登记视频）</span>'
           : '';
         hintHtml = '<div style="font-size:10px;color:var(--text-3);margin-top:2px;">'
-          + '统计「更新时间=' + d.todayStr + '」且视频时间=' + d.videoStatDate + ' 的视频（登记日 -' + (d.videoLagDays || 2) + '天：美国时区 -1 + 抓取延迟 -1）' + anchorNote + fallbackNote
+          + '统计「更新时间=' + d.todayStr + '」且视频时间=' + d.videoStatDate + ' 的视频（登记日 -' + (d.videoLagDays || 2) + '天：美国时区 -1 + 抓取延迟 -1）' + zeroNote + anchorNote
           + '</div>';
       }
       return ''
