@@ -3,15 +3,18 @@
 import cfg from '../../server/config.json';
 import { getTenantToken, listRecords } from './feishu.mjs';
 
+// 飞书日期字段可能是毫秒时间戳(数字)或字符串，统一成 "YYYY-MM-DD HH:MM" / "YYYY-MM-DD"
+// 时间戳按 UTC+8 解析（飞书 base 时区为中国），避免部署到 UTC 服务器时整体偏移一天
+const TZ_OFFSET_MS = 8 * 3600 * 1000;
 function parseDate(v) {
   if (v === null || v === undefined || v === '') return null;
   if (typeof v === 'number') {
-    const d = new Date(v);
+    const d = new Date(v + TZ_OFFSET_MS);
     if (isNaN(d.getTime())) return String(v);
     const p = (n) => (n < 10 ? '0' + n : '' + n);
-    const date = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
-    const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0 || d.getSeconds() !== 0;
-    return hasTime ? (date + ' ' + p(d.getHours()) + ':' + p(d.getMinutes())) : date;
+    const date = d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate());
+    const hasTime = d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0 || d.getUTCSeconds() !== 0;
+    return hasTime ? (date + ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes())) : date;
   }
   return String(v).trim();
 }
