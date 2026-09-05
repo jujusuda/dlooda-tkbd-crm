@@ -737,25 +737,12 @@
     return y + '-' + m + '-' + day;
   }
 
-  // 日报"今日"锚定：实时时钟偶尔会跑到数据前面（例如今天 8/11，但数据只同步到 8/10），
-  // 此时若直接用实时今天，今日寄样/视频/邀约会全部为空，用户以为功能坏了。
-  // 策略：实时今天在数据里有"实际寄样活动"就用实时今天；否则回退到数据里最新的可出报告日
-  // （= 最新寄样日 + 1 天，抵消美国日期滞后）。
-  // 注意：邀约表里有 8/12/8/13 的"未来计划"（achieved=0），不能把它们当作"今天有数据"，
-  // 否则默认视图会被拽到空的一天。锚定只看 samples。
-  var _dataTodayCache = null;
+  // 日报"今日"直接取实时今天，不再锚定到数据最新日。
+  // 之前为避免"实时时钟跑到数据前面导致空白"做了锚定，但用户反馈：当长时间未同步飞书时，
+  // 默认打开应显示真实今天（所有指标为 0），而不是回退到旧数据日显示旧数字。
+  // 因此取消锚定；数据没更新就是 0，符合预期。
   function getDataToday() {
-    var live = getTodayStr();
-    // 寄样是美国日期，比北京晚 1 天：实时今天对应的寄样批次是 sampleTime = live - 1
-    var livePrev = shiftDate(live, -1);
-    var hasLive = D.samples.some(function (s) { return s.sampleTime && s.sampleTime.indexOf(livePrev) === 0; });
-    if (hasLive) return live;
-    if (_dataTodayCache) return _dataTodayCache;
-    var maxSample = '';
-    D.samples.forEach(function (s) { if (s.sampleTime && s.sampleTime > maxSample) maxSample = s.sampleTime; });
-    // 最新可出报告日 = 最新寄样日 + 1 天（抵消美国日期滞后）
-    _dataTodayCache = maxSample ? shiftDate(maxSample.slice(0, 10), 1) : live;
-    return _dataTodayCache;
+    return getTodayStr();
   }
 
   // 在 "YYYY-MM-DD" 上加减天数，返回同样格式
