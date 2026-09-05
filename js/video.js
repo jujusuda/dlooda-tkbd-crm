@@ -315,32 +315,151 @@
     container.innerHTML = html;
   }
 
+  /* ---------- 素材看板视图 ---------- */
+  function renderMaterialLineChart(points, labelKey, valueKey, color, unit) {
+    // 通用 SVG 折线图（与数据复盘页同风格）
+    if (!points || points.length === 0) return '<div style="padding:16px;color:var(--text-3);font-size:13px;text-align:center;">暂无数据</div>';
+    var W = 680, H = 200, padL = 40, padB = 30, padT = 16, padR = 20;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var maxV = Math.max.apply(null, points.map(function (p) { return p[valueKey]; }).concat([1]));
+    var n = points.length;
+    // 点太多（如整月逐日）时抽稀标签
+    var labelEvery = Math.ceil(n / 12);
+    var step = n > 1 ? plotW / (n - 1) : 0;
+    var coords = points.map(function (p, i) {
+      return {
+        x: n > 1 ? padL + i * step : padL + plotW / 2,
+        y: padT + plotH - (p[valueKey] / maxV * plotH),
+        p: p, i: i,
+      };
+    });
+    var line = coords.map(function (c) { return c.x + ',' + c.y; }).join(' ');
+    var area = line + ' ' + (padL + plotW) + ',' + (padT + plotH) + ' ' + padL + ',' + (padT + plotH);
+    var dots = coords.map(function (c) {
+      var showLabel = (c.i % labelEvery === 0) || c.i === n - 1;
+      return '<circle cx="' + c.x + '" cy="' + c.y + '" r="3.5" fill="' + color + '" stroke="#fff" stroke-width="1.5">'
+        + '<title>' + c.p[labelKey] + ' · ' + c.p[valueKey] + (unit || '') + '</title></circle>'
+        + (showLabel ? '<text x="' + c.x + '" y="' + (H - 10) + '" font-size="9" fill="#9b8e8e" text-anchor="' + (c.i === 0 ? 'start' : c.i === n - 1 ? 'end' : 'middle') + '">' + c.p[labelKey].slice(5) + '</text>' : '');
+    }).join('');
+    var yTicks = [0, Math.round(maxV / 2), maxV].map(function (v) {
+      var y = padT + plotH - (v / maxV * plotH);
+      return '<text x="' + (padL - 6) + '" y="' + (y + 3) + '" font-size="9" fill="#9b8e8e" text-anchor="end">' + v + '</text>';
+    }).join('');
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;">'
+      + '<polygon points="' + area + '" fill="' + color + '" opacity="0.08"/>'
+      + '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (padT + plotH) + '" stroke="#efe6e6"/>'
+      + '<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' + (padT + plotH) + '" stroke="#efe6e6"/>'
+      + yTicks
+      + '<polyline points="' + line + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round"/>'
+      + dots
+      + '</svg>';
+  }
+
+  function renderMaterial() {
+    var container = document.getElementById('video-material-content');
+    if (!container) return;
+    var m = Data.getMaterialDashboard(filterState.startDate || null, filterState.endDate || null, filterState.sku || null);
+
+    var rangeText = '';
+    if (m.filter.startDate || m.filter.endDate) {
+      rangeText = (m.filter.startDate || '…') + ' ~ ' + (m.filter.endDate || '…');
+      if (m.filter.sku) rangeText += ' · SKU ' + m.filter.sku;
+    } else if (m.filter.sku) {
+      rangeText = '全部时间 · SKU ' + m.filter.sku;
+    } else {
+      rangeText = '全部时间 · 全部 SKU';
+    }
+
+    var html = '';
+
+    // 关键指标
+    html += '<div class="stat-grid" style="margin-bottom:16px;">'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-primary);">' + App.formatNumber(m.total) + '</div><div class="stat-card__label">素材总量</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + m.avgPerDay + '</div><div class="stat-card__label">日均素材</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-success);">' + m.peakDayCount + '</div><div class="stat-card__label">单日峰值（' + (m.peakDay || '—') + '）</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + App.formatNumber(m.monthly.length) + '</div><div class="stat-card__label">覆盖月份数</div></div>'
+      + '</div>';
+
+    // 月度素材量折线图
+    html += '<div class="card" style="margin-bottom:16px;">'
+      + '<div class="card__header"><h3 class="card__title">月度素材量趋势</h3></div>'
+      + '<div style="padding:8px 4px;">' + renderMaterialLineChart(m.monthly, 'month', 'count', 'var(--pink-500)', ' 条素材')
+      + '<div style="font-size:11px;color:var(--text-3);margin-top:6px;">筛选：' + App.escapeHtml(rangeText) + '</div></div>'
+      + '</div>';
+
+    // 每日素材量折线图（默认最近30个有素材的日子）
+    var dailySlice = m.daily.slice(-30);
+    html += '<div class="card" style="margin-bottom:16px;">'
+      + '<div class="card__header"><h3 class="card__title">每日素材量' + (m.daily.length > 30 ? '（最近 30 天有素材日）' : '') + '</h3></div>'
+      + '<div style="padding:8px 4px;">' + renderMaterialLineChart(dailySlice, 'date', 'count', 'var(--c-info)', ' 条素材')
+      + '<div style="font-size:11px;color:var(--text-3);margin-top:6px;">按视频发布时间统计；达人数（寄样行数）口径与日报一致</div></div>'
+      + '</div>';
+
+    // SKU 素材量排行
+    if (m.skuRanking.length > 0) {
+      html += '<div class="card" style="margin-bottom:16px;">'
+        + '<div class="card__header"><h3 class="card__title">SKU 素材量排行</h3></div>'
+        + '<div style="padding:8px 0;">';
+      var maxCnt = m.skuRanking[0].count || 1;
+      m.skuRanking.slice(0, 12).forEach(function (s, i) {
+        var pct = Math.round(s.count / maxCnt * 100);
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+          + '<span style="width:70px;font-size:12px;font-weight:600;color:var(--text-2);">SKU ' + App.escapeHtml(s.sku) + '</span>'
+          + '<div style="flex:1;height:14px;background:var(--bg-pink-soft);border-radius:7px;overflow:hidden;">'
+          + '<div style="height:100%;width:' + pct + '%;background:var(--pink-400);border-radius:7px;transition:width .6s ease;"></div>'
+          + '</div>'
+          + '<span style="width:90px;text-align:right;font-size:12px;color:var(--text-2);">' + s.count + ' 素材 / ' + s.rows + ' 行</span>'
+          + '</div>';
+      });
+      html += '</div></div>';
+    }
+
+    container.innerHTML = html;
+  }
+
   function switchView(mode) {
     viewMode = mode;
     var listEl = document.getElementById('video-list');
     var analysisEl = document.getElementById('video-analysis');
+    var materialEl = document.getElementById('video-material');
     var sortEl = document.getElementById('sort-section');
     var searchEl = document.querySelector('.search-bar');
     var filterTabsEl = document.getElementById('filter-tabs');
     var listBtn = document.getElementById('btn-view-list');
     var analysisBtn = document.getElementById('btn-view-analysis');
+    var materialBtn = document.getElementById('btn-view-material');
     if (mode === 'analysis') {
       if (listEl) listEl.style.display = 'none';
       if (analysisEl) analysisEl.style.display = 'block';
+      if (materialEl) materialEl.style.display = 'none';
       if (sortEl) sortEl.style.display = 'none';
       if (searchEl) searchEl.style.display = 'none';
       if (filterTabsEl) filterTabsEl.style.display = 'none';
       if (listBtn) listBtn.classList.remove('active');
       if (analysisBtn) analysisBtn.classList.add('active');
+      if (materialBtn) materialBtn.classList.remove('active');
       renderAnalysis();
+    } else if (mode === 'material') {
+      if (listEl) listEl.style.display = 'none';
+      if (analysisEl) analysisEl.style.display = 'none';
+      if (materialEl) materialEl.style.display = 'block';
+      if (sortEl) sortEl.style.display = 'none';
+      if (searchEl) searchEl.style.display = 'none';
+      if (filterTabsEl) filterTabsEl.style.display = 'none';
+      if (listBtn) listBtn.classList.remove('active');
+      if (analysisBtn) analysisBtn.classList.remove('active');
+      if (materialBtn) materialBtn.classList.add('active');
+      renderMaterial();
     } else {
       if (listEl) listEl.style.display = 'block';
       if (analysisEl) analysisEl.style.display = 'none';
+      if (materialEl) materialEl.style.display = 'none';
       if (sortEl) sortEl.style.display = 'flex';
       if (searchEl) searchEl.style.display = '';
       if (filterTabsEl) filterTabsEl.style.display = '';
       if (listBtn) listBtn.classList.add('active');
       if (analysisBtn) analysisBtn.classList.remove('active');
+      if (materialBtn) materialBtn.classList.remove('active');
       renderList();
     }
   }
@@ -376,6 +495,7 @@
         if (sku) currentFilter = sku; else currentFilter = 'all';
         renderTabs();
         if (viewMode === 'analysis') renderAnalysis();
+        else if (viewMode === 'material') renderMaterial();
         else renderList();
       });
     }
@@ -384,6 +504,8 @@
     if (listBtn) listBtn.addEventListener('click', function () { switchView('list'); });
     var analysisBtn = document.getElementById('btn-view-analysis');
     if (analysisBtn) analysisBtn.addEventListener('click', function () { switchView('analysis'); });
+    var materialBtn = document.getElementById('btn-view-material');
+    if (materialBtn) materialBtn.addEventListener('click', function () { switchView('material'); });
   }
 
   if (document.readyState === 'loading') {

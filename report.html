@@ -34,7 +34,7 @@
       <div class="page-header">
         <div class="page-header__left">
           <h1 class="page-header__title">数据复盘</h1>
-          <p class="page-header__subtitle">SKU 出单率趋势 · 升降归因</p>
+          <p class="page-header__subtitle">SKU 出单率趋势 · 升降归因 · 通过率</p>
         </div>
       </div>
 
@@ -42,6 +42,7 @@
       <div class="view-tabs" id="report-view-tabs">
         <button class="view-tab active" data-view="trend">SKU 出单率趋势</button>
         <button class="view-tab" data-view="attribution">升降归因</button>
+        <button class="view-tab" data-view="passrate">通过率</button>
       </div>
 
       <!-- 筛选栏 -->
@@ -70,6 +71,19 @@
           </div>
         </div>
         <div id="attribution-content"></div>
+      </div>
+
+      <!-- ========== 视图3: 通过率 ========== -->
+      <div id="view-passrate" class="view-panel" style="display:none;">
+        <div class="stat-grid" id="passrate-metrics"></div>
+        <div class="section">
+          <div class="section__header"><h2 class="section__title">月度通过率趋势</h2></div>
+          <div class="card"><div id="passrate-trend-chart"></div></div>
+        </div>
+        <div class="section">
+          <div class="section__header"><h2 class="section__title">SKU 通过率明细</h2></div>
+          <div class="card"><div id="passrate-sku-table"></div></div>
+        </div>
       </div>
     </main>
     <nav class="bottom-nav"></nav>

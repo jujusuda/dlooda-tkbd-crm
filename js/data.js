@@ -792,36 +792,35 @@
     //  - 「登记日」= 寄样行的更新时间 updateTime（无有效更新时间则退寄样时间 sampleTime）；
     //  - 达人发布后，美国时区比北京晚 1 天、系统再抓取延迟 1 天，故视频时间 = 登记日 - 2 天。
     //  即严格统计「updateTime 以 today 开头」且「视频时间以 (today-2) 开头」的视频。
-    //  实测（当前本地快照）：8/11 → updateTime=2026-08-11 且 video.time=2026-08-09 → 6 视频 / 5 达人；
-    //                      8/10 → updateTime=2026-08-10 且 video.time=2026-08-08 → 18 视频 / 18 达人。
+    //  达人数按「寄样行数」计（每行 = 达人×SKU 一条寄样记录），与飞书「每日寄样」视图行数一致；
+    //  素材量 = 视频条数。跨全库按视频时间匹配（视频挂在该达人任意寄样行上都算）。
+    //  实测（2026-09-05 快照）：9/4 → video.time=2026-09-02 → 22 行（22 位达人）/ 26 条素材。
     //  重要：today 没有登记视频就是 0，不再回退到“最新视频日期”，避免把昨天的视频算到今天。
-    function regTimeOf(s) {
-      return (s.updateTime && s.updateTime.indexOf('0001') !== 0 && s.updateTime) || s.sampleTime || '';
-    }
     var expectedVideoDate = shiftDate(today, -VIDEO_LAG_DAYS);
     var videoStatDate = expectedVideoDate;
     var todayVideos = 0;
+    var todayVideoCreatorCount = 0;   // 行数（达人×SKU 寄样记录数），与飞书视图一致
     var todayVideoCreators = {};
     var todayVideosList = [];
 
-    function pushVideo(s, v) {
-      todayVideos++;
-      todayVideoCreators[s.creator] = true;
-      todayVideosList.push({
-        creator: s.creator,
-        sku: s.sku,
-        url: v.url || '',
-        time: v.time,
-      });
-    }
-
-    // 按「登记日 = today」且「视频时间 = today - 2」统计
+    // 按「视频时间 = today - 2」跨库统计
     D.samples.forEach(function (s) {
-      if (!regTimeOf(s).startsWith(today)) return;
       if (!s.videos) return;
+      var rowHit = false;
       s.videos.forEach(function (v) {
-        if (v.time && v.time.startsWith(videoStatDate)) pushVideo(s, v);
+        if (v.time && v.time.startsWith(videoStatDate)) {
+          todayVideos++;
+          todayVideoCreators[s.creator] = true;
+          todayVideosList.push({
+            creator: s.creator,
+            sku: s.sku,
+            url: v.url || '',
+            time: v.time,
+          });
+          rowHit = true;
+        }
       });
+      if (rowHit) todayVideoCreatorCount++;
     });
 
     // 不再回退：today 没有登记视频就是 0，不能把昨天的视频算到今天。
@@ -873,7 +872,8 @@
       // 当日实际数据
       todaySampleCount: todaySamples.length,
       todayVideoCount: todayVideos,
-      todayVideoCreatorCount: Object.keys(todayVideoCreators).length,
+      todayVideoCreatorCount: todayVideoCreatorCount,
+      todayVideoDistinctCreators: Object.keys(todayVideoCreators).length,
       todayVideosList: todayVideosList,
       // 视频统计实际匹配的日期（= today - 2 天，或最新视频日期），用于界面标注，避免用户以为统计错了
       videoStatDate: videoStatDate,
@@ -1492,6 +1492,175 @@
       if (ta !== tb) return ta - tb;
       return b.sampleCount - a.sampleCount;
     });
+  }
+
+  /* ================================================================
+     素材看板：按视频时间统计每日/每月素材量（可筛选 SKU + 时间范围）
+     口径与日报「今日登记视频」一致：素材量 = 视频条数，达人数 = 含当日视频的寄样行数
+     ================================================================ */
+  function getMaterialDashboard(startDate, endDate, sku) {
+    var byDay = {};   // date -> { count, rows, creators }
+    var byMonth = {}; // month -> { count, rows }
+    var bySKU = {};   // sku -> { count, rows }
+    var total = 0;
+
+    D.samples.forEach(function (s) {
+      if (!s.videos || !s.videos.length) return;
+      if (sku && s.sku !== sku) return;
+      var dayHit = {}; // 当日命中标记（每行每日只计 1）
+      s.videos.forEach(function (v) {
+        var t = v.time || '';
+        if (!t) return;
+        var day = t.slice(0, 10);
+        if (startDate && day < startDate) return;
+        if (endDate && day > endDate) return;
+        total++;
+        if (!byDay[day]) byDay[day] = { date: day, count: 0, rows: 0, creators: {} };
+        byDay[day].count++;
+        byDay[day].creators[s.creator] = true;
+        if (!dayHit[day]) { dayHit[day] = true; byDay[day].rows++; }
+        var month = day.slice(0, 7);
+        if (!byMonth[month]) byMonth[month] = { month: month, count: 0, rows: 0 };
+        byMonth[month].count++;
+        if (bySKU[s.sku || '未知']) {
+          bySKU[s.sku || '未知'].count++;
+        } else {
+          bySKU[s.sku || '未知'] = { sku: s.sku || '未知', count: 1, rows: 0 };
+        }
+      });
+      // 按行聚合：该寄样行在每个月/每个SKU上各计 1 行
+      var monthHit = {}, skuHit = {};
+      s.videos.forEach(function (v) {
+        var t = v.time || '';
+        if (!t) return;
+        var day = t.slice(0, 10);
+        if (startDate && day < startDate) return;
+        if (endDate && day > endDate) return;
+        var month = day.slice(0, 7);
+        if (!monthHit[month]) { monthHit[month] = true; byMonth[month].rows++; }
+        var k = s.sku || '未知';
+        if (!skuHit[k]) { skuHit[k] = true; bySKU[k].rows++; }
+      });
+    });
+
+    var daily = Object.keys(byDay).sort().map(function (d) {
+      return {
+        date: d,
+        count: byDay[d].count,
+        rows: byDay[d].rows,
+        creatorCount: Object.keys(byDay[d].creators).length,
+      };
+    });
+    var monthly = Object.keys(byMonth).sort().map(function (m) {
+      return { month: m, count: byMonth[m].count, rows: byMonth[m].rows };
+    });
+    var skuRanking = Object.keys(bySKU).map(function (k) {
+      return bySKU[k];
+    }).sort(function (a, b) { return b.count - a.count; });
+
+    // 汇总指标
+    var distinctDays = daily.length;
+    var peak = daily.length > 0 ? daily.reduce(function (a, b) { return b.count > a.count ? b : a; }) : null;
+    var avgPerDay = distinctDays > 0 ? Math.round(total / distinctDays * 10) / 10 : 0;
+
+    return {
+      total: total,
+      dayCount: distinctDays,
+      avgPerDay: avgPerDay,
+      peakDay: peak ? peak.date : '',
+      peakDayCount: peak ? peak.count : 0,
+      daily: daily,
+      monthly: monthly,
+      skuRanking: skuRanking,
+      filter: { sku: sku || '', startDate: startDate || '', endDate: endDate || '' },
+    };
+  }
+
+  /* ================================================================
+     通过率分析：通过率 = 寄样量 ÷ 邀约实际数量（邀约达成量 achieved 合计）
+     - 整体：所选时间范围内 寄样总数 ÷ 邀约达成总数
+     - 月度：逐月 寄样量 ÷ 该月邀约达成量，看整体通过率趋势
+     - SKU：某 SKU 寄样量 ÷ 该 SKU 邀约达成量（可配合时间筛选）
+     ================================================================ */
+  function getPassRateAnalysis(startDate, endDate, sku) {
+    // 寄样量：按寄样时间筛选（sampleTime）
+    var samples = D.samples;
+    if (sku) samples = samples.filter(function (s) { return s.sku === sku; });
+    if (startDate) samples = samples.filter(function (s) { return s.sampleTime && s.sampleTime >= startDate; });
+    if (endDate) samples = samples.filter(function (s) { return s.sampleTime && s.sampleTime <= endDate + ' 23:59'; });
+
+    // 邀约实际数量：邀约表「达成」字段（触达人数）合计，按飞书原始日期（无时区滞后）
+    var invites = D.invites;
+    if (sku) invites = invites.filter(function (i) { return i.sku === sku; });
+    if (startDate) invites = invites.filter(function (i) { return i.date && i.date >= startDate; });
+    if (endDate) invites = invites.filter(function (i) { return i.date && i.date <= endDate + ' 23:59'; });
+
+    // 月度序列
+    var byMonth = {};
+    samples.forEach(function (s) {
+      var m = (s.sampleTime || '').slice(0, 7);
+      if (!m) return;
+      if (!byMonth[m]) byMonth[m] = { month: m, sampleCount: 0, inviteReached: 0, planCount: 0 };
+      byMonth[m].sampleCount++;
+    });
+    invites.forEach(function (i) {
+      var m = (i.date || '').slice(0, 7);
+      if (!m) return;
+      if (!byMonth[m]) byMonth[m] = { month: m, sampleCount: 0, inviteReached: 0, planCount: 0 };
+      byMonth[m].inviteReached += parseInt(i.achieved, 10) || 0;
+      byMonth[m].planCount++;
+    });
+    var monthly = Object.keys(byMonth).sort().map(function (m) {
+      var o = byMonth[m];
+      o.passRate = o.inviteReached > 0 ? Math.round(o.sampleCount / o.inviteReached * 10000) / 100 : null;
+      return o;
+    });
+
+    // SKU 明细（不受 sku 参数限制，展示全部 SKU；受时间范围限制）
+    var allSamples = D.samples;
+    var allInvites = D.invites;
+    if (startDate) allSamples = allSamples.filter(function (s) { return s.sampleTime && s.sampleTime >= startDate; });
+    if (endDate) allSamples = allSamples.filter(function (s) { return s.sampleTime && s.sampleTime <= endDate + ' 23:59'; });
+    if (startDate) allInvites = allInvites.filter(function (i) { return i.date && i.date >= startDate; });
+    if (endDate) allInvites = allInvites.filter(function (i) { return i.date && i.date <= endDate + ' 23:59'; });
+    var sampleBySKU = {}, inviteBySKU = {};
+    allSamples.forEach(function (s) {
+      if (s.sku) sampleBySKU[s.sku] = (sampleBySKU[s.sku] || 0) + 1;
+    });
+    allInvites.forEach(function (i) {
+      if (i.sku) inviteBySKU[i.sku] = (inviteBySKU[i.sku] || 0) + (parseInt(i.achieved, 10) || 0);
+    });
+    var skuSet = {};
+    Object.keys(sampleBySKU).forEach(function (k) { skuSet[k] = true; });
+    Object.keys(inviteBySKU).forEach(function (k) { skuSet[k] = true; });
+    var skuRanking = Object.keys(skuSet).map(function (k) {
+      var sc = sampleBySKU[k] || 0;
+      var ic = inviteBySKU[k] || 0;
+      var detail = getSKUDetail(k);
+      return {
+        sku: k,
+        productName: detail.productName || '',
+        positioning: detail.positioning || '',
+        sampleCount: sc,
+        inviteReached: ic,
+        passRate: ic > 0 ? Math.round(sc / ic * 10000) / 100 : null,
+      };
+    }).sort(function (a, b) { return (b.inviteReached - a.inviteReached) || (b.sampleCount - a.sampleCount); });
+
+    var totalSamples = samples.length;
+    var totalReached = 0;
+    var totalPlans = 0;
+    invites.forEach(function (i) { totalReached += parseInt(i.achieved, 10) || 0; totalPlans++; });
+
+    return {
+      totalSampleCount: totalSamples,
+      totalInviteReached: totalReached,
+      totalPlanCount: totalPlans,
+      overallPassRate: totalReached > 0 ? Math.round(totalSamples / totalReached * 10000) / 100 : null,
+      monthly: monthly,
+      skuRanking: skuRanking,
+      filter: { sku: sku || '', startDate: startDate || '', endDate: endDate || '' },
+    };
   }
 
   // 是否"系统通过"（复投成功判定口径：只看通过，不看是否发视频）
@@ -2116,6 +2285,8 @@
   getInvites = memo('getInvites', getInvites);
   getReinvestAnalysis = memo('getReinvestAnalysis', getReinvestAnalysis);
   getInvitePassRate = memo('getInvitePassRate', getInvitePassRate);
+  getMaterialDashboard = memo('getMaterialDashboard', getMaterialDashboard);
+  getPassRateAnalysis = memo('getPassRateAnalysis', getPassRateAnalysis);
   getTaskGapAnalysis = memo('getTaskGapAnalysis', getTaskGapAnalysis);
   getSampleDashboard = memo('getSampleDashboard', getSampleDashboard);
   getVideoAnalytics = memo('getVideoAnalytics', getVideoAnalytics);
@@ -2197,6 +2368,8 @@
     getDevEffectAnalysis: getDevEffectAnalysis,
     getProductAnalysis: getProductAnalysis,
     getInvitePassRate: getInvitePassRate,
+    getMaterialDashboard: getMaterialDashboard,
+    getPassRateAnalysis: getPassRateAnalysis,
     getReinvestAnalysis: getReinvestAnalysis,
     getOrderCreatorRanking: getOrderCreatorRanking,
     getCreatorSKUBreakdown: getCreatorSKUBreakdown,

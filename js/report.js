@@ -21,11 +21,12 @@
     tabs.forEach(function (t) {
       t.classList.toggle('active', t.getAttribute('data-view') === view);
     });
-    ['trend', 'attribution'].forEach(function (v) {
+    ['trend', 'attribution', 'passrate'].forEach(function (v) {
       var el = document.getElementById('view-' + v);
       if (el) el.style.display = v === view ? '' : 'none';
     });
     if (view === 'attribution') renderAttributionView();
+    if (view === 'passrate') renderPassRateView();
   }
 
   function initViewTabs() {
@@ -248,11 +249,131 @@
   }
 
   /* ================================================================
+     视图3: 通过率（通过率 = 寄样量 ÷ 邀约实际数量/达成量）
+     支持筛选时间（默认当月），或 SKU+时间组合
+     ================================================================ */
+  function renderPassRateView() {
+    renderPassRateMetrics();
+    renderPassRateTrend();
+    renderPassRateSKU();
+  }
+
+  function getPassRateData() {
+    return Data.getPassRateAnalysis(filterState.startDate || null, filterState.endDate || null, filterState.sku || null);
+  }
+
+  function renderPassRateMetrics() {
+    var container = document.getElementById('passrate-metrics');
+    if (!container) return;
+    var p = getPassRateData();
+    var rateText = p.overallPassRate === null ? '—' : p.overallPassRate + '%';
+    var rangeText = '';
+    if (filterState.sku) rangeText += 'SKU ' + filterState.sku + ' · ';
+    if (filterState.startDate && filterState.endDate) rangeText += filterState.startDate + ' ~ ' + filterState.endDate;
+    else if (filterState.startDate) rangeText += filterState.startDate + ' ~ …';
+    else if (filterState.endDate) rangeText += '… ~ ' + filterState.endDate;
+    else rangeText += '全部时间';
+    // 趋势方向：对比最近两个有邀约的月份
+    var valid = p.monthly.filter(function (m) { return m.inviteReached > 0; });
+    var trendHtml = '—';
+    if (valid.length >= 2) {
+      var prev = valid[valid.length - 2], curr = valid[valid.length - 1];
+      if (curr.passRate !== null && prev.passRate !== null) {
+        var diff = Math.round((curr.passRate - prev.passRate) * 100) / 100;
+        var color = diff > 0 ? 'var(--c-success)' : diff < 0 ? 'var(--c-danger)' : 'var(--text-2)';
+        trendHtml = '<span style="color:' + color + ';">' + (diff > 0 ? '+' : '') + diff + '%</span>'
+          + '<div style="font-size:10px;color:var(--text-3);font-weight:400;">' + prev.month + '→' + curr.month + '</div>';
+      }
+    }
+    container.innerHTML = ''
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + rateText + '</div><div class="stat-card__label">整体通过率</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + App.formatNumber(p.totalSampleCount) + '</div><div class="stat-card__label">寄样量</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-primary);">' + App.formatNumber(p.totalInviteReached) + '</div><div class="stat-card__label">邀约实际数量</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value">' + trendHtml + '</div><div class="stat-card__label">通过率环比</div></div>'
+      + '<div style="grid-column:1/-1;font-size:11px;color:var(--text-3);padding:0 4px 4px;">当前筛选：' + App.escapeHtml(rangeText) + ' · ' + p.totalPlanCount + ' 个邀约计划 · 通过率 = 寄样量 ÷ 邀约达成量</div>';
+  }
+
+  function renderPassRateTrend() {
+    var container = document.getElementById('passrate-trend-chart');
+    if (!container) return;
+    var p = getPassRateData();
+    var pts = p.monthly.filter(function (m) { return m.inviteReached > 0 || m.sampleCount > 0; });
+    if (pts.length === 0) { container.innerHTML = '<div style="padding:16px;color:var(--text-3);font-size:13px;text-align:center;">暂无月度数据</div>'; return; }
+
+    var W = 680, H = 220, padL = 44, padB = 32, padT = 20, padR = 24;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var maxR = Math.max.apply(null, pts.map(function (m) { return m.passRate || 0; }).concat([0.1]));
+    var n = pts.length;
+    var step = n > 1 ? plotW / (n - 1) : 0;
+    var coords = pts.map(function (m, i) {
+      return {
+        x: n > 1 ? padL + i * step : padL + plotW / 2,
+        y: padT + plotH - ((m.passRate || 0) / maxR * plotH),
+        m: m,
+      };
+    });
+    var line = coords.map(function (c) { return c.x + ',' + c.y; }).join(' ');
+    var dots = coords.map(function (c, i) {
+      var anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
+      return '<circle cx="' + c.x + '" cy="' + c.y + '" r="4" fill="var(--pink-500)" stroke="#fff" stroke-width="2">'
+        + '<title>' + c.m.month + ' 通过率 ' + (c.m.passRate === null ? '—' : c.m.passRate + '%') + '（寄样 ' + c.m.sampleCount + ' / 邀约 ' + App.formatNumber(c.m.inviteReached) + '）</title></circle>'
+        + '<text x="' + c.x + '" y="' + (H - 10) + '" font-size="10" fill="#9b8e8e" text-anchor="' + anchor + '">' + c.m.month.slice(2) + '</text>'
+        + '<text x="' + c.x + '" y="' + (c.y - 8) + '" font-size="9" fill="var(--pink-600)" text-anchor="' + anchor + '">' + (c.m.passRate === null ? '' : c.m.passRate + '%') + '</text>';
+    }).join('');
+    var yTicks = [0, maxR / 2, maxR].map(function (v) {
+      var y = padT + plotH - (v / maxR * plotH);
+      return '<text x="' + (padL - 6) + '" y="' + (y + 3) + '" font-size="9" fill="#9b8e8e" text-anchor="end">' + (Math.round(v * 100) / 100) + '%</text>';
+    }).join('');
+    container.innerHTML = '<div style="padding:8px 4px;">'
+      + '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;">'
+      + '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (padT + plotH) + '" stroke="#efe6e6"/>'
+      + '<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' + (padT + plotH) + '" stroke="#efe6e6"/>'
+      + yTicks
+      + '<polyline points="' + line + '" fill="none" stroke="var(--pink-500)" stroke-width="2" stroke-linejoin="round"/>'
+      + dots
+      + '</svg>'
+      + '<div style="font-size:11px;color:var(--text-3);margin-top:6px;">月度通过率 = 当月寄样量 ÷ 当月邀约达成量（悬停查看各月明细）</div></div>';
+  }
+
+  function renderPassRateSKU() {
+    var container = document.getElementById('passrate-sku-table');
+    if (!container) return;
+    var p = getPassRateData();
+    if (p.skuRanking.length === 0) { container.innerHTML = '<div style="padding:16px;color:var(--text-3);font-size:13px;text-align:center;">暂无数据</div>'; return; }
+    // 只展示有寄样或有邀约的 SKU，最多 15 行
+    var rows = p.skuRanking.slice(0, 15);
+    var html = '<div style="padding:4px 0;">'
+      + '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);padding:0 4px 8px;border-bottom:1px solid var(--border-1);font-weight:600;">'
+      + '<span style="flex:1;">SKU</span><span style="width:80px;text-align:right;">寄样量</span><span style="width:90px;text-align:right;">邀约达成</span><span style="width:70px;text-align:right;">通过率</span>'
+      + '</div>';
+    var maxRate = Math.max.apply(null, rows.map(function (r) { return r.passRate || 0; }).concat([0.1]));
+    rows.forEach(function (r) {
+      var rateText = r.passRate === null ? '—' : r.passRate + '%';
+      var barW = Math.round((r.passRate || 0) / maxRate * 100);
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 4px;border-bottom:1px solid var(--border-1);">'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-size:13px;font-weight:600;color:var(--text-1);">SKU ' + App.escapeHtml(r.sku)
+        + (r.productName ? ' <span style="font-size:11px;color:var(--text-3);font-weight:400;">' + App.escapeHtml(r.productName) + '</span>' : '') + '</div>'
+        + '<div style="height:5px;background:var(--bg-pink-soft);border-radius:3px;overflow:hidden;margin-top:4px;max-width:200px;">'
+        + '<div style="height:100%;width:' + barW + '%;background:var(--pink-400);border-radius:3px;"></div></div>'
+        + '</div>'
+        + '<span style="width:80px;text-align:right;font-size:12px;color:var(--text-2);font-weight:600;">' + r.sampleCount + '</span>'
+        + '<span style="width:90px;text-align:right;font-size:12px;color:var(--text-2);">' + App.formatNumber(r.inviteReached) + '</span>'
+        + '<span style="width:70px;text-align:right;font-size:13px;font-weight:700;color:' + (r.passRate === null ? 'var(--text-3)' : 'var(--pink-600)') + ';">' + rateText + '</span>'
+        + '</div>';
+    });
+    html += '</div>'
+      + '<div style="font-size:11px;color:var(--text-3);margin-top:8px;">某 SKU 通过率 = 该 SKU 寄样量 ÷ 该 SKU 邀约达成量（受当前时间筛选影响）</div>';
+    container.innerHTML = html;
+  }
+
+  /* ================================================================
      主渲染
      ================================================================ */
   function render() {
     renderTrendView();
     renderAttributionView();
+    renderPassRateView();
   }
 
   function init() {

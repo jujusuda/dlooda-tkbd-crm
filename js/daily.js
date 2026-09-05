@@ -21,7 +21,7 @@
   // 今日工作完成 6 项定义（顺序与日报预览一致）
   var STAT_DEFS = [
     { key: 'sample',     label: '今日寄样',     autoKey: 'todaySampleCount',     unit: '条' },
-    { key: 'video',      label: '今日登记视频', autoKey: 'todayVideoCreatorCount', unit: '位达人', subKey: 'todayVideoCount', subUnit: '条视频', hint: 'video' },
+    { key: 'video',      label: '今日登记视频', autoKey: 'todayVideoCreatorCount', unit: '位达人', subKey: 'todayVideoCount', subUnit: '条素材', hint: 'video' },
     { key: 'newCreator', label: '今日开发达人', autoKey: 'todayNewCreatorCount', unit: '位' },
     { key: 'auto',       label: '今日自动通过', autoKey: 'todayAutoCount',       unit: '位' },
     { key: 'ordered',    label: '今日出单',     autoKey: 'todayOrderedCount',    unit: '条' },
@@ -108,7 +108,7 @@
           ? ' <span style="color:var(--c-warning);">（该日暂无登记视频）</span>'
           : '';
         hintHtml = '<div style="font-size:10px;color:var(--text-3);margin-top:2px;">'
-          + '统计「更新时间=' + d.todayStr + '」且视频时间=' + d.videoStatDate + ' 的视频（登记日 -' + (d.videoLagDays || 2) + '天：美国时区 -1 + 抓取延迟 -1）' + zeroNote
+          + '统计视频时间=' + d.videoStatDate + ' 的素材（视频时间 = 登记日 -' + (d.videoLagDays || 2) + '天：美国时区 -1 + 抓取延迟 -1）；达人数按寄样行数计' + zeroNote
           + '</div>';
       }
       return ''
