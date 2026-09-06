@@ -42,24 +42,33 @@
      视图1: SKU 出单率趋势
      ================================================================ */
   function renderTrendView() {
-    var trend = Data.getSKUTrendAnalysis(filterState.sku || null);
-    var changes = Data.getSKUAttributionAnalysis(filterState.sku || null);
-    renderTrendMetrics(trend, changes);
+    var sku = filterState.sku || null;
+    var startDate = filterState.startDate || null;
+    var endDate = filterState.endDate || null;
+    var trend = Data.getSKUTrendAnalysis(sku, startDate, endDate);
+    var changes = Data.getSKUAttributionAnalysis(sku, startDate, endDate);
+    // 顶部核心指标：按当前筛选范围(含时间)聚合的出单率 = 出单达人 ÷ 履约达人
+    var agg = Data.getSKUOrderRateInRange(sku, startDate, endDate);
+    renderTrendMetrics(trend, changes, agg);
     renderSKUTrendChart(trend);
     renderSKUChangeRanking(changes);
   }
 
-  function renderTrendMetrics(trend, changes) {
+  function renderTrendMetrics(trend, changes, agg) {
     var container = document.getElementById('trend-metrics');
     if (!container) return;
     var skuSet = {};
     trend.forEach(function (r) { skuSet[r.sku] = true; });
     var up = changes.filter(function (c) { return c.direction === 'up'; }).length;
     var down = changes.filter(function (c) { return c.direction === 'down'; }).length;
-    var avgRate = trend.length > 0 ? Math.round(trend.reduce(function (s, r) { return s + r.orderRate; }, 0) / trend.length * 10) / 10 : 0;
+    var heroRate = agg && typeof agg.orderRate === 'number' ? agg.orderRate : 0;
+    var hasRange = !!(filterState.startDate || filterState.endDate);
+    // 出单率 = 出单达人 ÷ 履约达人（带/不带时间筛选都在当前范围内聚合，而非各月均值）
+    var heroLabel = hasRange ? '区间出单率' : '整体出单率';
+    var heroNote = '出单 ' + agg.orderedCreators + ' ÷ 履约 ' + agg.fulfilledCreators;
     container.innerHTML = ''
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + Object.keys(skuSet).length + '</div><div class="stat-card__label">统计 SKU</div></div>'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + avgRate + '%</div><div class="stat-card__label">月均出单率</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + heroRate + '%</div><div class="stat-card__label">' + heroLabel + '<span style="font-size:10px;color:var(--text-3);display:block;font-weight:400;margin-top:2px;">' + heroNote + '</span></div></div>'
       + '<div class="stat-card"><div class="stat-card__value change-up">' + up + '</div><div class="stat-card__label">上升 SKU</div></div>'
       + '<div class="stat-card"><div class="stat-card__value change-down">' + down + '</div><div class="stat-card__label">下降 SKU</div></div>';
   }

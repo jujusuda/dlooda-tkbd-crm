@@ -2073,9 +2073,10 @@
   }
 
   // SKU 出单率趋势：按月份统计每个SKU的出单率（用于复盘）
-  function getSKUTrendAnalysis(skuFilter) {
+  function getSKUTrendAnalysis(skuFilter, startDate, endDate) {
     var samples = D.samples;
     if (skuFilter) samples = samples.filter(function (s) { return s.sku === skuFilter; });
+    if (startDate || endDate) samples = samples.filter(function (s) { return s.sampleTime && attrInRange(s.sampleTime, { start: startDate, end: endDate }); });
     var byMonth = {};
     samples.forEach(function (s) {
       if (!s.sku || !s.sampleTime) return;
@@ -2138,6 +2139,13 @@
     return true;
   }
 
+  // 取区间开始时间的可排序 key（YYYY-MM 或 YYYY-MM-DD 统一成 YYYY-MM-DD）
+  function rangeStartKey(range) {
+    if (!range || !range.start) return '';
+    var v = range.start;
+    return v.length === 7 ? v + '-01' : v;
+  }
+
   // 时间段标签：YYYY-MM 或 YYYY-MM~YYYY-MM
   function attrLabel(range) {
     if (!range) return '';
@@ -2155,11 +2163,20 @@
     var prevSamples, currSamples, prevMonth, currMonth;
 
     if (rangeA && rangeB && (rangeA.start || rangeA.end || rangeB.start || rangeB.end)) {
-      // 自定义两个时间段对比
-      prevSamples = samples.filter(function (s) { return attrInRange(s.sampleTime, rangeA); });
-      currSamples = samples.filter(function (s) { return attrInRange(s.sampleTime, rangeB); });
-      prevMonth = attrLabel(rangeA) || '区间A';
-      currMonth = attrLabel(rangeB) || '区间B';
+      // 自定义两个时间段对比。按时间先后决定 curr(较晚)/prev(较早)，
+      // 避免用户输入框顺序与时间顺序不一致时"位置错乱、方向颠倒"。
+      var kA = rangeStartKey(rangeA), kB = rangeStartKey(rangeB);
+      var aLater;
+      if (!kA && !kB) aLater = true;      // 都取不到开始时间，保持默认 A=prev / B=curr
+      else if (!kA) aLater = false;       // A 无法判定 => 视 B 为较晚
+      else if (!kB) aLater = true;        // B 无法判定 => 视 A 为较晚
+      else aLater = kA >= kB;             // 开始时间较晚者作为 curr
+      var currRange = aLater ? rangeA : rangeB;
+      var prevRange = aLater ? rangeB : rangeA;
+      prevSamples = samples.filter(function (s) { return attrInRange(s.sampleTime, prevRange); });
+      currSamples = samples.filter(function (s) { return attrInRange(s.sampleTime, currRange); });
+      prevMonth = attrLabel(prevRange) || '前一区间';
+      currMonth = attrLabel(currRange) || '当前区间';
       if (prevSamples.length === 0 && currSamples.length === 0) return null;
     } else {
       // 默认：最近两个月
@@ -2219,8 +2236,8 @@
   }
 
   // SKU 升降归因：对比最近两个月，输出变化维度
-  function getSKUAttributionAnalysis(skuFilter) {
-    var trend = getSKUTrendAnalysis(skuFilter);
+  function getSKUAttributionAnalysis(skuFilter, startDate, endDate) {
+    var trend = getSKUTrendAnalysis(skuFilter, startDate, endDate);
     var bySku = {};
     trend.forEach(function (r) { if (!bySku[r.sku]) bySku[r.sku] = []; bySku[r.sku].push(r); });
     var result = [];
@@ -2240,6 +2257,23 @@
       });
     });
     return result.sort(function (a, b) { return Math.abs(b.diff || 0) - Math.abs(a.diff || 0); });
+  }
+
+  // 指定 SKU + (可选)日期区间内的「整体出单率」= 出单达人 ÷ 履约达人。
+  // 用于复盘页顶部的核心指标：无论是否带时间筛选，都按当前筛选范围做一次聚合，
+  // 而不是"各月出单率的平均值"（避免 7.15-8.15 只应显示 8.9% 却显示全历史均值）。
+  function getSKUOrderRateInRange(sku, startDate, endDate) {
+    var samples = D.samples;
+    if (sku) samples = samples.filter(function (s) { return s.sku === sku; });
+    if (startDate || endDate) samples = samples.filter(function (s) { return s.sampleTime && attrInRange(s.sampleTime, { start: startDate, end: endDate }); });
+    var fulfilled = {}, ordered = {};
+    samples.forEach(function (s) {
+      var m = s.fulfillMethod || '';
+      if (m === '视频' || m.indexOf('直播') >= 0) fulfilled[s.creator] = true;
+      if (s.orderCount && s.orderCount > 0) ordered[s.creator] = true;
+    });
+    var f = Object.keys(fulfilled).length, o = Object.keys(ordered).length;
+    return { sampleCount: samples.length, fulfilledCreators: f, orderedCreators: o, orderRate: f > 0 ? Math.round(o / f * 1000) / 10 : 0 };
   }
 
   // 综合数据看板
@@ -2428,6 +2462,7 @@
     getSKUTrendAnalysis: getSKUTrendAnalysis,
     getSKUAttributionAnalysis: getSKUAttributionAnalysis,
     getSKUAttributionDetail: getSKUAttributionDetail,
+    getSKUOrderRateInRange: getSKUOrderRateInRange,
     getAvailableSKUs: getAvailableSKUs,
     getTodayStr: getTodayStr,
     // AI辅助
