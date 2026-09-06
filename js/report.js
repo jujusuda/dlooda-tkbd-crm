@@ -92,7 +92,7 @@
       return { month: m, rate: o.fulfilled > 0 ? Math.round(o.ordered / o.fulfilled * 1000) / 10 : 0 };
     });
 
-    var W = 680, H = 250, padL = 48, padB = 46, padT = 18, padR = 32;
+    var W = 680, H = 285, padL = 52, padB = 78, padT = 18, padR = 36;
     var plotW = W - padL - padR, plotH = H - padT - padB;
     var maxR = Math.max.apply(null, pts.map(function (p) { return p.rate; }).concat([1]));
     var n = pts.length;
@@ -107,8 +107,9 @@
     var dots = coords.map(function (c) {
       return '<circle cx="' + c.x + '" cy="' + c.y + '" r="4" fill="var(--pink-500)" stroke="#fff" stroke-width="2"><title>' + c.p.month + ' 出单率 ' + c.p.rate + '%</title></circle>';
     }).join('');
-    var labels = coords.map(function (c, i) {
-      return '<text x="' + c.x + '" y="' + (H - 12) + '" font-size="10" fill="#9b8e8e" text-anchor="' + (i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle') + '">' + c.p.month + '</text>';
+    // x 轴月份标签统一斜排（-40°），避免点距过近时左右两侧标签相互重叠/被裁切
+    var labels = coords.map(function (c) {
+      return '<text x="' + c.x + '" y="' + (H - 16) + '" font-size="10" fill="#9b8e8e" text-anchor="end" transform="rotate(-40 ' + c.x + ' ' + (H - 16) + ')">' + c.p.month + '</text>';
     }).join('');
     var yTicks = [0, maxR / 2, maxR].map(function (v) {
       var y = padT + plotH - (v / maxR * plotH);
