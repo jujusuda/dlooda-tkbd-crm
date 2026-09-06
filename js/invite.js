@@ -313,7 +313,7 @@
       passRateState.startDate = start || '';
       passRateState.endDate = end || '';
       renderPassRate();
-    }, { showSku: false, show7Days: false });
+    }, { showSku: false, show7Days: false, pageId: 'invite-passrate' });
 
     renderPassRate();
     renderGroupedList();

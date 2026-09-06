@@ -10,6 +10,11 @@
   var Data = global.DloodaData;
 
   var currentFilter = 'all';
+  // 启动时尝试恢复筛选缓存（5 分钟内有效）
+  (function () {
+    var saved = App.loadFilterState('sample');
+    if (saved && typeof saved.tab === 'string') currentFilter = saved.tab;
+  })();
   var currentSku = '';
   var currentKeyword = '';
   var startDate = '';
@@ -109,6 +114,7 @@
     container.querySelectorAll('.filter-tab').forEach(function (tab) {
       tab.addEventListener('click', function () {
         currentFilter = this.getAttribute('data-filter');
+        App.saveFilterState('sample', { tab: currentFilter });
         renderTabs();
         renderList();
       });

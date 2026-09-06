@@ -12,6 +12,11 @@
 
   // null = 今天；否则为 YYYY-MM-DD
   var currentDailyDate = null;
+  // 启动时尝试恢复筛选缓存（5 分钟内有效）
+  (function () {
+    var saved = App.loadFilterState('daily');
+    if (saved && typeof saved.date === 'string') currentDailyDate = saved.date;
+  })();
   // 正在编辑的补充说明条目索引（-1 表示无）
   var editingNoteIndex = -1;
 
@@ -517,20 +522,24 @@
 
     if (dateInput) {
       dateInput.max = Data.getTodayStr();
-      if (!currentDailyDate) dateInput.value = Data.getTodayStr();
+      // 同步初始日期（已恢复缓存时也要显示对应日期）
+      dateInput.value = currentDailyDate || Data.getTodayStr();
       dateInput.addEventListener('change', function () {
         currentDailyDate = dateInput.value || null;
+        App.saveFilterState('daily', { date: currentDailyDate });
         rerender();
       });
     }
     if (btnToday) btnToday.addEventListener('click', function () {
       currentDailyDate = null;
       if (dateInput) dateInput.value = Data.getTodayStr();
+      App.saveFilterState('daily', { date: currentDailyDate });
       rerender();
     });
     if (btnPrev) btnPrev.addEventListener('click', function () {
       currentDailyDate = shiftDate(currentDailyDate || Data.getTodayStr(), -1);
       if (dateInput) dateInput.value = currentDailyDate;
+      App.saveFilterState('daily', { date: currentDailyDate });
       rerender();
     });
     if (btnNext) btnNext.addEventListener('click', function () {
@@ -539,6 +548,7 @@
       if (base >= Data.getTodayStr()) return;
       currentDailyDate = shiftDate(base, 1);
       if (dateInput) dateInput.value = currentDailyDate;
+      App.saveFilterState('daily', { date: currentDailyDate });
       rerender();
     });
     if (btnReset) btnReset.addEventListener('click', function () {

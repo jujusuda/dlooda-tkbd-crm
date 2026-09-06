@@ -386,7 +386,7 @@
       var select = document.getElementById('attr-sku-select');
       if (select) select.innerHTML = '';
       render();
-    });
+    }, { pageId: 'report' });
     render();
   }
 

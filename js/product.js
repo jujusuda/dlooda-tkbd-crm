@@ -9,6 +9,11 @@
   var App = global.DloodaApp;
   var Data = global.DloodaData;
   var currentFilter = 'all';
+  // 启动时尝试恢复筛选缓存（5 分钟内有效）
+  (function () {
+    var saved = App.loadFilterState('product');
+    if (saved && typeof saved.tab === 'string') currentFilter = saved.tab;
+  })();
 
   /* ---------- 渲染筛选 tabs ---------- */
   function renderFilterTabs() {
@@ -31,6 +36,7 @@
     container.querySelectorAll('.filter-tab').forEach(function (tab) {
       tab.addEventListener('click', function () {
         currentFilter = tab.getAttribute('data-type');
+        App.saveFilterState('product', { tab: currentFilter });
         renderFilterTabs();
         renderList();
       });

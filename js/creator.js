@@ -12,6 +12,14 @@
 
   var currentFilter = 'all';
   var currentKeyword = '';
+  // 启动时尝试恢复筛选缓存（5 分钟内有效）
+  (function () {
+    var saved = App.loadFilterState('creator');
+    if (saved) {
+      if (typeof saved.tab === 'string') currentFilter = saved.tab;
+      if (typeof saved.search === 'string') currentKeyword = saved.search;
+    }
+  })();
 
   /* ---------- 筛选 tabs ---------- */
   var FILTERS = [
@@ -87,6 +95,7 @@
     container.querySelectorAll('.filter-tab').forEach(function (tab) {
       tab.addEventListener('click', function () {
         currentFilter = this.getAttribute('data-filter');
+        App.saveFilterState('creator', { tab: currentFilter, search: currentKeyword });
         renderFilterTabs();
         renderCreatorList();
       });
@@ -196,10 +205,15 @@
     if (!searchInput) return;
 
     var debounceTimer;
+    searchInput.addEventListener('change', function () {
+      // change 触发时把 input 的初始值（DOM 默认）同步给 currentKeyword
+      currentKeyword = searchInput.value;
+    });
     searchInput.addEventListener('input', function () {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(function () {
         currentKeyword = searchInput.value;
+        App.saveFilterState('creator', { tab: currentFilter, search: currentKeyword });
         renderCreatorList();
       }, 300);
     });
@@ -207,6 +221,8 @@
 
   /* ---------- 初始化 ---------- */
   function init() {
+    var searchInput = document.getElementById('creator-search');
+    if (searchInput && currentKeyword) searchInput.value = currentKeyword;
     renderFilterTabs();
     renderCreatorList();
     bindSearch();

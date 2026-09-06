@@ -275,15 +275,23 @@
     init();
   }
 
-  /* ---------- 共享筛选栏组件 ---------- */
+  /* ---------- 共享筛选栏组件 ----------
+   * opts.pageId  : 用于 localStorage 缓存键，默认 = containerId
+   * opts.persist : 是否启用 5 分钟跨模块缓存（默认 true）
+   */
   function createFilterBar(containerId, onChange, opts) {
     opts = opts || {};
     var container = document.getElementById(containerId);
     if (!container) return null;
+    var pageId = opts.pageId || containerId;
+    var persist = opts.persist !== false;
 
     var Data = global.DloodaData;
     var skus = Data ? Data.getAvailableSKUs() : [];
     var showSku = opts.showSku !== false;
+
+    // 启动时尝试恢复缓存（5 分钟内有效，过期自动忽略）
+    var saved = persist ? loadFilterState(pageId) : null;
 
     var skuOptions = '<option value="">全部 SKU</option>' + skus.map(function (sku) {
       return '<option value="' + escapeHtml(sku) + '">SKU ' + escapeHtml(sku) + '</option>';
@@ -300,9 +308,15 @@
       +   '<button class="filter-btn filter-btn--clear" data-action="clear">清除</button>'
       + '</div>';
 
-    var state = { sku: '', startDate: '', endDate: '' };
+    var state = {
+      sku: saved && saved.sku || '',
+      startDate: saved && saved.startDate || '',
+      endDate: saved && saved.endDate || '',
+      restored: !!saved,  // 是否本次是从缓存恢复的（用于让页面显示「已恢复」提示）
+    };
 
-    function trigger() {
+    function trigger(optsSilent) {
+      if (persist) saveFilterState(pageId, state);
       if (onChange) onChange(state.sku, state.startDate, state.endDate);
     }
 
@@ -314,6 +328,11 @@
     var maxDate = Data ? Data.getTodayStr() : '';
     if (startEl) startEl.max = maxDate;
     if (endEl) endEl.max = maxDate;
+
+    // 把恢复出来的值同步到 DOM（否则用户看到的是默认空，但 state 已填充，会不一致）
+    if (skuSel && state.sku) skuSel.value = state.sku;
+    if (startEl && state.startDate) startEl.value = state.startDate;
+    if (endEl && state.endDate) endEl.value = state.endDate;
 
     if (skuSel) {
       skuSel.addEventListener('change', function () {
@@ -366,6 +385,17 @@
         }
       });
     });
+
+    // 如果是从缓存恢复的，触发一次 onChange 让页面用恢复的筛选重渲；保存状态再次刷新时间戳
+    if (state.restored) {
+      if (persist) saveFilterState(pageId, state);
+      if (onChange) onChange(state.sku, state.startDate, state.endDate);
+      // 给个轻提示（toast 由页面层自行处理更优，但这里给一个兜底）
+      if (typeof showToast === 'function' && !opts.silentRestore) {
+        var hasAny = !!(state.sku || state.startDate || state.endDate);
+        if (hasAny) showToast('已恢复上次的筛选 ✨');
+      }
+    }
 
     return {
       getState: function () { return state; },
@@ -448,6 +478,58 @@
   }
   function saveStorage(key, value) {
     try { global.localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+  }
+
+  /* ---------- 筛选条件跨模块缓存 ----------
+   * 需求：用户在某模块设了筛选 → 切换到其他模块 → 在 5 分钟内再回来，筛选自动恢复；
+   *       超过 5 分钟没有回到该模块，缓存自动作废。
+   * 实现：localStorage 存 {savedAt, state}，TTL = 5 分钟；懒检查（仅在进入模块时比对时间戳，无需定时器）
+   * 工具函数直接 App.saveFilterState / loadFilterState / clearFilterState / clearAllFilterStates
+   */
+  var FILTER_CACHE_PREFIX = 'dlooda_filter_';
+  var FILTER_CACHE_TTL_MS = 5 * 60 * 1000; // 5 分钟
+
+  function saveFilterState(pageId, state) {
+    if (!pageId) return;
+    try {
+      global.localStorage.setItem(FILTER_CACHE_PREFIX + pageId, JSON.stringify({
+        savedAt: Date.now(),
+        state: state || null,
+      }));
+    } catch (e) {}
+  }
+
+  // 返回 state 对象；过期（>5 min）或不存在则返回 null，并顺手清除
+  function loadFilterState(pageId) {
+    if (!pageId) return null;
+    try {
+      var key = FILTER_CACHE_PREFIX + pageId;
+      var raw = global.localStorage.getItem(key);
+      if (!raw) return null;
+      var entry = JSON.parse(raw);
+      var age = Date.now() - (entry && entry.savedAt || 0);
+      if (!entry || age > FILTER_CACHE_TTL_MS || age < -1000) {
+        global.localStorage.removeItem(key);
+        return null;
+      }
+      return entry.state || null;
+    } catch (e) { return null; }
+  }
+
+  function clearFilterState(pageId) {
+    try {
+      if (pageId) {
+        global.localStorage.removeItem(FILTER_CACHE_PREFIX + pageId);
+      } else {
+        // 清全部
+        var keys = [];
+        for (var i = 0; i < global.localStorage.length; i++) {
+          var k = global.localStorage.key(i);
+          if (k && k.indexOf(FILTER_CACHE_PREFIX) === 0) keys.push(k);
+        }
+        keys.forEach(function (k) { global.localStorage.removeItem(k); });
+      }
+    } catch (e) {}
   }
 
   // 写回飞书：POST /api/push -> 后端调飞书 updateRecord
@@ -799,6 +881,12 @@
     loadStorage: loadStorage,
     saveStorage: saveStorage,
     pushToFeishu: pushToFeishu,
+    // 筛选条件跨模块缓存（5 分钟 TTL）
+    saveFilterState: saveFilterState,
+    loadFilterState: loadFilterState,
+    clearFilterState: clearFilterState,
+    clearAllFilterStates: clearFilterState,  // 不传 pageId 即清全部
+    FILTER_CACHE_TTL_MS: FILTER_CACHE_TTL_MS,
   };
 
 })(window);

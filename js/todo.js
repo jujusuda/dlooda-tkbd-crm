@@ -22,6 +22,11 @@
 
   var STORAGE_KEY = 'dlooda_todo_data';
   var currentDate = '';
+  // 启动时尝试恢复筛选缓存（5 分钟内有效）
+  (function () {
+    var saved = App.loadFilterState('todo');
+    if (saved && typeof saved.date === 'string') currentDate = saved.date;
+  })();
 
   function getTodayStr() {
     var d = new Date();
@@ -167,6 +172,7 @@
   /* ---------- 日期更新 ---------- */
   function setDate(dateStr) {
     currentDate = dateStr;
+    App.saveFilterState('todo', { date: currentDate });
     var dateInput = document.getElementById('todo-date-input');
     if (dateInput) dateInput.value = dateStr;
 
@@ -227,7 +233,8 @@
 
   /* ---------- 初始化 ---------- */
   function init() {
-    currentDate = getTodayStr();
+    // 优先用缓存日期，否则默认今天
+    currentDate = currentDate || getTodayStr();
     setDate(currentDate);
 
     var dateInput = document.getElementById('todo-date-input');

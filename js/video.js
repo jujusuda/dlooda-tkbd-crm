@@ -497,7 +497,7 @@
         if (viewMode === 'analysis') renderAnalysis();
         else if (viewMode === 'material') renderMaterial();
         else renderList();
-      });
+      }, { pageId: 'video-list' });
     }
 
     var listBtn = document.getElementById('btn-view-list');

@@ -523,7 +523,7 @@
       filterState.startDate = startDate;
       filterState.endDate = endDate;
       renderAll();
-    });
+    }, { pageId: 'dashboard' });
     // 切换标签时只渲染目标区块（已由后台预渲染的会瞬间显示）
     var tabs = Array.prototype.slice.call(document.querySelectorAll('.analysis-tab'));
     tabs.forEach(function (tab) {
