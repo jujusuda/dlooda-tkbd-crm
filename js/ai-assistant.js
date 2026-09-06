@@ -722,11 +722,8 @@
     if (!sel) return;
 
     var details = Data.getAllSKUDetails();
-    // 按优先级排序：high > medium > low
-    var priorityOrder = { high: 0, medium: 1, low: 2 };
-    details.sort(function (a, b) {
-      return (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1);
-    });
+    // 按定位档位排序：爆品 → 销售 → 测品 → 撤退（同档再按优先级、SKU）
+    if (Data.sortByPositioning) details = Data.sortByPositioning(details);
 
     var html = '<option value="">自动推荐</option>';
     details.forEach(function (d) {

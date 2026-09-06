@@ -966,12 +966,16 @@
     return result;
   }
 
-  // 获取所有可选SKU列表（用于筛选下拉）
+  // 获取所有可选SKU列表（用于筛选下拉），按定位档位排序：爆品 → 销售 → 测品 → 撤退
   function getAvailableSKUs() {
     var skuSet = {};
     D.samples.forEach(function (s) { if (s.sku) skuSet[s.sku] = true; });
     D.skus.forEach(function (s) { if (s.sku) skuSet[s.sku] = true; });
-    return Object.keys(skuSet).sort();
+    return Object.keys(skuSet).sort(function (a, b) {
+      var ta = getSKUPositionTier(a), tb = getSKUPositionTier(b);
+      if (ta !== tb) return ta - tb;
+      return String(a).localeCompare(String(b));
+    });
   }
 
   // 样品看板：按SKU + 时间范围筛选，返回合作情况统计

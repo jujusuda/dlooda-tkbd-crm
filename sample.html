@@ -29,17 +29,15 @@
       <!-- 状态统计 -->
       <div class="stat-grid" id="sample-stats"></div>
 
-      <!-- 时间筛选 -->
+      <!-- 时间 + SKU 筛选 -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <select class="filter-select" id="sku-select" style="min-width:150px;"></select>
         <input type="date" class="input" id="date-start" style="width:auto;font-size:12px;padding:6px 8px;">
         <span style="font-size:12px;color:var(--text-3);">至</span>
         <input type="date" class="input" id="date-end" style="width:auto;font-size:12px;padding:6px 8px;">
         <button class="btn btn--ghost btn--sm" id="btn-quick-month" style="font-size:11px;">本月</button>
         <button class="btn btn--ghost btn--sm" id="btn-clear-date" style="font-size:11px;">清除</button>
       </div>
-
-      <!-- SKU 筛选 -->
-      <div class="filter-tabs" id="sku-tabs" style="margin-bottom:8px;"></div>
 
       <!-- 搜索 -->
       <div class="search-bar" style="margin-bottom:12px;">

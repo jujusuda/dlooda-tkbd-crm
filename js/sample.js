@@ -54,29 +54,17 @@
     return true;
   }
 
-  /* ---------- 渲染 SKU 筛选条 ---------- */
-  function renderSkuTabs() {
-    var container = document.getElementById('sku-tabs');
+  /* ---------- 渲染 SKU 下拉筛选 ---------- */
+  // getAvailableSKUs 已按定位档位排序：爆品 → 销售 → 测品 → 撤退
+  function renderSkuSelect() {
+    var container = document.getElementById('sku-select');
     if (!container) return;
-    var stats = Data.getSampleStats();
-    var topSKUs = Object.entries(stats.bySKU)
-      .sort(function (a, b) { return b[1] - a[1]; })
-      .slice(0, 8)
-      .map(function (e) { return e[0]; });
-
-    var tabs = '<button class="filter-tab' + (!currentSku ? ' active' : '') + '" data-sku="">全部 SKU<span class="count">' + stats.total + '</span></button>';
-    topSKUs.forEach(function (sku) {
-      tabs += '<button class="filter-tab' + (currentSku === sku ? ' active' : '') + '" data-sku="' + App.escapeHtml(sku) + '">SKU ' + App.escapeHtml(sku) + '<span class="count">' + stats.bySKU[sku] + '</span></button>';
-    });
-    container.innerHTML = tabs;
-    container.querySelectorAll('.filter-tab').forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        currentSku = tab.getAttribute('data-sku');
-        renderSkuTabs();
-        if (viewMode === 'dashboard') renderDashboard();
-        else renderList();
-      });
-    });
+    var skus = Data.getAvailableSKUs();
+    var html = '<option value="">全部 SKU</option>' + skus.map(function (sku) {
+      return '<option value="' + App.escapeHtml(sku) + '">SKU ' + App.escapeHtml(sku) + '</option>';
+    }).join('');
+    container.innerHTML = html;
+    if (currentSku) container.value = currentSku;
   }
 
   /* ---------- 渲染状态统计 ---------- */
@@ -342,10 +330,21 @@
 
   function init() {
     renderStats();
-    renderSkuTabs();
+    renderSkuSelect();
     renderTabs();
     renderList();
     bindSearch();
+
+    var skuSel = document.getElementById('sku-select');
+    if (skuSel) {
+      skuSel.addEventListener('change', function () {
+        currentSku = skuSel.value;
+        renderStats();
+        renderTabs();
+        if (viewMode === 'dashboard') renderDashboard();
+        else renderList();
+      });
+    }
 
     var listBtn = document.getElementById('btn-view-list');
     if (listBtn) listBtn.addEventListener('click', function () { switchView('list'); });
