@@ -64,10 +64,29 @@
       <!-- ========== 视图2: 升降归因 ========== -->
       <div id="view-attribution" class="view-panel" style="display:none;">
         <div class="card" style="margin-bottom:16px;">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 12px 0;">
             <label style="font-size:13px;font-weight:600;color:var(--text-2);">选择 SKU：</label>
             <select id="attr-sku-select" style="padding:8px 12px;border:1px solid var(--border-1);border-radius:8px;background:#fff;font-size:13px;color:var(--text-1);min-width:160px;"></select>
-            <span style="font-size:12px;color:var(--text-3);">对比最近两个月，从达人画像/颜色/语言/通过率找原因</span>
+          </div>
+          <div class="attr-compare" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px;">
+            <span style="font-size:13px;font-weight:600;color:var(--text-2);">对比区间：</span>
+            <div class="attr-range" data-range="A" style="display:flex;align-items:center;gap:4px;">
+              <input type="date" class="attr-start" style="padding:7px 10px;border:1px solid var(--border-1);border-radius:8px;background:#fff;font-size:13px;color:var(--text-1);" />
+              <span style="color:var(--text-3);font-size:12px;">~</span>
+              <input type="date" class="attr-end" style="padding:7px 10px;border:1px solid var(--border-1);border-radius:8px;background:#fff;font-size:13px;color:var(--text-1);" />
+            </div>
+            <span style="color:var(--text-3);font-size:12px;">对比</span>
+            <div class="attr-range" data-range="B" style="display:flex;align-items:center;gap:4px;">
+              <input type="date" class="attr-start" style="padding:7px 10px;border:1px solid var(--border-1);border-radius:8px;background:#fff;font-size:13px;color:var(--text-1);" />
+              <span style="color:var(--text-3);font-size:12px;">~</span>
+              <input type="date" class="attr-end" style="padding:7px 10px;border:1px solid var(--border-1);border-radius:8px;background:#fff;font-size:13px;color:var(--text-1);" />
+            </div>
+            <button class="filter-btn" id="attr-apply">应用对比</button>
+            <button class="filter-btn" data-preset="mom">环比</button>
+            <button class="filter-btn" data-preset="yoy">同比</button>
+            <button class="filter-btn" data-preset="qoq">季度环比</button>
+            <button class="filter-btn filter-btn--clear" id="attr-reset">恢复近两月</button>
+            <span style="font-size:12px;color:var(--text-3);">默认对比最近两个月；也可任意选两个时间段</span>
           </div>
         </div>
         <div id="attribution-content"></div>

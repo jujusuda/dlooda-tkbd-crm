@@ -2118,20 +2118,66 @@
     return rows;
   }
 
-  // SKU 升降归因详情：对比最近两个月各维度分布
-  function getSKUAttributionDetail(sku) {
+  // 日期范围命中：支持 YYYY-MM（整月）或 YYYY-MM-DD；range = {start,end}
+  function attrInRange(t, range) {
+    if (!range) return true;
+    var start = range.start, end = range.end;
+    if (!start && !end) return true;
+    function expand(v, isEnd) {
+      if (!v) return '';
+      if (v.length === 7) {
+        var y = +v.slice(0, 4), m = +v.slice(5, 7);
+        if (isEnd) return v + '-' + ('0' + new Date(y, m, 0).getDate()).slice(-2);
+        return v + '-01';
+      }
+      return v;
+    }
+    var s = expand(start, false), e = expand(end, true);
+    if (s && t < s) return false;
+    if (e && t > e) return false;
+    return true;
+  }
+
+  // 时间段标签：YYYY-MM 或 YYYY-MM~YYYY-MM
+  function attrLabel(range) {
+    if (!range) return '';
+    function f(v) { if (!v) return ''; return v.length === 7 ? v : v.slice(0, 7); }
+    var s = f(range.start || ''), e = f(range.end || '');
+    if (s && s === e) return s;
+    if (s && e) return s + '~' + e;
+    return s || e || '';
+  }
+
+  // SKU 升降归因详情：默认对比最近两个月；传入 rangeA/rangeB 则为任意两个时间段对比
+  function getSKUAttributionDetail(sku, rangeA, rangeB) {
     if (!sku) return null;
     var samples = D.samples.filter(function (s) { return s.sku === sku && s.sampleTime; });
-    var byMonth = {};
-    samples.forEach(function (s) {
-      var month = s.sampleTime.slice(0, 7);
-      if (!byMonth[month]) byMonth[month] = [];
-      byMonth[month].push(s);
-    });
-    var months = Object.keys(byMonth).sort();
-    if (months.length < 2) return null;
-    var prevMonth = months[months.length - 2];
-    var currMonth = months[months.length - 1];
+    var prevSamples, currSamples, prevMonth, currMonth;
+
+    if (rangeA && rangeB && (rangeA.start || rangeA.end || rangeB.start || rangeB.end)) {
+      // 自定义两个时间段对比
+      prevSamples = samples.filter(function (s) { return attrInRange(s.sampleTime, rangeA); });
+      currSamples = samples.filter(function (s) { return attrInRange(s.sampleTime, rangeB); });
+      prevMonth = attrLabel(rangeA) || '区间A';
+      currMonth = attrLabel(rangeB) || '区间B';
+      if (prevSamples.length === 0 && currSamples.length === 0) return null;
+    } else {
+      // 默认：最近两个月
+      var byMonth = {};
+      samples.forEach(function (s) {
+        var month = s.sampleTime.slice(0, 7);
+        if (!byMonth[month]) byMonth[month] = [];
+        byMonth[month].push(s);
+      });
+      var months = Object.keys(byMonth).sort();
+      if (months.length < 2) return null;
+      var prevMonth2 = months[months.length - 2];
+      var currMonth2 = months[months.length - 1];
+      prevSamples = byMonth[prevMonth2];
+      currSamples = byMonth[currMonth2];
+      prevMonth = prevMonth2;
+      currMonth = currMonth2;
+    }
 
     function dim(samples) {
       var age = {}, body = {}, official = {}, category = {}, color = {}, lang = {}, approval = {};
@@ -2161,8 +2207,8 @@
       }).sort(function (a, b) { return b.count - a.count; });
     }
 
-    var prev = dim(byMonth[prevMonth]);
-    var curr = dim(byMonth[currMonth]);
+    var prev = dim(prevSamples);
+    var curr = dim(currSamples);
     return {
       sku: sku,
       prevMonth: prevMonth,

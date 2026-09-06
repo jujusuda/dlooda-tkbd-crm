@@ -150,15 +150,90 @@
 
   /* ================================================================
      视图2: 升降归因
+     默认对比最近两个月；支持任意选择两个时间段对比（环比/同比/季度环比）
      ================================================================ */
+  var attrState = { rangeA: null, rangeB: null };  // null = 默认近两月
+
+  // 把年份+月份(1-12)转成一个整月范围
+  function monthRange(y, m) {
+    var mm = ('0' + m).slice(-2);
+    var last = new Date(y, m, 0).getDate();
+    return { start: y + '-' + mm + '-01', end: y + '-' + mm + '-' + ('0' + last).slice(-2) };
+  }
+  // 当前标准月（不含年月，直接用 Date）
+  function nowYM() {
+    var d = new Date();
+    return { y: d.getFullYear(), m: d.getMonth() + 1 };
+  }
+  function monthLabel(r) {
+    if (!r) return '';
+    function f(v) { return v ? v.slice(0, 7) : ''; }
+    var s = f(r.start), e = f(r.end);
+    if (s && s === e) return s;
+    if (s && e) return s + '~' + e;
+    return s || e || '';
+  }
+
+  // 预设：mom 环比 / yoy 同比 / qoq 季度环比
+  function applyAttrPreset(kind) {
+    var t = nowYM();
+    if (kind === 'mom') {
+      var pm = t.m === 1 ? { y: t.y - 1, m: 12 } : { y: t.y, m: t.m - 1 };
+      attrState.rangeA = monthRange(pm.y, pm.m);
+      attrState.rangeB = monthRange(t.y, t.m);
+    } else if (kind === 'yoy') {
+      attrState.rangeA = monthRange(t.y - 1, t.m);
+      attrState.rangeB = monthRange(t.y, t.m);
+    } else if (kind === 'qoq') {
+      // 本季度 = 按 (季度-1)*3+1 起算；上季度再往前推 3 个月
+      var qStart = Math.floor((t.m - 1) / 3) * 3 + 1;
+      var aStartM = qStart - 3 > 0 ? qStart - 3 : qStart + 9;
+      var aStartY = qStart - 3 > 0 ? t.y : t.y - 1;
+      attrState.rangeA = monthRange(aStartY, aStartM);
+      attrState.rangeB = monthRange(t.y, qStart);
+    }
+    syncAttrInputs();
+    renderAttributionDetail(attrSkuValue());
+  }
+
+  function attrSkuValue() {
+    var select = document.getElementById('attr-sku-select');
+    return select ? select.value : '';
+  }
+
+  // 把 attrState 同步到输入框 + 缓存
+  function syncAttrInputs() {
+    var ranges = document.querySelectorAll('#view-attribution .attr-range');
+    ranges.forEach(function (box) {
+      var key = box.getAttribute('data-range') === 'A' ? 'rangeA' : 'rangeB';
+      var val = attrState[key];
+      var s = box.querySelector('.attr-start'), e = box.querySelector('.attr-end');
+      if (s) s.value = val && val.start || '';
+      if (e) e.value = val && val.end || '';
+    });
+    // 持久化到筛选缓存
+    App.saveFilterState('attribution', { rangeA: attrState.rangeA, rangeB: attrState.rangeB });
+  }
+
   function renderAttributionView() {
     var select = document.getElementById('attr-sku-select');
     if (!select) return;
 
-    // 初始化下拉：所有有出单率变化的 SKU
+    // 恢复上次的对比区间缓存
+    if (attrState.rangeA === null && attrState.rangeB === null) {
+      var saved = App.loadFilterState('attribution');
+      if (saved && (saved.rangeA || saved.rangeB)) {
+        attrState.rangeA = saved.rangeA || null;
+        attrState.rangeB = saved.rangeB || null;
+      }
+    }
+
+    // 初始化下拉：所有有出单率变化的 SKU（含自定义区间时的候选）
     var changes = Data.getSKUAttributionAnalysis(filterState.sku || null);
     var skus = changes.map(function (c) { return c.sku; });
     if (filterState.sku && skus.indexOf(filterState.sku) < 0) skus.unshift(filterState.sku);
+    // 兜底：无变化时列出所有有数据的 SKU
+    if (skus.length === 0) skus = Data.getAvailableSKUs();
 
     // 去重重建下拉
     var prevVal = select.value;
@@ -177,40 +252,76 @@
       opt.textContent = 'SKU ' + sku;
       select.appendChild(opt);
     });
-    select.value = prevVal && skus.indexOf(prevVal) >= 0 ? prevVal : skus[0];
+    select.value = prevVal && skus.indexOf(prevVal) >= 0 ? prevVal : (filterState.sku && skus.indexOf(filterState.sku) >= 0 ? filterState.sku : skus[0]);
     if (!select._changeBound) {
       select.addEventListener('change', function () { renderAttributionDetail(select.value); });
       select._changeBound = true;
     }
+
+    // 绑定日期范围 + 预设按钮（只绑一次）
+    if (!select._compareBound) {
+      select._compareBound = true;
+      var ranges = document.querySelectorAll('#view-attribution .attr-range');
+      ranges.forEach(function (box) {
+        var key = box.getAttribute('data-range') === 'A' ? 'rangeA' : 'rangeB';
+        box.querySelectorAll('input').forEach(function (inp) {
+          inp.addEventListener('change', function () {
+            var start = box.querySelector('.attr-start').value;
+            var end = box.querySelector('.attr-end').value;
+            attrState[key] = (start || end) ? { start: start, end: end } : null;
+            syncAttrInputs();
+            renderAttributionDetail(select.value);
+          });
+        });
+      });
+      var applyBtn = document.getElementById('attr-apply');
+      if (applyBtn) applyBtn.addEventListener('click', function () { renderAttributionDetail(select.value); });
+      var resetBtn = document.getElementById('attr-reset');
+      if (resetBtn) resetBtn.addEventListener('click', function () {
+        attrState.rangeA = null; attrState.rangeB = null;
+        syncAttrInputs();
+        renderAttributionDetail(select.value);
+      });
+      document.querySelectorAll('#view-attribution [data-preset]').forEach(function (btn) {
+        btn.addEventListener('click', function () { applyAttrPreset(btn.getAttribute('data-preset')); });
+      });
+    }
+
+    // 首次进入同步默认区间到输入框（默认显示近两月占位）
+    syncAttrInputs();
     renderAttributionDetail(select.value);
   }
 
   function renderAttributionDetail(sku) {
     var container = document.getElementById('attribution-content');
     if (!container || !sku) { if (container) container.innerHTML = '<div class="card" style="padding:16px;color:var(--text-3);text-align:center;">请选择 SKU</div>'; return; }
-    var detail = Data.getSKUAttributionDetail(sku);
-    if (!detail) { container.innerHTML = '<div class="card" style="padding:16px;color:var(--text-3);text-align:center;">该 SKU 至少需要两个月数据</div>'; return; }
+    var detail = Data.getSKUAttributionDetail(sku, attrState.rangeA, attrState.rangeB);
+    if (!detail) { container.innerHTML = '<div class="card" style="padding:16px;color:var(--text-3);text-align:center;">该 SKU 在所选时间段内数据不足，请换时间段或 SKU</div>'; return; }
 
+    var prevLabel = detail.prevMonth || '前一区间';
+    var currLabel = detail.currMonth || '当前区间';
     var html = '<div class="stat-grid" style="margin-bottom:16px;">'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + detail.curr.orderRate + '%</div><div class="stat-card__label">' + detail.currMonth + ' 出单率</div></div>'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--text-2);">' + detail.prev.orderRate + '%</div><div class="stat-card__label">' + detail.prevMonth + ' 出单率</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + detail.curr.orderRate + '%</div><div class="stat-card__label">' + currLabel + ' 出单率</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--text-2);">' + detail.prev.orderRate + '%</div><div class="stat-card__label">' + prevLabel + ' 出单率</div></div>'
       + '<div class="stat-card"><div class="stat-card__value" style="color:' + (detail.curr.orderRate >= detail.prev.orderRate ? 'var(--c-success)' : 'var(--c-danger)') + ';">' + (detail.curr.orderRate - detail.prev.orderRate >= 0 ? '+' : '') + (Math.round((detail.curr.orderRate - detail.prev.orderRate) * 10) / 10) + '%</div><div class="stat-card__label">变化</div></div>'
       + '</div>';
 
     html += '<div class="attribution-grid">';
-    html += renderDimCard('官方等级', detail.prev.official, detail.curr.official);
-    html += renderDimCard('年龄分布', detail.prev.age, detail.curr.age);
-    html += renderDimCard('身材分布', detail.prev.body, detail.curr.body);
-    html += renderDimCard('品类分布', detail.prev.category, detail.curr.category);
-    html += renderDimCard('颜色分布', detail.prev.color, detail.curr.color);
-    html += renderDimCard('语言分布', detail.prev.language, detail.curr.language);
-    html += renderDimCard('通过方式', detail.prev.approval, detail.curr.approval);
+    html += renderDimCard('官方等级', detail.prev.official, detail.curr.official, prevLabel, currLabel);
+    html += renderDimCard('年龄分布', detail.prev.age, detail.curr.age, prevLabel, currLabel);
+    html += renderDimCard('身材分布', detail.prev.body, detail.curr.body, prevLabel, currLabel);
+    html += renderDimCard('品类分布', detail.prev.category, detail.curr.category, prevLabel, currLabel);
+    html += renderDimCard('颜色分布', detail.prev.color, detail.curr.color, prevLabel, currLabel);
+    html += renderDimCard('语言分布', detail.prev.language, detail.curr.language, prevLabel, currLabel);
+    html += renderDimCard('通过方式', detail.prev.approval, detail.curr.approval, prevLabel, currLabel);
     html += '</div>';
 
     container.innerHTML = html;
   }
 
-  function renderDimCard(title, prevArr, currArr) {
+  function renderDimCard(title, prevArr, currArr, prevLabel, currLabel) {
+    prevLabel = prevLabel || '前一区间';
+    currLabel = currLabel || '当前区间';
     var keys = {};
     prevArr.forEach(function (x) { keys[x.key] = true; });
     currArr.forEach(function (x) { keys[x.key] = true; });
@@ -232,7 +343,7 @@
       return '<div style="margin-bottom:8px;">'
         + '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">'
         + '<span style="font-weight:600;color:var(--text-1);">' + App.escapeHtml(k) + '</span>'
-        + '<span style="font-size:11px;color:var(--text-3);">上月 ' + p.pct + '% → 本月 ' + c.pct + '% <b style="color:' + diffColor + ';">(' + (diff >= 0 ? '+' : '') + diff + '%)</b></span>'
+        + '<span style="font-size:11px;color:var(--text-3);">' + prevLabel + ' ' + p.pct + '% → ' + currLabel + ' ' + c.pct + '% <b style="color:' + diffColor + ';">(' + (diff >= 0 ? '+' : '') + diff + '%)</b></span>'
         + '</div>'
         + '<div style="display:flex;align-items:center;gap:6px;">'
         + '<div style="flex:1;height:8px;background:var(--bg-pink-soft);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pW + '%;background:var(--border-2);border-radius:4px;"></div></div>'
@@ -243,7 +354,7 @@
 
     return '<div class="dim-card">'
       + '<div class="dim-title">' + App.escapeHtml(title) + '</div>'
-      + '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-bottom:8px;"><span>▬ 上月</span><span>▬ 本月</span></div>'
+      + '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-bottom:8px;"><span>▬ ' + prevLabel + '</span><span>▬ ' + currLabel + '</span></div>'
       + rows
       + '</div>';
   }
