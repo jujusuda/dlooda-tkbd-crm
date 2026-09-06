@@ -92,7 +92,7 @@
       return { month: m, rate: o.fulfilled > 0 ? Math.round(o.ordered / o.fulfilled * 1000) / 10 : 0 };
     });
 
-    var W = 680, H = 220, padL = 34, padB = 32, padT = 20, padR = 24;
+    var W = 680, H = 250, padL = 48, padB = 46, padT = 18, padR = 32;
     var plotW = W - padL - padR, plotH = H - padT - padB;
     var maxR = Math.max.apply(null, pts.map(function (p) { return p.rate; }).concat([1]));
     var n = pts.length;
@@ -108,11 +108,11 @@
       return '<circle cx="' + c.x + '" cy="' + c.y + '" r="4" fill="var(--pink-500)" stroke="#fff" stroke-width="2"><title>' + c.p.month + ' 出单率 ' + c.p.rate + '%</title></circle>';
     }).join('');
     var labels = coords.map(function (c, i) {
-      return '<text x="' + c.x + '" y="' + (H - 10) + '" font-size="10" fill="#9b8e8e" text-anchor="' + (i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle') + '">' + c.p.month + '</text>';
+      return '<text x="' + c.x + '" y="' + (H - 12) + '" font-size="10" fill="#9b8e8e" text-anchor="' + (i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle') + '">' + c.p.month + '</text>';
     }).join('');
     var yTicks = [0, maxR / 2, maxR].map(function (v) {
       var y = padT + plotH - (v / maxR * plotH);
-      return '<text x="' + (padL - 6) + '" y="' + (y + 3) + '" font-size="9" fill="#9b8e8e" text-anchor="end">' + Math.round(v) + '%</text>';
+      return '<text x="' + (padL - 10) + '" y="' + (y + 3) + '" font-size="9" fill="#9b8e8e" text-anchor="end">' + Math.round(v) + '%</text>';
     }).join('');
 
     var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;">'
@@ -125,7 +125,7 @@
       + '</svg>';
 
     container.innerHTML = '<div style="padding:8px 4px;">' + svg
-      + '<div style="font-size:11px;color:var(--text-3);margin-top:6px;">整体月度出单率趋势（出单达人 ÷ 履约达人）</div></div>';
+      + '<div style="font-size:11px;color:var(--text-3);margin-top:6px;">整体月度出单率趋势（出单达人 ÷ 履约达人 · 每月按上月15号~当月15号统计）</div></div>';
   }
 
   function renderSKUChangeRanking(changes) {

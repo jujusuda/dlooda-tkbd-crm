@@ -2073,6 +2073,17 @@
   }
 
   // SKU 出单率趋势：按月份统计每个SKU的出单率（用于复盘）
+  // 月中到月中的月份桶：标签为 YYYY-MM，代表区间 [上个月15号 ~ 当月15号]。
+  // 例：标签 2026-08 表示窗口 2026-07-15 ~ 2026-08-15（即用户口径的"8月出单率"）。
+  // 归属规则：某条寄样记录归到「以它所在日期为起点的那段15号区间」。
+  //   日期 >= 当月15号  => 归到下一个标签月（作为其起点）；否则归到当前标签月。
+  function midMonthBucket(dateStr) {
+    if (!dateStr || dateStr.length < 10) return dateStr;
+    var y = +dateStr.slice(0, 4), m = +dateStr.slice(5, 7), d = +dateStr.slice(8, 10);
+    if (d >= 15) { m += 1; if (m > 12) { m = 1; y += 1; } }
+    return y + '-' + (m < 10 ? '0' + m : '' + m);
+  }
+
   function getSKUTrendAnalysis(skuFilter, startDate, endDate) {
     var samples = D.samples;
     if (skuFilter) samples = samples.filter(function (s) { return s.sku === skuFilter; });
@@ -2080,7 +2091,7 @@
     var byMonth = {};
     samples.forEach(function (s) {
       if (!s.sku || !s.sampleTime) return;
-      var month = s.sampleTime.slice(0, 7);
+      var month = midMonthBucket(s.sampleTime);
       var key = month + '|' + s.sku;
       if (!byMonth[key]) byMonth[key] = { month: month, sku: s.sku, sampleCount: 0, fulfilledCreators: {}, orderedCreators: {} };
       byMonth[key].sampleCount++;
@@ -2182,7 +2193,7 @@
       // 默认：最近两个月
       var byMonth = {};
       samples.forEach(function (s) {
-        var month = s.sampleTime.slice(0, 7);
+        var month = midMonthBucket(s.sampleTime);
         if (!byMonth[month]) byMonth[month] = [];
         byMonth[month].push(s);
       });
