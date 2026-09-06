@@ -2342,6 +2342,240 @@
     return true;
   }
 
+  /* ========== 达人价值分析：帕累托 + LTV 榜（2026-09-06） ==========
+     回答"样品该优先给谁"：
+     - 帕累托：Top 10% / 20% / 30% 达人贡献了百分之多少的出单件数
+     - LTV 榜：单达人累计出单件数排行（含寄样次数、视频数、最近寄样时间）
+     注意：orderCount 在 real-data 里是字符串，必须 parseInt 后再累加，
+     否则 + 会变成字符串拼接（实测踩过）。达人名需 trim().toLowerCase() 归一化
+     （数据里有前导空格变体，与复投分析同一坑）。 */
+  function getCreatorValueAnalysis() {
+    // 达人资料索引（与寄样记录同样的归一化 key，避免前导空格变体查不到）
+    var creatorMap = {};
+    D.creators.forEach(function (c) {
+      if (c.name) creatorMap[c.name.trim().toLowerCase()] = c;
+    });
+
+    var perCreator = {};
+    D.samples.forEach(function (s) {
+      var key = (s.creator || '').trim().toLowerCase();
+      if (!key) return;
+      if (!perCreator[key]) {
+        perCreator[key] = {
+          name: (s.creator || '').trim(),
+          orders: 0,          // 累计出单件数
+          sampleCount: 0,     // 累计寄样次数
+          videoCount: 0,      // 累计视频数
+          orderedSamples: 0,  // 出单的寄样记录数（出单频次）
+          lastSampleTime: null,
+        };
+      }
+      var pc = perCreator[key];
+      pc.sampleCount++;
+      var oc = parseInt(s.orderCount, 10) || 0;
+      if (oc > 0) { pc.orders += oc; pc.orderedSamples++; }
+      pc.videoCount += (s.videos || []).length;
+      if (s.sampleTime && (!pc.lastSampleTime || s.sampleTime > pc.lastSampleTime)) {
+        pc.lastSampleTime = s.sampleTime;
+      }
+    });
+
+    var all = Object.keys(perCreator).map(function (key) {
+      var pc = perCreator[key];
+      var c = creatorMap[key] || {};
+      return {
+        name: pc.name,
+        official: c.official || '',
+        stars: c.stars || '',
+        creatorType: c.creatorType || '',
+        orders: pc.orders,
+        sampleCount: pc.sampleCount,
+        videoCount: pc.videoCount,
+        orderedSamples: pc.orderedSamples,
+        lastSampleTime: pc.lastSampleTime,
+      };
+    }).sort(function (a, b) {
+      return (b.orders - a.orders) || (b.videoCount - a.videoCount) || (b.sampleCount - a.sampleCount);
+    });
+
+    var totalOrders = all.reduce(function (a, c) { return a + c.orders; }, 0);
+    var orderedCreators = all.filter(function (c) { return c.orders > 0; }).length;
+
+    var pareto = [10, 20, 30].map(function (pct) {
+      var n = Math.max(1, Math.ceil(all.length * pct / 100));
+      var sum = all.slice(0, n).reduce(function (a, c) { return a + c.orders; }, 0);
+      return {
+        pct: pct,
+        creators: n,
+        orders: sum,
+        share: totalOrders > 0 ? Math.round(sum / totalOrders * 100) : 0,
+      };
+    });
+
+    return {
+      totalCreators: all.length,
+      totalOrders: totalOrders,
+      orderedCreators: orderedCreators,
+      // 出单达人占比（如 566/2007 = 28%）
+      orderedCreatorRate: all.length ? Math.round(orderedCreators / all.length * 100) : 0,
+      pareto: pareto,
+      // LTV 榜（Top 50，按累计出单件数降序）
+      topCreators: all.slice(0, 50),
+    };
+  }
+
+  /* ========== 寄样全链路漏斗（2026-09-06） ==========
+     暂定达人(待审) → 寄样 → 已标记通过 → 已发视频 → 已出单
+     附：通过方式质量对比（自动/手动/官方自动/未标记 的发视频率、出单率）
+     与最新月份任务 P0/P1/P2 执行率（口径：该月实际寄样量 / 目标寄样量）。 */
+  function getSampleFunnel(sku, startDate, endDate) {
+    var samples = filterSamples(D.samples, startDate, endDate, sku);
+
+    var approved = 0;      // 已标记通过（approval 非空）
+    var withVideo = 0;     // 有视频记录
+    var ordered = 0;       // 出单
+    var byApproval = {};   // 通过方式质量分组
+    samples.forEach(function (s) {
+      var a = s.approval || '未标记';
+      if (!byApproval[a]) byApproval[a] = { label: a, total: 0, withVideo: 0, ordered: 0 };
+      var g = byApproval[a];
+      g.total++;
+      if (s.approval) approved++;
+      if (s.videos && s.videos.length > 0) { withVideo++; g.withVideo++; }
+      if (parseInt(s.orderCount, 10) > 0) { ordered++; g.ordered++; }
+    });
+
+    // 通过方式质量列表（按寄样量降序）
+    var approvalQuality = Object.keys(byApproval).map(function (k) {
+      var g = byApproval[k];
+      return {
+        label: g.label,
+        total: g.total,
+        withVideo: g.withVideo,
+        videoRate: g.total ? Math.round(g.withVideo / g.total * 100) : 0,
+        ordered: g.ordered,
+        orderRate: g.total ? Math.round(g.ordered / g.total * 100) : 0,
+      };
+    }).sort(function (a, b) { return b.total - a.total; });
+
+    // 暂定达人（待审池，只能按 SKU 过滤，无寄样时间）
+    var pendingCount = (sku ? D.pending.filter(function (p) { return p.sku === sku; }) : D.pending).length;
+
+    // 最新月份任务 P0/P1/P2 执行率
+    var taskMonth = '';
+    var taskExec = null;
+    var months = getTasksByMonth();
+    if (months.length > 0) {
+      var latest = months[0];
+      taskMonth = latest.month;
+      taskExec = {};
+      latest.tasks.forEach(function (t) {
+        var p = t.priority || '其他';
+        if (!taskExec[p]) taskExec[p] = { priority: p, count: 0, target: 0, actual: 0 };
+        taskExec[p].count++;
+        taskExec[p].target += t.target || 0;
+        taskExec[p].actual += getTaskActualSamples(t.sku, latest.month);
+      });
+      taskExec = Object.keys(taskExec).sort().map(function (k) {
+        var e = taskExec[k];
+        e.rate = e.target > 0 ? Math.round(e.actual / e.target * 100) : 0;
+        return e;
+      });
+    }
+
+    return {
+      pendingCount: pendingCount,
+      total: samples.length,
+      approved: approved,
+      unmarked: samples.length - approved,
+      withVideo: withVideo,
+      ordered: ordered,
+      approvalQuality: approvalQuality,
+      taskMonth: taskMonth,
+      taskExec: taskExec,
+    };
+  }
+
+  /* ========== 寄样→首视频周期 + 催更效果（2026-09-06） ==========
+     - 周期：寄样日期 → 最早一条视频日期 的天数分布（中位数/P25/P75/分桶）
+     - 催更效果：被催更 vs 未被催更 的样品，最终发视频率、出单率对比
+       （实测：被催更组发视频率仅 2%，说明一旦走到"已催"这步基本翻不了盘，
+        跟进精力应前置到寄样后 10~15 天的自然窗口内） */
+  function getVideoLatencyAnalysis(sku, startDate, endDate) {
+    var samples = filterSamples(D.samples, startDate, endDate, sku);
+
+    var latencies = [];
+    samples.forEach(function (s) {
+      if (!s.videos || s.videos.length === 0 || !s.sampleTime) return;
+      var earliest = null;
+      s.videos.forEach(function (v) {
+        if (v.time && (earliest === null || v.time < earliest)) earliest = v.time;
+      });
+      if (!earliest) return;
+      var sd = new Date(s.sampleTime.substring(0, 10) + 'T00:00:00');
+      var vd = new Date(earliest.substring(0, 10) + 'T00:00:00');
+      var d = Math.round((vd - sd) / 86400000);
+      if (isFinite(d)) latencies.push(d);
+    });
+
+    var pos = latencies.filter(function (d) { return d >= 0; }).sort(function (a, b) { return a - b; });
+    function pick(arr, idx) { return arr.length ? arr[Math.min(idx, arr.length - 1)] : null; }
+    var median = pick(pos, Math.floor(pos.length / 2));
+    var p25 = pick(pos, Math.floor(pos.length * 0.25));
+    var p75 = pick(pos, Math.floor(pos.length * 0.75));
+
+    var buckets = [
+      { label: '≤3天', min: 0, max: 3 },
+      { label: '4-7天', min: 4, max: 7 },
+      { label: '8-14天', min: 8, max: 14 },
+      { label: '15-30天', min: 15, max: 30 },
+      { label: '31-60天', min: 31, max: 60 },
+      { label: '>60天', min: 61, max: Infinity },
+    ].map(function (b) { return { label: b.label, count: 0 }; });
+    pos.forEach(function (d) {
+      if (d <= 3) buckets[0].count++;
+      else if (d <= 7) buckets[1].count++;
+      else if (d <= 14) buckets[2].count++;
+      else if (d <= 30) buckets[3].count++;
+      else if (d <= 60) buckets[4].count++;
+      else buckets[5].count++;
+    });
+    // 15 天内发视频的占比（催更窗口参考）
+    var within15 = buckets[0].count + buckets[1].count + buckets[2].count;
+    var within15Rate = pos.length ? Math.round(within15 / pos.length * 100) : 0;
+
+    // 催更效果对比
+    var urged = { total: 0, withVideo: 0, ordered: 0 };
+    var notUrged = { total: 0, withVideo: 0, ordered: 0 };
+    samples.forEach(function (s) {
+      var g = (s.fulfillMethod && s.fulfillMethod.indexOf('已催') >= 0) ? urged : notUrged;
+      g.total++;
+      if (s.videos && s.videos.length > 0) g.withVideo++;
+      if (parseInt(s.orderCount, 10) > 0) g.ordered++;
+    });
+    function rate(n, d) { return d > 0 ? Math.round(n / d * 100) : 0; }
+
+    return {
+      sampleCount: latencies.length,
+      negativeCount: latencies.length - pos.length, // 视频早于寄样日期（登记顺序问题）
+      median: median, p25: p25, p75: p75,
+      buckets: buckets,
+      within15Rate: within15Rate,
+      urging: {
+        urged: {
+          total: urged.total,
+          videoRate: rate(urged.withVideo, urged.total),
+          orderRate: rate(urged.ordered, urged.total),
+        },
+        notUrged: {
+          total: notUrged.total,
+          videoRate: rate(notUrged.withVideo, notUrged.total),
+          orderRate: rate(notUrged.ordered, notUrged.total),
+        },
+      },
+    };
+  }
+
   /* ========== 结果缓存（性能） ==========
      REAL_DATA 在页面生命周期内不变，但页面常反复调用同一个分析函数
      （典型：daily.js 里 getDailyReportData 被调 10 次 × 74ms ≈ 740ms），
@@ -2397,6 +2631,9 @@
   getTasksByMonth = memo('getTasksByMonth', getTasksByMonth);
   getTaskActualSamples = memo('getTaskActualSamples', getTaskActualSamples);
   getTaskTodaySamples = memo('getTaskTodaySamples', getTaskTodaySamples);
+  getCreatorValueAnalysis = memo('getCreatorValueAnalysis', getCreatorValueAnalysis);
+  getSampleFunnel = memo('getSampleFunnel', getSampleFunnel);
+  getVideoLatencyAnalysis = memo('getVideoLatencyAnalysis', getVideoLatencyAnalysis);
   getAllSKUDetails = memo('getAllSKUDetails', getAllSKUDetails);
 
   /* ========== 导出 ========== */
@@ -2479,6 +2716,9 @@
     getSKUAttributionDetail: getSKUAttributionDetail,
     getSKUOrderRateInRange: getSKUOrderRateInRange,
     getAvailableSKUs: getAvailableSKUs,
+    getCreatorValueAnalysis: getCreatorValueAnalysis,
+    getSampleFunnel: getSampleFunnel,
+    getVideoLatencyAnalysis: getVideoLatencyAnalysis,
     getTodayStr: getTodayStr,
     // AI辅助
     getScoringSuggestion: getScoringSuggestion,

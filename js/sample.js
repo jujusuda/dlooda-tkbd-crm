@@ -109,6 +109,139 @@
     });
   }
 
+  /* ---------- 全链路漏斗卡片 ---------- */
+  function renderFunnelCard() {
+    var f = Data.getSampleFunnel(currentSku, startDate, endDate);
+    var total = f.total || 1;
+    function pct(n) { return Math.round(n / total * 100); }
+
+    var stages = [
+      { label: '暂定达人(待审)', count: f.pendingCount, color: 'var(--c-warning)', note: '待审池，未进入寄样' },
+      { label: '寄样总数', count: f.total, color: 'var(--c-primary)', note: '' },
+      { label: '已标记通过', count: f.approved, color: 'var(--c-info)', note: f.unmarked > 0 ? '另有 ' + f.unmarked + ' 条未标记' : '' },
+      { label: '已发视频', count: f.withVideo, color: 'var(--c-success)', note: '' },
+      { label: '已出单', count: f.ordered, color: 'var(--pink-500)', note: '' },
+    ];
+
+    var html = '<div class="card" style="margin-bottom:16px;">'
+      + '<div class="card__header"><h3 class="card__title">寄样全链路漏斗</h3></div>'
+      + '<div style="padding:8px 0;">';
+    stages.forEach(function (s) {
+      var p = pct(s.count);
+      html += '<div style="margin-bottom:10px;">'
+        + '<div style="display:flex;align-items:center;gap:10px;">'
+        + '<span style="width:95px;font-size:12px;font-weight:600;color:var(--text-2);">' + s.label + '</span>'
+        + '<div style="flex:1;height:24px;background:var(--bg-pink-soft);border-radius:12px;overflow:hidden;">'
+        + '<div style="height:100%;width:' + Math.min(p, 100) + '%;background:' + s.color + ';border-radius:12px;transition:width .6s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;">'
+        + '<span style="font-size:11px;font-weight:700;color:#fff;">' + App.formatNumber(s.count) + '</span>'
+        + '</div></div>'
+        + '<span style="width:40px;text-align:right;font-size:12px;color:var(--text-3);">' + p + '%</span>'
+        + '</div>'
+        + (s.note ? '<div style="font-size:11px;color:var(--text-3);padding-left:105px;">' + s.note + '</div>' : '')
+        + '</div>';
+    });
+    html += '</div>';
+
+    // 通过方式质量对比
+    if (f.approvalQuality.length > 0) {
+      html += '<div style="font-size:12px;font-weight:600;color:var(--text-2);margin:10px 0 6px;">通过方式质量对比</div>'
+        + '<div style="overflow-x:auto;"><table style="width:100%;font-size:12px;border-collapse:collapse;">'
+        + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
+        + '<th style="padding:6px;text-align:left;font-weight:600;color:var(--text-2);">通过方式</th>'
+        + '<th style="padding:6px;text-align:center;font-weight:600;color:var(--text-2);">寄样</th>'
+        + '<th style="padding:6px;text-align:center;font-weight:600;color:var(--c-success);">发视频率</th>'
+        + '<th style="padding:6px;text-align:center;font-weight:600;color:var(--pink-500);">出单率</th>'
+        + '</tr></thead><tbody>';
+      f.approvalQuality.forEach(function (q) {
+        html += '<tr style="border-bottom:1px solid var(--border-1);">'
+          + '<td style="padding:6px;font-weight:600;color:var(--text-1);">' + App.escapeHtml(q.label) + '</td>'
+          + '<td style="padding:6px;text-align:center;color:var(--text-2);">' + App.formatNumber(q.total) + '</td>'
+          + '<td style="padding:6px;text-align:center;color:var(--c-success);">' + q.videoRate + '%</td>'
+          + '<td style="padding:6px;text-align:center;color:var(--pink-500);font-weight:600;">' + q.orderRate + '%</td>'
+          + '</tr>';
+      });
+      html += '</tbody></table></div>'
+        + '<div style="font-size:11px;color:var(--text-3);padding:6px 0 0;">💡 自动通过的发视频率/出单率不低于手动通过，可放心扩大自动通过范围。</div>';
+    }
+
+    // 任务 P0/P1/P2 执行率
+    if (f.taskExec && f.taskExec.length > 0) {
+      html += '<div style="font-size:12px;font-weight:600;color:var(--text-2);margin:12px 0 6px;">' + f.taskMonth + ' 寄样任务执行率</div>'
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+      f.taskExec.forEach(function (e) {
+        var rateColor = e.rate >= 80 ? 'var(--c-success)' : (e.rate >= 40 ? 'var(--c-warning)' : 'var(--c-danger)');
+        html += '<div style="flex:1;min-width:110px;background:var(--bg-pink-soft);border-radius:8px;padding:8px;text-align:center;">'
+          + '<div style="font-size:11px;color:var(--text-3);">' + e.priority + ' · ' + e.count + '个任务</div>'
+          + '<div style="font-size:16px;font-weight:700;color:' + rateColor + ';">' + e.rate + '%</div>'
+          + '<div style="font-size:11px;color:var(--text-3);">' + App.formatNumber(e.actual) + ' / ' + App.formatNumber(e.target) + ' 件</div>'
+          + '</div>';
+      });
+      html += '</div>'
+        + '<div style="font-size:11px;color:var(--text-3);padding:6px 0 0;">口径：该月实际寄样量 ÷ 目标寄样量（未区分任务起始日，仅按 SKU×月聚合）</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  /* ---------- 寄样→首视频周期 + 催更效果卡片 ---------- */
+  function renderLatencyCard() {
+    var la = Data.getVideoLatencyAnalysis(currentSku, startDate, endDate);
+    if (!la.sampleCount) return '';
+
+    var html = '<div class="card" style="margin-bottom:16px;">'
+      + '<div class="card__header"><h3 class="card__title">寄样 → 首条视频 周期与催更效果</h3></div>'
+      + '<div style="padding:8px 0;">';
+
+    // 关键指标
+    html += '<div class="stat-grid" style="margin-bottom:12px;">'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-primary);">' + la.median + '<span style="font-size:12px;">天</span></div><div class="stat-card__label">周期中位数</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--text-2);">' + la.p25 + '~' + la.p75 + '<span style="font-size:12px;">天</span></div><div class="stat-card__label">P25 ~ P75 区间</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-success);">' + la.within15Rate + '%</div><div class="stat-card__label">15天内发布占比</div></div>'
+      + '</div>';
+
+    // 周期分布
+    var maxBucket = Math.max.apply(null, la.buckets.map(function (b) { return b.count; })) || 1;
+    html += '<div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;">首视频周期分布（' + App.formatNumber(la.sampleCount) + ' 条已发视频样品' + (la.negativeCount > 0 ? '，' + la.negativeCount + ' 条视频早于寄样日已剔除' : '') + '）</div>';
+    la.buckets.forEach(function (b) {
+      var p = Math.round(b.count / la.sampleCount * 100);
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
+        + '<span style="width:60px;font-size:12px;color:var(--text-2);">' + b.label + '</span>'
+        + '<div style="flex:1;height:18px;background:var(--bg-pink-soft);border-radius:9px;overflow:hidden;">'
+        + '<div style="height:100%;width:' + Math.round(b.count / maxBucket * 100) + '%;background:var(--pink-400);border-radius:9px;"></div>'
+        + '</div>'
+        + '<span style="width:80px;text-align:right;font-size:11px;color:var(--text-3);">' + b.count + ' 条 · ' + p + '%</span>'
+        + '</div>';
+    });
+
+    // 催更效果对比
+    var u = la.urging;
+    html += '<div style="font-size:12px;font-weight:600;color:var(--text-2);margin:12px 0 6px;">催更效果对比</div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+      +   '<div style="flex:1;min-width:150px;background:var(--bg-pink-soft);border-radius:8px;padding:10px;text-align:center;">'
+      +     '<div style="font-size:12px;color:var(--text-2);font-weight:600;">未催更（自然窗口内）</div>'
+      +     '<div style="font-size:11px;color:var(--text-3);margin:2px 0;">' + App.formatNumber(u.notUrged.total) + ' 条寄样</div>'
+      +     '<div style="font-size:14px;font-weight:700;color:var(--c-success);">发视频率 ' + u.notUrged.videoRate + '%</div>'
+      +     '<div style="font-size:12px;color:var(--pink-500);font-weight:600;">出单率 ' + u.notUrged.orderRate + '%</div>'
+      +   '</div>'
+      +   '<div style="flex:1;min-width:150px;background:var(--bg-pink-soft);border-radius:8px;padding:10px;text-align:center;">'
+      +     '<div style="font-size:12px;color:var(--text-2);font-weight:600;">被催更（履约方式含"已催"）</div>'
+      +     '<div style="font-size:11px;color:var(--text-3);margin:2px 0;">' + App.formatNumber(u.urged.total) + ' 条寄样</div>'
+      +     '<div style="font-size:14px;font-weight:700;color:var(--c-danger);">发视频率 ' + u.urged.videoRate + '%</div>'
+      +     '<div style="font-size:12px;color:var(--pink-500);font-weight:600;">出单率 ' + u.urged.orderRate + '%</div>'
+      +   '</div>'
+      + '</div>';
+
+    html += '<div style="font-size:12px;color:var(--text-3);background:var(--bg-pink-soft);border-radius:8px;padding:8px 12px;margin-top:12px;">'
+      + '💡 跟进节奏建议：' + la.within15Rate + '% 的首视频在寄样 15 天内发布（中位数 ' + la.median + ' 天）。'
+      + '被催更的样品最终发视频率仅 ' + u.urged.videoRate + '%——一旦走到"已催"基本翻不了盘，'
+      + '建议把跟进精力前置到寄样后 ' + la.median + '~15 天的自然窗口内，而非事后催更。'
+      + '</div>';
+
+    html += '</div></div>';
+    return html;
+  }
+
   /* ---------- 渲染看板 ---------- */
   function renderDashboard() {
     var container = document.getElementById('sample-dashboard');
@@ -149,6 +282,12 @@
         + '</div>';
     });
     html += '</div></div>';
+
+    // 寄样全链路漏斗（暂定 → 寄样 → 通过 → 视频 → 出单 + 通过方式质量 + 任务执行率）
+    html += renderFunnelCard();
+
+    // 寄样→首视频周期 + 催更效果
+    html += renderLatencyCard();
 
     // 达人合作情况表
     if (stats.creators.length > 0) {
