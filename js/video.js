@@ -9,7 +9,6 @@
   var App = global.DloodaApp;
   var Data = global.DloodaData;
 
-  var currentFilter = 'all';
   var currentSort = 'date';
   var currentKeyword = '';
   var viewMode = 'list';
@@ -17,9 +16,9 @@
 
   function getFilteredAndSorted() {
     var list = Data.getVideos();
-    // SKU筛选（兼容tab选择和filter bar）
-    var activeSku = filterState.sku || currentFilter;
-    if (activeSku !== 'all' && activeSku) {
+    // SKU筛选（来自顶部筛选栏）
+    var activeSku = filterState.sku;
+    if (activeSku) {
       list = list.filter(function (v) { return v.sku === activeSku; });
     }
     // 日期筛选（按视频发布时间）
@@ -46,50 +45,54 @@
     return list;
   }
 
-  function renderTabs() {
-    var container = document.getElementById('filter-tabs');
-    if (!container) return;
-    var stats = Data.getVideoStats();
-    var topSKUs = Object.entries(stats.bySKU)
-      .sort(function (a, b) { return b[1] - a[1]; })
-      .slice(0, 6)
-      .map(function (e) { return e[0]; });
-    var tabs = [{ id: 'all', label: '全部', count: stats.total }];
-    topSKUs.forEach(function (sku) {
-      tabs.push({ id: sku, label: 'SKU ' + sku, count: stats.bySKU[sku] });
+  // 按达人排序时，同一达人的多条视频合并为一张卡片
+  function groupByCreator(list) {
+    var groups = {};
+    var ordered = []; // 保持排序后的达人顺序
+    list.forEach(function (v) {
+      var key = v.creator;
+      if (!groups[key]) { groups[key] = { creator: key, videos: [], sku: null, official: '', stars: '', category: '', color: '' }; ordered.push(key); }
+      var g = groups[key];
+      g.videos.push(v);
+      if (!g.sku) g.sku = v.sku;
+      if (!g.official) g.official = v.official || '';
+      if (!g.stars) g.stars = v.stars || '';
+      if (!g.category) g.category = v.category || '';
+      if (!g.color) g.color = v.color || '';
     });
-    container.innerHTML = tabs.map(function (t) {
-      return '<button class="filter-tab' + (t.id === currentFilter ? ' active' : '') + '" data-filter="' + App.escapeHtml(t.id) + '">'
-        + App.escapeHtml(t.label) + '<span class="count">' + t.count + '</span></button>';
-    }).join('');
-    container.querySelectorAll('.filter-tab').forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        currentFilter = this.getAttribute('data-filter');
-        renderTabs();
-        if (viewMode === 'analysis') renderAnalysis();
-        else renderList();
-      });
-    });
+    return ordered.map(function (k) { return groups[k]; });
   }
 
-  function renderSortButtons() {
-    var container = document.getElementById('sort-buttons');
-    if (!container) return;
-    var sorts = [
-      { id: 'date', label: '时间' },
-      { id: 'creator', label: '达人' },
-      { id: 'sku', label: 'SKU' },
-    ];
-    container.innerHTML = sorts.map(function (s) {
-      return '<button class="filter-tab' + (s.id === currentSort ? ' active' : '') + '" data-sort="' + s.id + '" style="font-size:12px;padding:4px 10px;">' + s.label + '</button>';
-    }).join('');
-    container.querySelectorAll('.filter-tab').forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        currentSort = this.getAttribute('data-sort');
-        renderSortButtons();
-        renderList();
-      });
-    });
+  // 单条视频卡片（列表/达人分组共用）
+  function videoCardHtml(v) {
+    var timeText = v.postTime ? v.postTime.split(' ')[0] : '无时间';
+    var skuText = v.sku ? 'SKU ' + App.escapeHtml(v.sku) : '';
+    var colorText = v.color ? ' · ' + App.escapeHtml(v.color) : '';
+    var catText = v.category ? App.escapeHtml(v.category) : '';
+    var officialText = v.official ? App.escapeHtml(v.official) + ' ' : '';
+    var starsText = v.stars ? App.escapeHtml(v.stars) : '';
+    var linkHtml = '';
+    if (v.url && v.url.startsWith('http')) {
+      linkHtml = '<a href="' + App.escapeHtml(v.url) + '" target="_blank" style="font-size:12px;color:var(--c-primary);text-decoration:none;word-break:break-all;">' + App.escapeHtml(v.url.substring(0, 60)) + '...</a>';
+    } else if (v.url) {
+      linkHtml = '<span style="font-size:12px;color:var(--text-tertiary);word-break:break-all;">' + App.escapeHtml(v.url.substring(0, 60)) + '</span>';
+    }
+    return ''
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+      +   '<div style="display:flex;align-items:center;gap:8px;">'
+      +     '<div class="creator-card__avatar" style="width:32px;height:32px;font-size:12px;">' + App.getInitials(v.creator) + '</div>'
+      +     '<div>'
+      +       '<div style="font-weight:600;font-size:14px;color:var(--text-1);">' + App.escapeHtml(v.creator) + '</div>'
+      +       '<div style="font-size:11px;color:var(--text-3);">' + officialText + starsText + ' · ' + App.escapeHtml(catText) + '</div>'
+      +     '</div>'
+      +   '</div>'
+      +   '<div style="text-align:right;">'
+      +     '<span class="badge badge--pink">' + skuText + '</span>'
+      +     '<div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">' + timeText + '</div>'
+      +   '</div>'
+      + '</div>'
+      + '<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">寄样: ' + (v.sampleTime ? v.sampleTime.split(' ')[0] : '—') + colorText + '</div>'
+      + linkHtml;
   }
 
   /* ---------- 深度分析视图 ---------- */
@@ -276,38 +279,51 @@
     }
 
     var displayList = list.slice(0, 100);
-    var html = displayList.map(function (v) {
-      var timeText = v.postTime ? v.postTime.split(' ')[0] : '无时间';
-      var skuText = v.sku ? 'SKU ' + App.escapeHtml(v.sku) : '';
-      var colorText = v.color ? ' · ' + App.escapeHtml(v.color) : '';
-      var catText = v.category ? App.escapeHtml(v.category) : '';
-      var officialText = v.official ? App.escapeHtml(v.official) + ' ' : '';
-      var starsText = v.stars ? App.escapeHtml(v.stars) : '';
-      var linkHtml = '';
-      if (v.url && v.url.startsWith('http')) {
-        linkHtml = '<a href="' + App.escapeHtml(v.url) + '" target="_blank" style="font-size:12px;color:var(--c-primary);text-decoration:none;word-break:break-all;">' + App.escapeHtml(v.url.substring(0, 60)) + '...</a>';
-      } else if (v.url) {
-        linkHtml = '<span style="font-size:12px;color:var(--text-tertiary);word-break:break-all;">' + App.escapeHtml(v.url.substring(0, 60)) + '</span>';
-      }
-      return ''
-        + '<div class="card" style="margin-bottom:10px;">'
-        +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
-        +     '<div style="display:flex;align-items:center;gap:8px;">'
-        +       '<div class="creator-card__avatar" style="width:32px;height:32px;font-size:12px;">' + App.getInitials(v.creator) + '</div>'
-        +       '<div>'
-        +         '<div style="font-weight:600;font-size:14px;color:var(--text-1);">' + App.escapeHtml(v.creator) + '</div>'
-        +         '<div style="font-size:11px;color:var(--text-3);">' + officialText + starsText + ' · ' + App.escapeHtml(catText) + '</div>'
-        +       '</div>'
-        +     '</div>'
-        +     '<div style="text-align:right;">'
-        +       '<span class="badge badge--pink">' + skuText + '</span>'
-        +       '<div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">' + timeText + '</div>'
-        +     '</div>'
-        +   '</div>'
-        +   '<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">寄样: ' + (v.sampleTime ? v.sampleTime.split(' ')[0] : '—') + colorText + '</div>'
-        +   linkHtml
-        + '</div>';
-    }).join('');
+    var html = '';
+    if (currentSort === 'creator') {
+      // 按达人合并同类项，一张卡片展示该达人所有视频链接
+      var groups = groupByCreator(displayList);
+      html = groups.map(function (g) {
+        var officialText = g.official ? App.escapeHtml(g.official) + ' ' : '';
+        var starsText = g.stars ? App.escapeHtml(g.stars) : '';
+        var catText = g.category ? App.escapeHtml(g.category) : '';
+        var skuText = g.sku ? 'SKU ' + App.escapeHtml(g.sku) : '';
+        // 该达人其它视频链接（除第一条之外）
+        var otherLinks = g.videos.slice(1).map(function (v) {
+          if (v.url && v.url.startsWith('http')) {
+            return '<div><a href="' + App.escapeHtml(v.url) + '" target="_blank" style="font-size:11px;color:var(--c-primary);text-decoration:none;word-break:break-all;">' + App.escapeHtml(v.url.substring(0, 60)) + '...</a></div>';
+          } else if (v.url) {
+            return '<div style="font-size:11px;color:var(--text-tertiary);word-break:break-all;">' + App.escapeHtml(v.url.substring(0, 60)) + '</div>';
+          }
+          return '';
+        }).join('');
+        return ''
+          + '<div class="card" style="margin-bottom:10px;">'
+          +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+          +     '<div style="display:flex;align-items:center;gap:8px;">'
+          +       '<div class="creator-card__avatar" style="width:32px;height:32px;font-size:12px;">' + App.getInitials(g.creator) + '</div>'
+          +       '<div>'
+          +         '<div style="font-weight:600;font-size:14px;color:var(--text-1);">' + App.escapeHtml(g.creator) + '</div>'
+          +         '<div style="font-size:11px;color:var(--text-3);">' + officialText + starsText + ' · ' + App.escapeHtml(catText) + '</div>'
+          +       '</div>'
+          +     '</div>'
+          +     '<div style="text-align:right;">'
+          +       '<span class="badge badge--pink">' + skuText + '</span>'
+          +       '<div style="font-size:11px;color:var(--pink-600);font-weight:600;margin-top:2px;">' + g.videos.length + ' 条视频</div>'
+          +     '</div>'
+          +   '</div>'
+          +   '<div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">共 ' + g.videos.length + ' 条视频链接：</div>'
+          +   '<div style="display:flex;flex-direction:column;gap:3px;">'
+          +     videoCardHtml(g.videos[0])
+          +     otherLinks
+          +   '</div>'
+          + '</div>';
+      }).join('');
+    } else {
+      html = displayList.map(function (v) {
+        return '<div class="card" style="margin-bottom:10px;">' + videoCardHtml(v) + '</div>';
+      }).join('');
+    }
 
     if (list.length > 100) {
       html += '<div style="text-align:center;padding:16px;color:var(--text-tertiary);font-size:13px;">显示前 100 条，共 ' + list.length + ' 条 🔍</div>';
@@ -424,17 +440,15 @@
     var materialEl = document.getElementById('video-material');
     var sortEl = document.getElementById('sort-section');
     var searchEl = document.querySelector('.search-bar');
-    var filterTabsEl = document.getElementById('filter-tabs');
-    var listBtn = document.getElementById('btn-view-list');
-    var analysisBtn = document.getElementById('btn-view-analysis');
-    var materialBtn = document.getElementById('btn-view-material');
+    var listBtn = document.querySelector('[data-view="list"]');
+    var analysisBtn = document.querySelector('[data-view="analysis"]');
+    var materialBtn = document.querySelector('[data-view="material"]');
     if (mode === 'analysis') {
       if (listEl) listEl.style.display = 'none';
       if (analysisEl) analysisEl.style.display = 'block';
       if (materialEl) materialEl.style.display = 'none';
       if (sortEl) sortEl.style.display = 'none';
       if (searchEl) searchEl.style.display = 'none';
-      if (filterTabsEl) filterTabsEl.style.display = 'none';
       if (listBtn) listBtn.classList.remove('active');
       if (analysisBtn) analysisBtn.classList.add('active');
       if (materialBtn) materialBtn.classList.remove('active');
@@ -445,7 +459,6 @@
       if (materialEl) materialEl.style.display = 'block';
       if (sortEl) sortEl.style.display = 'none';
       if (searchEl) searchEl.style.display = 'none';
-      if (filterTabsEl) filterTabsEl.style.display = 'none';
       if (listBtn) listBtn.classList.remove('active');
       if (analysisBtn) analysisBtn.classList.remove('active');
       if (materialBtn) materialBtn.classList.add('active');
@@ -456,12 +469,17 @@
       if (materialEl) materialEl.style.display = 'none';
       if (sortEl) sortEl.style.display = 'flex';
       if (searchEl) searchEl.style.display = '';
-      if (filterTabsEl) filterTabsEl.style.display = '';
       if (listBtn) listBtn.classList.add('active');
       if (analysisBtn) analysisBtn.classList.remove('active');
       if (materialBtn) materialBtn.classList.remove('active');
       renderList();
     }
+    // 同步视图切换高亮（view-tabs 用 data-view 定位，list 也走这里）
+    var tabs = document.querySelectorAll('#video-view-tabs .view-tab');
+    tabs.forEach(function (t) {
+      if (t.getAttribute('data-view') === mode) t.classList.add('active');
+      else t.classList.remove('active');
+    });
   }
 
   function bindSearch() {
@@ -477,13 +495,21 @@
     });
   }
 
+  function bindSortChange() {
+    var select = document.getElementById('sort-select');
+    if (!select) return;
+    select.addEventListener('change', function () {
+      currentSort = select.value;
+      renderList();
+    });
+  }
+
   function init() {
-    renderTabs();
-    renderSortButtons();
     renderList();
     bindSearch();
+    bindSortChange();
 
-    // 初始化列表筛选栏（日期+SKU，列表和分析视图共用）
+    // 初始化列表筛选栏（SKU+日期，三个视图共用）
     var listFilterBar = document.getElementById('video-list-filter-bar');
     if (listFilterBar && !listFilterBar._initialized) {
       listFilterBar._initialized = true;
@@ -491,21 +517,19 @@
         filterState.sku = sku;
         filterState.startDate = startDate;
         filterState.endDate = endDate;
-        // 同步tab选择
-        if (sku) currentFilter = sku; else currentFilter = 'all';
-        renderTabs();
         if (viewMode === 'analysis') renderAnalysis();
         else if (viewMode === 'material') renderMaterial();
         else renderList();
       }, { pageId: 'video-list' });
     }
 
-    var listBtn = document.getElementById('btn-view-list');
-    if (listBtn) listBtn.addEventListener('click', function () { switchView('list'); });
-    var analysisBtn = document.getElementById('btn-view-analysis');
-    if (analysisBtn) analysisBtn.addEventListener('click', function () { switchView('analysis'); });
-    var materialBtn = document.getElementById('btn-view-material');
-    if (materialBtn) materialBtn.addEventListener('click', function () { switchView('material'); });
+    // 视图切换
+    var tabs = document.querySelectorAll('#video-view-tabs .view-tab');
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        switchView(this.getAttribute('data-view'));
+      });
+    });
   }
 
   if (document.readyState === 'loading') {

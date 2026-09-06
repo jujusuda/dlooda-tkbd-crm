@@ -92,7 +92,7 @@
       return { month: m, rate: o.fulfilled > 0 ? Math.round(o.ordered / o.fulfilled * 1000) / 10 : 0 };
     });
 
-    var W = 680, H = 285, padL = 52, padB = 78, padT = 18, padR = 36;
+    var W = 680, H = 250, padL = 56, padB = 42, padT = 18, padR = 56;
     var plotW = W - padL - padR, plotH = H - padT - padB;
     var maxR = Math.max.apply(null, pts.map(function (p) { return p.rate; }).concat([1]));
     var n = pts.length;
@@ -107,9 +107,14 @@
     var dots = coords.map(function (c) {
       return '<circle cx="' + c.x + '" cy="' + c.y + '" r="4" fill="var(--pink-500)" stroke="#fff" stroke-width="2"><title>' + c.p.month + ' 出单率 ' + c.p.rate + '%</title></circle>';
     }).join('');
-    // x 轴月份标签统一斜排（-40°），避免点距过近时左右两侧标签相互重叠/被裁切
-    var labels = coords.map(function (c) {
-      return '<text x="' + c.x + '" y="' + (H - 16) + '" font-size="10" fill="#9b8e8e" text-anchor="end" transform="rotate(-40 ' + c.x + ' ' + (H - 16) + ')">' + c.p.month + '</text>';
+    // 月份标签：统一 middle 锚点居中显示全部月份，消除首/末标签被推挤到邻居的问题；
+    // 点多于 9 个时每 2 个抽 1 个，避免点距过近时水平重叠。
+    var every = n > 9 ? 2 : 1;
+    var labelList = coords.filter(function (c, i) {
+      return i % every === 0 || i === n - 1;
+    });
+    var labels = labelList.map(function (c) {
+      return '<text x="' + c.x + '" y="' + (H - 14) + '" font-size="10" fill="#9b8e8e" text-anchor="middle">' + c.p.month + '</text>';
     }).join('');
     var yTicks = [0, maxR / 2, maxR].map(function (v) {
       var y = padT + plotH - (v / maxR * plotH);
