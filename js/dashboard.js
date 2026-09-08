@@ -9,6 +9,7 @@
   var App = global.DloodaApp;
   var Data = global.DloodaData;
   var filterState = { sku: '', startDate: '', endDate: '' };
+  var reinvestMode = 'sku'; // 复投口径：'sku'=按SKU拆分, 'creator'=按达人整体
 
   /* ---------- 安全渲染：单个模块报错不影响其它模块 ---------- */
   function safeRender(name, fn) {
@@ -273,16 +274,24 @@
     if (!container) return;
     var data = Data.getReinvestAnalysis(filterState.startDate, filterState.endDate, filterState.sku);
 
-    var html = '<div class="stat-grid" style="margin-bottom:12px;">'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-primary);">' + data.reinvestTotal + '</div><div class="stat-card__label">复投声明数</div></div>'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-success);">' + data.reinvestSuccess + '</div><div class="stat-card__label">复投成功</div></div>'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-danger);">' + data.reinvestFailed + '</div><div class="stat-card__label">未成功</div></div>'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-warning);">' + data.reinvestWatching + '</div><div class="stat-card__label">观察中(' + data.watchDays + '天内)</div></div>'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + data.overallRate + '%</div><div class="stat-card__label">复投成功率</div></div>'
+    var tabSku = 'border:1px solid ' + (reinvestMode === 'sku' ? 'var(--pink-500)' : 'var(--border-1)') + ';background:' + (reinvestMode === 'sku' ? 'var(--pink-500)' : '#fff') + ';color:' + (reinvestMode === 'sku' ? '#fff' : 'var(--text-2)');
+    var tabCreator = 'border:1px solid ' + (reinvestMode === 'creator' ? 'var(--pink-500)' : 'var(--border-1)') + ';background:' + (reinvestMode === 'creator' ? 'var(--pink-500)' : '#fff') + ';color:' + (reinvestMode === 'creator' ? '#fff' : 'var(--text-2)');
+    var html = '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">'
+      + '<button onclick="setReinvestMode(\'sku\')" style="' + tabSku + ';padding:6px 14px;border-radius:18px;font-size:13px;cursor:pointer;font-weight:600;">按 SKU 拆分</button>'
+      + '<button onclick="setReinvestMode(\'creator\')" style="' + tabCreator + ';padding:6px 14px;border-radius:18px;font-size:13px;cursor:pointer;font-weight:600;">按达人整体</button>'
       + '</div>';
 
-    // 口径说明
-    html += '<div class="card" style="margin-bottom:12px;"><div style="padding:10px 14px;font-size:12px;color:var(--text-2);line-height:1.7;">'
+    if (reinvestMode === 'sku') {
+      html += '<div class="stat-grid" style="margin-bottom:12px;">'
+        + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-primary);">' + data.reinvestTotal + '</div><div class="stat-card__label">复投声明数</div></div>'
+        + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-success);">' + data.reinvestSuccess + '</div><div class="stat-card__label">复投成功</div></div>'
+        + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-danger);">' + data.reinvestFailed + '</div><div class="stat-card__label">未成功</div></div>'
+        + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-warning);">' + data.reinvestWatching + '</div><div class="stat-card__label">观察中(' + data.watchDays + '天内)</div></div>'
+        + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + data.overallRate + '%</div><div class="stat-card__label">复投成功率</div></div>'
+        + '</div>';
+
+      // 口径说明
+      html += '<div class="card" style="margin-bottom:12px;"><div style="padding:10px 14px;font-size:12px;color:var(--text-2);line-height:1.7;">'
       + '<b style="color:var(--text-1);">判定规则</b>：以飞书「是否复投」字段的 <b>已推XXXX</b> 为复投声明 → '
       + '该达人<b>之后</b>再寄样该 SKU 且<b>系统通过</b>（手动/自动）＝ 复投成功（不要求发视频）。<br>'
       + '声明后不满 ' + data.watchDays + ' 天且尚未合作的记为「观察中」，不计入成功率分母；'
@@ -293,6 +302,26 @@
           + '其中 <b>' + data.withinWatchRate + '%</b> 在 ' + data.watchDays + ' 天观察期内完成 —— '
           + '<span style="color:var(--text-3);">剩余部分是更晚才转化的，所以「未成功」里仍可能有后续翻盘。</span>' : '')
       + '</div></div>';
+    } else {
+      html += '<div class="stat-grid" style="margin-bottom:12px;">'
+        + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-primary);">' + data.creatorTotal + '</div><div class="stat-card__label">复投声明达人数</div></div>'
+        + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-success);">' + data.creatorSuccess + '</div><div class="stat-card__label">复投成功达人数</div></div>'
+        + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-danger);">' + data.creatorFailed + '</div><div class="stat-card__label">未成功</div></div>'
+        + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-warning);">' + data.creatorWatching + '</div><div class="stat-card__label">观察中(' + data.watchDays + '天内)</div></div>'
+        + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + data.creatorRate + '%</div><div class="stat-card__label">成功率(按达人)</div></div>'
+        + '</div>';
+      html += '<div class="card" style="margin-bottom:12px;"><div style="display:flex;gap:14px;padding:10px 14px;flex-wrap:wrap;">'
+        + '<div style="flex:1;min-width:150px;"><div style="font-size:22px;font-weight:800;color:var(--c-success);">' + data.successSkuCount + '</div><div style="font-size:11px;color:var(--text-2);">复投命中 SKU 总数（一个达人命中几个算几个，可 &gt; 声明达人数）</div></div>'
+        + '<div style="flex:1;min-width:150px;"><div style="font-size:22px;font-weight:800;color:var(--pink-600);">' + data.avgHit + '</div><div style="font-size:11px;color:var(--text-2);">人均命中 SKU 数（命中总数 ÷ 声明达人数）</div></div>'
+        + '</div></div>';
+      html += '<div class="card" style="margin-bottom:12px;"><div style="padding:10px 14px;font-size:12px;color:var(--text-2);line-height:1.7;">'
+        + '<b style="color:var(--text-1);">判定规则（按达人整体）</b>：把复投拆成「达人」维度——<br>'
+        + '· <b>分母</b>＝去重后复投声明<b>达人数</b>：一个达人推了 2178+2190 也只算 1 个声明达人；<br>'
+        + '· <b>分子</b>＝该达人复投<b>实际命中</b>的 SKU 总数：推了 2178+2190，通过了几个就算几个（可 &gt; 声明达人数）；<br>'
+        + '· 成功率(按达人) ＝ 成功达人数 ÷ 声明达人数 ＝ ' + data.creatorSuccess + ' ÷ ' + data.creatorTotal + ' ＝ ' + data.creatorRate + '%。'
+        + '<span style="color:var(--text-3);">（人均命中 ' + data.avgHit + ' 个 SKU，反映复投的产出强度）</span>'
+        + '</div></div>';
+    }
 
     if (data.bySKU.length > 0) {
       // 按产品定位排序：爆品 → 销售 → 测品 → 撤退，同档按复投数降序
@@ -354,6 +383,12 @@
 
     container.innerHTML = html;
   }
+
+  global.setReinvestMode = function (m) {
+    if (m !== 'sku' && m !== 'creator') return;
+    reinvestMode = m;
+    safeRender('reinvest-analysis', renderReinvest);
+  };
 
   function renderTrend() {
     var c = document.getElementById('trend-analysis');

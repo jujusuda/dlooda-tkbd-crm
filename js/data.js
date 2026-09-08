@@ -1751,6 +1751,13 @@
     var bySKU = {};
     var details = [];
 
+    // 口径B：按达人整体（分母=去重达人数，分子=命中SKU总数）
+    var creatorTotal = 0;       // 复投声明达人数（每个声明过任意复投的达人算 1）
+    var creatorSuccess = 0;     // 成功达人数（命中 ≥1 个 SKU）
+    var creatorFailed = 0;      // 0 命中且超过观察期达人数
+    var creatorWatching = 0;    // 0 命中且观察中达人数
+    var successSkuCount = 0;    // 命中 SKU 总数（一个达人命中 N 个算 N）
+
     Object.keys(byCreator).forEach(function (key) {
       var name = displayName[key];
       var line = byCreator[key].slice().sort(function (a, b) {
@@ -1760,6 +1767,8 @@
       // 收集该达人的复投声明：目标SKU -> 最早声明所在的索引
       var declared = {};
       var pendingSet = {};
+      var statuses = [];        // 该达人每个目标SKU的复投状态（用于口径B）
+      var hasValid = false;      // 是否有任一声明通过了筛选（通过才算有效复投）
       for (var i = 0; i < line.length; i++) {
         parseReinvestTargets(line[i]).forEach(function (t) {
           if (declared[t] === undefined) declared[t] = i;
@@ -1796,6 +1805,9 @@
           status = age <= WATCH_DAYS ? 'watching' : 'failed';
         }
 
+        statuses.push(status);
+        hasValid = true;
+
         reinvestTotal++;
         if (status === 'success') reinvestSuccess++;
         else if (status === 'watching') reinvestWatching++;
@@ -1826,6 +1838,16 @@
           costDays: costDays,
         });
       });
+
+      // 口径B：按达人整体聚合（分母=去重达人数，分子=命中SKU总数）
+      if (hasValid) {
+        creatorTotal++;
+        var hit = statuses.filter(function (s) { return s === 'success'; }).length;
+        successSkuCount += hit;
+        if (hit > 0) creatorSuccess++;
+        else if (statuses.indexOf('watching') >= 0) creatorWatching++;
+        else creatorFailed++;
+      }
     });
 
     // 统计每SKU总寄样数（受时间窗筛选，不受SKU筛选影响，用于展示分母参考）
@@ -1887,6 +1909,14 @@
       pendingTotal: pendingTotal,
       bySKU: skuReinvest,
       details: details,
+      // —— 口径B：按达人整体（分母=去重达人数，分子=命中SKU总数）——
+      creatorTotal: creatorTotal,            // 复投声明达人数（去重）
+      creatorSuccess: creatorSuccess,        // 成功达人数（命中 ≥1 个 SKU）
+      creatorFailed: creatorFailed,          // 0 命中且超观察期
+      creatorWatching: creatorWatching,      // 0 命中且观察中
+      successSkuCount: successSkuCount,      // 命中 SKU 总数（产出，可 > 声明达人数）
+      creatorRate: creatorTotal > 0 ? Math.round(creatorSuccess / creatorTotal * 100) : 0,
+      avgHit: creatorTotal > 0 ? Math.round(successSkuCount / creatorTotal * 10) / 10 : 0,
     };
   }
 
