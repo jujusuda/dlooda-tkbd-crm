@@ -1,0 +1,2076 @@
+{
+  "7月常卖": {
+    "2178": {
+      "total": {
+        "count": 39,
+        "orderedCount": 5,
+        "totalOrders": "00379000000001000000000000000200030000020",
+        "orderRate": 12.8,
+        "samples": 39
+      },
+      "newCreators": {
+        "count": 39,
+        "orderedCount": 5,
+        "totalOrders": "00379000000001000000000000000200030000020",
+        "orderRate": 12.8,
+        "samples": 39
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L3": 7,
+        "L2": 20,
+        "L4": 2,
+        "L0-1": 10
+      },
+      "starsDist": {
+        "4★": 6,
+        "3★": 20,
+        "2★": 9,
+        "5★": 3,
+        "1★": 1
+      },
+      "typeDist": {
+        "未标注": 39
+      },
+      "newOfficialDist": {
+        "L3": 7,
+        "L2": 20,
+        "L4": 2,
+        "L0-1": 10
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2189": {
+      "total": {
+        "count": 32,
+        "orderedCount": 13,
+        "totalOrders": "00140100010072030506020100800000000068000103",
+        "orderRate": 40.6,
+        "samples": 33
+      },
+      "newCreators": {
+        "count": 32,
+        "orderedCount": 13,
+        "totalOrders": "00140100010072030506020100800000000068000103",
+        "orderRate": 40.6,
+        "samples": 33
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 17,
+        "L0-1": 3,
+        "L3": 9,
+        "L6": 1,
+        "L4": 2
+      },
+      "starsDist": {
+        "3★": 12,
+        "2★": 8,
+        "4★": 8,
+        "5★": 3,
+        "1★": 1
+      },
+      "typeDist": {
+        "未标注": 24,
+        "高曝光": 2,
+        "核心达人": 2,
+        "潜力达人": 4
+      },
+      "newOfficialDist": {
+        "L2": 17,
+        "L0-1": 3,
+        "L3": 9,
+        "L6": 1,
+        "L4": 2
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2190": {
+      "total": {
+        "count": 28,
+        "orderedCount": 5,
+        "totalOrders": "0015000000001000000101000100000000",
+        "orderRate": 17.9,
+        "samples": 28
+      },
+      "newCreators": {
+        "count": 28,
+        "orderedCount": 5,
+        "totalOrders": "0015000000001000000101000100000000",
+        "orderRate": 17.9,
+        "samples": 28
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 18,
+        "L0-1": 7,
+        "L3": 3
+      },
+      "starsDist": {
+        "3★": 11,
+        "4★": 4,
+        "2★": 12,
+        "5★": 1
+      },
+      "typeDist": {
+        "未标注": 28
+      },
+      "newOfficialDist": {
+        "L2": 18,
+        "L0-1": 7,
+        "L3": 3
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2722": {
+      "total": {
+        "count": 103,
+        "orderedCount": 23,
+        "totalOrders": "002212000000000000000002000001700390010000000010004505010017001000000020100200130000000000100000390000088000500030000000001700001000010",
+        "orderRate": 22.3,
+        "samples": 107
+      },
+      "newCreators": {
+        "count": 97,
+        "orderedCount": 20,
+        "totalOrders": "002212000000000000000002000001700390010000001004505010017001000000020020013000000000010000039000008800050000000000017000000010",
+        "orderRate": 20.6,
+        "samples": 101
+      },
+      "oldCreators": {
+        "count": 6,
+        "orderedCount": 3,
+        "totalOrders": "0010301",
+        "orderRate": 50,
+        "samples": 6
+      },
+      "provenOldCreators": {
+        "count": 6,
+        "orderedCount": 3,
+        "totalOrders": "0010301",
+        "orderRate": 50,
+        "samples": 6
+      },
+      "officialDist": {
+        "L3": 23,
+        "L2": 59,
+        "L0-1": 10,
+        "L4": 9,
+        "L5": 2
+      },
+      "starsDist": {
+        "4★": 22,
+        "3★": 55,
+        "2★": 15,
+        "5★": 9,
+        "1★": 2
+      },
+      "typeDist": {
+        "未标注": 96,
+        "黑名单达人": 2,
+        "高曝光": 2,
+        "核心达人": 1,
+        "潜力达人": 2
+      },
+      "newOfficialDist": {
+        "L3": 22,
+        "L2": 57,
+        "L0-1": 9,
+        "L4": 8,
+        "L5": 1
+      },
+      "oldOfficialDist": {
+        "L3": 1,
+        "L2": 2,
+        "L5": 1,
+        "L4": 1,
+        "L0-1": 1
+      },
+      "provenOfficialDist": {
+        "L3": 1,
+        "L2": 2,
+        "L5": 1,
+        "L4": 1,
+        "L0-1": 1
+      }
+    },
+    "2757": {
+      "total": {
+        "count": 15,
+        "orderedCount": 2,
+        "totalOrders": "00100200000000000",
+        "orderRate": 13.3,
+        "samples": 15
+      },
+      "newCreators": {
+        "count": 15,
+        "orderedCount": 2,
+        "totalOrders": "00100200000000000",
+        "orderRate": 13.3,
+        "samples": 15
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 13,
+        "L3": 2
+      },
+      "starsDist": {
+        "3★": 11,
+        "2★": 2,
+        "4★": 2
+      },
+      "typeDist": {
+        "未标注": 14,
+        "高曝光": 1
+      },
+      "newOfficialDist": {
+        "L2": 13,
+        "L3": 2
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2789": {
+      "total": {
+        "count": 54,
+        "orderedCount": 17,
+        "totalOrders": "00302001000100030100001803300600003003000170000000100000010000001001002",
+        "orderRate": 31.5,
+        "samples": 55
+      },
+      "newCreators": {
+        "count": 54,
+        "orderedCount": 17,
+        "totalOrders": "00302001000100030100001803300600003003000170000000100000010000001001002",
+        "orderRate": 31.5,
+        "samples": 55
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 35,
+        "L0-1": 15,
+        "L3": 4
+      },
+      "starsDist": {
+        "3★": 26,
+        "2★": 16,
+        "1★": 6,
+        "4★": 5,
+        "5★": 1
+      },
+      "typeDist": {
+        "未标注": 51,
+        "黑名单达人": 1,
+        "潜力达人": 1,
+        "潜力达人,高曝光": 1
+      },
+      "newOfficialDist": {
+        "L2": 35,
+        "L0-1": 15,
+        "L3": 4
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "28173": {
+      "total": {
+        "count": 70,
+        "orderedCount": 20,
+        "totalOrders": "00200020105070060102001100702070001000010000100002001000010000000000000004200002090100",
+        "orderRate": 28.6,
+        "samples": 72
+      },
+      "newCreators": {
+        "count": 67,
+        "orderedCount": 17,
+        "totalOrders": "002000201050700601020070207000100001000010000200100001000000000000000000100",
+        "orderRate": 25.4,
+        "samples": 69
+      },
+      "oldCreators": {
+        "count": 3,
+        "orderedCount": 3,
+        "totalOrders": "001100420209",
+        "orderRate": 100,
+        "samples": 3
+      },
+      "provenOldCreators": {
+        "count": 2,
+        "orderedCount": 2,
+        "totalOrders": "001100209",
+        "orderRate": 100,
+        "samples": 2
+      },
+      "officialDist": {
+        "L3": 13,
+        "L2": 42,
+        "L4": 5,
+        "L5": 1,
+        "L0-1": 8,
+        "L6": 1
+      },
+      "starsDist": {
+        "5★": 6,
+        "3★": 34,
+        "4★": 20,
+        "2★": 9,
+        "1★": 1
+      },
+      "typeDist": {
+        "未标注": 54,
+        "高曝光": 3,
+        "核心达人": 5,
+        "潜力达人": 5,
+        "黑名单达人": 2,
+        "潜力达人,高曝光": 1
+      },
+      "newOfficialDist": {
+        "L3": 13,
+        "L2": 42,
+        "L4": 3,
+        "L5": 1,
+        "L0-1": 8
+      },
+      "oldOfficialDist": {
+        "L4": 2,
+        "L6": 1
+      },
+      "provenOfficialDist": {
+        "L4": 1,
+        "L6": 1
+      }
+    },
+    "28193": {
+      "total": {
+        "count": 25,
+        "orderedCount": 2,
+        "totalOrders": "00300000010000000",
+        "orderRate": 8,
+        "samples": 26
+      },
+      "newCreators": {
+        "count": 25,
+        "orderedCount": 2,
+        "totalOrders": "00300000010000000",
+        "orderRate": 8,
+        "samples": 26
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L6": 1,
+        "L2": 21,
+        "L3": 2,
+        "L0-1": 1
+      },
+      "starsDist": {
+        "5★": 3,
+        "3★": 15,
+        "2★": 4,
+        "4★": 2,
+        "1★": 1
+      },
+      "typeDist": {
+        "核心达人": 2,
+        "未标注": 23
+      },
+      "newOfficialDist": {
+        "L6": 1,
+        "L2": 21,
+        "L3": 2,
+        "L0-1": 1
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2A19": {
+      "total": {
+        "count": 57,
+        "orderedCount": 7,
+        "totalOrders": "00140000000100000000000003000000050000100100000004000000000",
+        "orderRate": 12.3,
+        "samples": 58
+      },
+      "newCreators": {
+        "count": 57,
+        "orderedCount": 7,
+        "totalOrders": "00140000000100000000000003000000050000100100000004000000000",
+        "orderRate": 12.3,
+        "samples": 58
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L4": 3,
+        "L2": 42,
+        "L3": 10,
+        "L0-1": 2
+      },
+      "starsDist": {
+        "4★": 21,
+        "3★": 30,
+        "2★": 6
+      },
+      "typeDist": {
+        "未标注": 51,
+        "黑名单达人": 2,
+        "核心达人": 2,
+        "潜力达人": 2
+      },
+      "newOfficialDist": {
+        "L4": 3,
+        "L2": 42,
+        "L3": 10,
+        "L0-1": 2
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    }
+  },
+  "8月常卖": {
+    "2178": {
+      "total": {
+        "count": 73,
+        "orderedCount": 5,
+        "totalOrders": "0020000000000000000000020500000000000000000000000000000000000040004600000000",
+        "orderRate": 6.8,
+        "samples": 73
+      },
+      "newCreators": {
+        "count": 71,
+        "orderedCount": 4,
+        "totalOrders": "0020000000000000000000200000000000000000000000000000000000040004600000000",
+        "orderRate": 5.6,
+        "samples": 71
+      },
+      "oldCreators": {
+        "count": 2,
+        "orderedCount": 1,
+        "totalOrders": "005",
+        "orderRate": 50,
+        "samples": 2
+      },
+      "provenOldCreators": {
+        "count": 2,
+        "orderedCount": 1,
+        "totalOrders": "005",
+        "orderRate": 50,
+        "samples": 2
+      },
+      "officialDist": {
+        "L0-1": 18,
+        "L3": 9,
+        "L4": 4,
+        "L2": 40,
+        "L5": 1,
+        "L6": 1
+      },
+      "starsDist": {
+        "3★": 33,
+        "2★": 26,
+        "5★": 5,
+        "1★": 2,
+        "4★": 7
+      },
+      "typeDist": {
+        "未标注": 71,
+        "潜力达人": 1,
+        "核心达人": 1
+      },
+      "newOfficialDist": {
+        "L0-1": 18,
+        "L3": 9,
+        "L2": 40,
+        "L5": 1,
+        "L4": 3
+      },
+      "oldOfficialDist": {
+        "L4": 1,
+        "L6": 1
+      },
+      "provenOfficialDist": {
+        "L4": 1,
+        "L6": 1
+      }
+    },
+    "2189": {
+      "total": {
+        "count": 37,
+        "orderedCount": 8,
+        "totalOrders": "0010000064000300000000010002800000000001002003",
+        "orderRate": 21.6,
+        "samples": 38
+      },
+      "newCreators": {
+        "count": 37,
+        "orderedCount": 8,
+        "totalOrders": "0010000064000300000000010002800000000001002003",
+        "orderRate": 21.6,
+        "samples": 38
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 30,
+        "L5": 1,
+        "L0-1": 3,
+        "L3": 3
+      },
+      "starsDist": {
+        "3★": 20,
+        "4★": 7,
+        "2★": 9,
+        "1★": 1
+      },
+      "typeDist": {
+        "未标注": 32,
+        "核心达人": 3,
+        "潜力达人": 1,
+        "高曝光": 1
+      },
+      "newOfficialDist": {
+        "L2": 30,
+        "L5": 1,
+        "L0-1": 3,
+        "L3": 3
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2190": {
+      "total": {
+        "count": 54,
+        "orderedCount": 3,
+        "totalOrders": "001000000000000000000000000000306000000000000000000000000",
+        "orderRate": 5.6,
+        "samples": 55
+      },
+      "newCreators": {
+        "count": 54,
+        "orderedCount": 3,
+        "totalOrders": "001000000000000000000000000000306000000000000000000000000",
+        "orderRate": 5.6,
+        "samples": 55
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 32,
+        "L0-1": 14,
+        "L5": 1,
+        "L3": 6,
+        "L4": 1
+      },
+      "starsDist": {
+        "2★": 21,
+        "3★": 15,
+        "1★": 6,
+        "4★": 9,
+        "5★": 3
+      },
+      "typeDist": {
+        "未标注": 53,
+        "潜力达人": 1
+      },
+      "newOfficialDist": {
+        "L2": 32,
+        "L0-1": 14,
+        "L5": 1,
+        "L3": 6,
+        "L4": 1
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2722": {
+      "total": {
+        "count": 45,
+        "orderedCount": 12,
+        "totalOrders": "001000000100002100001001010000000103000010000001000001600100",
+        "orderRate": 26.7,
+        "samples": 45
+      },
+      "newCreators": {
+        "count": 40,
+        "orderedCount": 11,
+        "totalOrders": "001000000100002100010010100000010001000000100000160010",
+        "orderRate": 27.5,
+        "samples": 40
+      },
+      "oldCreators": {
+        "count": 5,
+        "orderedCount": 1,
+        "totalOrders": "00300",
+        "orderRate": 20,
+        "samples": 5
+      },
+      "provenOldCreators": {
+        "count": 5,
+        "orderedCount": 1,
+        "totalOrders": "00300",
+        "orderRate": 20,
+        "samples": 5
+      },
+      "officialDist": {
+        "L2": 29,
+        "L3": 6,
+        "L0-1": 7,
+        "L4": 3
+      },
+      "starsDist": {
+        "2★": 13,
+        "3★": 16,
+        "4★": 13,
+        "5★": 3
+      },
+      "typeDist": {
+        "未标注": 44,
+        "潜力达人": 1
+      },
+      "newOfficialDist": {
+        "L2": 25,
+        "L3": 6,
+        "L0-1": 7,
+        "L4": 2
+      },
+      "oldOfficialDist": {
+        "L2": 4,
+        "L4": 1
+      },
+      "provenOfficialDist": {
+        "L2": 4,
+        "L4": 1
+      }
+    },
+    "2757": {
+      "total": {
+        "count": 22,
+        "orderedCount": 6,
+        "totalOrders": "0010002017000010000000100002",
+        "orderRate": 27.3,
+        "samples": 22
+      },
+      "newCreators": {
+        "count": 22,
+        "orderedCount": 6,
+        "totalOrders": "0010002017000010000000100002",
+        "orderRate": 27.3,
+        "samples": 22
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 18,
+        "L3": 1,
+        "L6": 1,
+        "L4": 2
+      },
+      "starsDist": {
+        "3★": 10,
+        "4★": 3,
+        "2★": 6,
+        "5★": 1,
+        "1★": 2
+      },
+      "typeDist": {
+        "未标注": 21,
+        "核心达人": 1
+      },
+      "newOfficialDist": {
+        "L2": 18,
+        "L3": 1,
+        "L6": 1,
+        "L4": 2
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2789": {
+      "total": {
+        "count": 32,
+        "orderedCount": 7,
+        "totalOrders": "002000000000002002010000100000020001000",
+        "orderRate": 21.9,
+        "samples": 32
+      },
+      "newCreators": {
+        "count": 32,
+        "orderedCount": 7,
+        "totalOrders": "002000000000002002010000100000020001000",
+        "orderRate": 21.9,
+        "samples": 32
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 25,
+        "L0-1": 4,
+        "L3": 1,
+        "L4": 2
+      },
+      "starsDist": {
+        "3★": 12,
+        "2★": 12,
+        "4★": 7,
+        "1★": 1
+      },
+      "typeDist": {
+        "未标注": 29,
+        "潜力达人": 2,
+        "高曝光": 1
+      },
+      "newOfficialDist": {
+        "L2": 25,
+        "L0-1": 4,
+        "L3": 1,
+        "L4": 2
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "28173": {
+      "total": {
+        "count": 86,
+        "orderedCount": 23,
+        "totalOrders": "0020901000004020000001000000001008400500000001000000000010000201000020001020002010000001001010001000000030010000",
+        "orderRate": 26.7,
+        "samples": 86
+      },
+      "newCreators": {
+        "count": 83,
+        "orderedCount": 21,
+        "totalOrders": "001000004020000001000000001008400500000001000000000010000201000020001020002010000001001000100000003001000",
+        "orderRate": 25.3,
+        "samples": 83
+      },
+      "oldCreators": {
+        "count": 3,
+        "orderedCount": 2,
+        "totalOrders": "00209010",
+        "orderRate": 66.7,
+        "samples": 3
+      },
+      "provenOldCreators": {
+        "count": 2,
+        "orderedCount": 2,
+        "totalOrders": "0020901",
+        "orderRate": 100,
+        "samples": 2
+      },
+      "officialDist": {
+        "L2": 58,
+        "L6": 1,
+        "L4": 8,
+        "L3": 12,
+        "L5": 1,
+        "L0-1": 6
+      },
+      "starsDist": {
+        "3★": 43,
+        "5★": 10,
+        "2★": 14,
+        "4★": 19
+      },
+      "typeDist": {
+        "未标注": 80,
+        "核心达人": 5,
+        "潜力达人": 1
+      },
+      "newOfficialDist": {
+        "L2": 57,
+        "L4": 7,
+        "L3": 12,
+        "L5": 1,
+        "L0-1": 6
+      },
+      "oldOfficialDist": {
+        "L6": 1,
+        "L4": 1,
+        "L2": 1
+      },
+      "provenOfficialDist": {
+        "L6": 1,
+        "L4": 1
+      }
+    },
+    "28193": {
+      "total": {
+        "count": 6,
+        "orderedCount": 1,
+        "totalOrders": "001000",
+        "orderRate": 16.7,
+        "samples": 6
+      },
+      "newCreators": {
+        "count": 6,
+        "orderedCount": 1,
+        "totalOrders": "001000",
+        "orderRate": 16.7,
+        "samples": 6
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 3,
+        "L5": 1,
+        "L3": 2
+      },
+      "starsDist": {
+        "3★": 3,
+        "5★": 1,
+        "4★": 2
+      },
+      "typeDist": {
+        "未标注": 2,
+        "核心达人": 4
+      },
+      "newOfficialDist": {
+        "L2": 3,
+        "L5": 1,
+        "L3": 2
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2A19": {
+      "total": {
+        "count": 32,
+        "orderedCount": 4,
+        "totalOrders": "001030005000001000000000000000000000",
+        "orderRate": 12.5,
+        "samples": 32
+      },
+      "newCreators": {
+        "count": 32,
+        "orderedCount": 4,
+        "totalOrders": "001030005000001000000000000000000000",
+        "orderRate": 12.5,
+        "samples": 32
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 22,
+        "L3": 9,
+        "L4": 1
+      },
+      "starsDist": {
+        "3★": 16,
+        "4★": 11,
+        "2★": 5
+      },
+      "typeDist": {
+        "未标注": 28,
+        "核心达人": 4
+      },
+      "newOfficialDist": {
+        "L2": 22,
+        "L3": 9,
+        "L4": 1
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    }
+  },
+  "7月测款": {
+    "2178": {
+      "total": {
+        "count": 39,
+        "orderedCount": 5,
+        "totalOrders": "00379000000001000000000000000200030000020",
+        "orderRate": 12.8,
+        "samples": 39
+      },
+      "newCreators": {
+        "count": 39,
+        "orderedCount": 5,
+        "totalOrders": "00379000000001000000000000000200030000020",
+        "orderRate": 12.8,
+        "samples": 39
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L3": 7,
+        "L2": 20,
+        "L4": 2,
+        "L0-1": 10
+      },
+      "starsDist": {
+        "4★": 6,
+        "3★": 20,
+        "2★": 9,
+        "5★": 3,
+        "1★": 1
+      },
+      "typeDist": {
+        "未标注": 39
+      },
+      "newOfficialDist": {
+        "L3": 7,
+        "L2": 20,
+        "L4": 2,
+        "L0-1": 10
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2189": {
+      "total": {
+        "count": 32,
+        "orderedCount": 13,
+        "totalOrders": "00140100010072030506020100800000000068000103",
+        "orderRate": 40.6,
+        "samples": 33
+      },
+      "newCreators": {
+        "count": 32,
+        "orderedCount": 13,
+        "totalOrders": "00140100010072030506020100800000000068000103",
+        "orderRate": 40.6,
+        "samples": 33
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 17,
+        "L0-1": 3,
+        "L3": 9,
+        "L6": 1,
+        "L4": 2
+      },
+      "starsDist": {
+        "3★": 12,
+        "2★": 8,
+        "4★": 8,
+        "5★": 3,
+        "1★": 1
+      },
+      "typeDist": {
+        "未标注": 24,
+        "高曝光": 2,
+        "核心达人": 2,
+        "潜力达人": 4
+      },
+      "newOfficialDist": {
+        "L2": 17,
+        "L0-1": 3,
+        "L3": 9,
+        "L6": 1,
+        "L4": 2
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2190": {
+      "total": {
+        "count": 28,
+        "orderedCount": 5,
+        "totalOrders": "0015000000001000000101000100000000",
+        "orderRate": 17.9,
+        "samples": 28
+      },
+      "newCreators": {
+        "count": 28,
+        "orderedCount": 5,
+        "totalOrders": "0015000000001000000101000100000000",
+        "orderRate": 17.9,
+        "samples": 28
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 18,
+        "L0-1": 7,
+        "L3": 3
+      },
+      "starsDist": {
+        "3★": 11,
+        "4★": 4,
+        "2★": 12,
+        "5★": 1
+      },
+      "typeDist": {
+        "未标注": 28
+      },
+      "newOfficialDist": {
+        "L2": 18,
+        "L0-1": 7,
+        "L3": 3
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2722": {
+      "total": {
+        "count": 103,
+        "orderedCount": 23,
+        "totalOrders": "002212000000000000000002000001700390010000000010004505010017001000000020100200130000000000100000390000088000500030000000001700001000010",
+        "orderRate": 22.3,
+        "samples": 107
+      },
+      "newCreators": {
+        "count": 97,
+        "orderedCount": 20,
+        "totalOrders": "002212000000000000000002000001700390010000001004505010017001000000020020013000000000010000039000008800050000000000017000000010",
+        "orderRate": 20.6,
+        "samples": 101
+      },
+      "oldCreators": {
+        "count": 6,
+        "orderedCount": 3,
+        "totalOrders": "0010301",
+        "orderRate": 50,
+        "samples": 6
+      },
+      "provenOldCreators": {
+        "count": 6,
+        "orderedCount": 3,
+        "totalOrders": "0010301",
+        "orderRate": 50,
+        "samples": 6
+      },
+      "officialDist": {
+        "L3": 23,
+        "L2": 59,
+        "L0-1": 10,
+        "L4": 9,
+        "L5": 2
+      },
+      "starsDist": {
+        "4★": 22,
+        "3★": 55,
+        "2★": 15,
+        "5★": 9,
+        "1★": 2
+      },
+      "typeDist": {
+        "未标注": 96,
+        "黑名单达人": 2,
+        "高曝光": 2,
+        "核心达人": 1,
+        "潜力达人": 2
+      },
+      "newOfficialDist": {
+        "L3": 22,
+        "L2": 57,
+        "L0-1": 9,
+        "L4": 8,
+        "L5": 1
+      },
+      "oldOfficialDist": {
+        "L3": 1,
+        "L2": 2,
+        "L5": 1,
+        "L4": 1,
+        "L0-1": 1
+      },
+      "provenOfficialDist": {
+        "L3": 1,
+        "L2": 2,
+        "L5": 1,
+        "L4": 1,
+        "L0-1": 1
+      }
+    },
+    "2757": {
+      "total": {
+        "count": 15,
+        "orderedCount": 2,
+        "totalOrders": "00100200000000000",
+        "orderRate": 13.3,
+        "samples": 15
+      },
+      "newCreators": {
+        "count": 15,
+        "orderedCount": 2,
+        "totalOrders": "00100200000000000",
+        "orderRate": 13.3,
+        "samples": 15
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 13,
+        "L3": 2
+      },
+      "starsDist": {
+        "3★": 11,
+        "2★": 2,
+        "4★": 2
+      },
+      "typeDist": {
+        "未标注": 14,
+        "高曝光": 1
+      },
+      "newOfficialDist": {
+        "L2": 13,
+        "L3": 2
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2789": {
+      "total": {
+        "count": 54,
+        "orderedCount": 17,
+        "totalOrders": "00302001000100030100001803300600003003000170000000100000010000001001002",
+        "orderRate": 31.5,
+        "samples": 55
+      },
+      "newCreators": {
+        "count": 54,
+        "orderedCount": 17,
+        "totalOrders": "00302001000100030100001803300600003003000170000000100000010000001001002",
+        "orderRate": 31.5,
+        "samples": 55
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 35,
+        "L0-1": 15,
+        "L3": 4
+      },
+      "starsDist": {
+        "3★": 26,
+        "2★": 16,
+        "1★": 6,
+        "4★": 5,
+        "5★": 1
+      },
+      "typeDist": {
+        "未标注": 51,
+        "黑名单达人": 1,
+        "潜力达人": 1,
+        "潜力达人,高曝光": 1
+      },
+      "newOfficialDist": {
+        "L2": 35,
+        "L0-1": 15,
+        "L3": 4
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "28173": {
+      "total": {
+        "count": 70,
+        "orderedCount": 20,
+        "totalOrders": "00200020105070060102001100702070001000010000100002001000010000000000000004200002090100",
+        "orderRate": 28.6,
+        "samples": 72
+      },
+      "newCreators": {
+        "count": 67,
+        "orderedCount": 17,
+        "totalOrders": "002000201050700601020070207000100001000010000200100001000000000000000000100",
+        "orderRate": 25.4,
+        "samples": 69
+      },
+      "oldCreators": {
+        "count": 3,
+        "orderedCount": 3,
+        "totalOrders": "001100420209",
+        "orderRate": 100,
+        "samples": 3
+      },
+      "provenOldCreators": {
+        "count": 2,
+        "orderedCount": 2,
+        "totalOrders": "001100209",
+        "orderRate": 100,
+        "samples": 2
+      },
+      "officialDist": {
+        "L3": 13,
+        "L2": 42,
+        "L4": 5,
+        "L5": 1,
+        "L0-1": 8,
+        "L6": 1
+      },
+      "starsDist": {
+        "5★": 6,
+        "3★": 34,
+        "4★": 20,
+        "2★": 9,
+        "1★": 1
+      },
+      "typeDist": {
+        "未标注": 54,
+        "高曝光": 3,
+        "核心达人": 5,
+        "潜力达人": 5,
+        "黑名单达人": 2,
+        "潜力达人,高曝光": 1
+      },
+      "newOfficialDist": {
+        "L3": 13,
+        "L2": 42,
+        "L4": 3,
+        "L5": 1,
+        "L0-1": 8
+      },
+      "oldOfficialDist": {
+        "L4": 2,
+        "L6": 1
+      },
+      "provenOfficialDist": {
+        "L4": 1,
+        "L6": 1
+      }
+    },
+    "28193": {
+      "total": {
+        "count": 25,
+        "orderedCount": 2,
+        "totalOrders": "00300000010000000",
+        "orderRate": 8,
+        "samples": 26
+      },
+      "newCreators": {
+        "count": 25,
+        "orderedCount": 2,
+        "totalOrders": "00300000010000000",
+        "orderRate": 8,
+        "samples": 26
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L6": 1,
+        "L2": 21,
+        "L3": 2,
+        "L0-1": 1
+      },
+      "starsDist": {
+        "5★": 3,
+        "3★": 15,
+        "2★": 4,
+        "4★": 2,
+        "1★": 1
+      },
+      "typeDist": {
+        "核心达人": 2,
+        "未标注": 23
+      },
+      "newOfficialDist": {
+        "L6": 1,
+        "L2": 21,
+        "L3": 2,
+        "L0-1": 1
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2A19": {
+      "total": {
+        "count": 57,
+        "orderedCount": 7,
+        "totalOrders": "00140000000100000000000003000000050000100100000004000000000",
+        "orderRate": 12.3,
+        "samples": 58
+      },
+      "newCreators": {
+        "count": 57,
+        "orderedCount": 7,
+        "totalOrders": "00140000000100000000000003000000050000100100000004000000000",
+        "orderRate": 12.3,
+        "samples": 58
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L4": 3,
+        "L2": 42,
+        "L3": 10,
+        "L0-1": 2
+      },
+      "starsDist": {
+        "4★": 21,
+        "3★": 30,
+        "2★": 6
+      },
+      "typeDist": {
+        "未标注": 51,
+        "黑名单达人": 2,
+        "核心达人": 2,
+        "潜力达人": 2
+      },
+      "newOfficialDist": {
+        "L4": 3,
+        "L2": 42,
+        "L3": 10,
+        "L0-1": 2
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    }
+  },
+  "8月测款": {
+    "2178": {
+      "total": {
+        "count": 73,
+        "orderedCount": 5,
+        "totalOrders": "0020000000000000000000020500000000000000000000000000000000000040004600000000",
+        "orderRate": 6.8,
+        "samples": 73
+      },
+      "newCreators": {
+        "count": 71,
+        "orderedCount": 4,
+        "totalOrders": "0020000000000000000000200000000000000000000000000000000000040004600000000",
+        "orderRate": 5.6,
+        "samples": 71
+      },
+      "oldCreators": {
+        "count": 2,
+        "orderedCount": 1,
+        "totalOrders": "005",
+        "orderRate": 50,
+        "samples": 2
+      },
+      "provenOldCreators": {
+        "count": 2,
+        "orderedCount": 1,
+        "totalOrders": "005",
+        "orderRate": 50,
+        "samples": 2
+      },
+      "officialDist": {
+        "L0-1": 18,
+        "L3": 9,
+        "L4": 4,
+        "L2": 40,
+        "L5": 1,
+        "L6": 1
+      },
+      "starsDist": {
+        "3★": 33,
+        "2★": 26,
+        "5★": 5,
+        "1★": 2,
+        "4★": 7
+      },
+      "typeDist": {
+        "未标注": 71,
+        "潜力达人": 1,
+        "核心达人": 1
+      },
+      "newOfficialDist": {
+        "L0-1": 18,
+        "L3": 9,
+        "L2": 40,
+        "L5": 1,
+        "L4": 3
+      },
+      "oldOfficialDist": {
+        "L4": 1,
+        "L6": 1
+      },
+      "provenOfficialDist": {
+        "L4": 1,
+        "L6": 1
+      }
+    },
+    "2189": {
+      "total": {
+        "count": 37,
+        "orderedCount": 8,
+        "totalOrders": "0010000064000300000000010002800000000001002003",
+        "orderRate": 21.6,
+        "samples": 38
+      },
+      "newCreators": {
+        "count": 37,
+        "orderedCount": 8,
+        "totalOrders": "0010000064000300000000010002800000000001002003",
+        "orderRate": 21.6,
+        "samples": 38
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 30,
+        "L5": 1,
+        "L0-1": 3,
+        "L3": 3
+      },
+      "starsDist": {
+        "3★": 20,
+        "4★": 7,
+        "2★": 9,
+        "1★": 1
+      },
+      "typeDist": {
+        "未标注": 32,
+        "核心达人": 3,
+        "潜力达人": 1,
+        "高曝光": 1
+      },
+      "newOfficialDist": {
+        "L2": 30,
+        "L5": 1,
+        "L0-1": 3,
+        "L3": 3
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2190": {
+      "total": {
+        "count": 54,
+        "orderedCount": 3,
+        "totalOrders": "001000000000000000000000000000306000000000000000000000000",
+        "orderRate": 5.6,
+        "samples": 55
+      },
+      "newCreators": {
+        "count": 54,
+        "orderedCount": 3,
+        "totalOrders": "001000000000000000000000000000306000000000000000000000000",
+        "orderRate": 5.6,
+        "samples": 55
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 32,
+        "L0-1": 14,
+        "L5": 1,
+        "L3": 6,
+        "L4": 1
+      },
+      "starsDist": {
+        "2★": 21,
+        "3★": 15,
+        "1★": 6,
+        "4★": 9,
+        "5★": 3
+      },
+      "typeDist": {
+        "未标注": 53,
+        "潜力达人": 1
+      },
+      "newOfficialDist": {
+        "L2": 32,
+        "L0-1": 14,
+        "L5": 1,
+        "L3": 6,
+        "L4": 1
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2722": {
+      "total": {
+        "count": 45,
+        "orderedCount": 12,
+        "totalOrders": "001000000100002100001001010000000103000010000001000001600100",
+        "orderRate": 26.7,
+        "samples": 45
+      },
+      "newCreators": {
+        "count": 40,
+        "orderedCount": 11,
+        "totalOrders": "001000000100002100010010100000010001000000100000160010",
+        "orderRate": 27.5,
+        "samples": 40
+      },
+      "oldCreators": {
+        "count": 5,
+        "orderedCount": 1,
+        "totalOrders": "00300",
+        "orderRate": 20,
+        "samples": 5
+      },
+      "provenOldCreators": {
+        "count": 5,
+        "orderedCount": 1,
+        "totalOrders": "00300",
+        "orderRate": 20,
+        "samples": 5
+      },
+      "officialDist": {
+        "L2": 29,
+        "L3": 6,
+        "L0-1": 7,
+        "L4": 3
+      },
+      "starsDist": {
+        "2★": 13,
+        "3★": 16,
+        "4★": 13,
+        "5★": 3
+      },
+      "typeDist": {
+        "未标注": 44,
+        "潜力达人": 1
+      },
+      "newOfficialDist": {
+        "L2": 25,
+        "L3": 6,
+        "L0-1": 7,
+        "L4": 2
+      },
+      "oldOfficialDist": {
+        "L2": 4,
+        "L4": 1
+      },
+      "provenOfficialDist": {
+        "L2": 4,
+        "L4": 1
+      }
+    },
+    "2757": {
+      "total": {
+        "count": 22,
+        "orderedCount": 6,
+        "totalOrders": "0010002017000010000000100002",
+        "orderRate": 27.3,
+        "samples": 22
+      },
+      "newCreators": {
+        "count": 22,
+        "orderedCount": 6,
+        "totalOrders": "0010002017000010000000100002",
+        "orderRate": 27.3,
+        "samples": 22
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 18,
+        "L3": 1,
+        "L6": 1,
+        "L4": 2
+      },
+      "starsDist": {
+        "3★": 10,
+        "4★": 3,
+        "2★": 6,
+        "5★": 1,
+        "1★": 2
+      },
+      "typeDist": {
+        "未标注": 21,
+        "核心达人": 1
+      },
+      "newOfficialDist": {
+        "L2": 18,
+        "L3": 1,
+        "L6": 1,
+        "L4": 2
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2789": {
+      "total": {
+        "count": 32,
+        "orderedCount": 7,
+        "totalOrders": "002000000000002002010000100000020001000",
+        "orderRate": 21.9,
+        "samples": 32
+      },
+      "newCreators": {
+        "count": 32,
+        "orderedCount": 7,
+        "totalOrders": "002000000000002002010000100000020001000",
+        "orderRate": 21.9,
+        "samples": 32
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 25,
+        "L0-1": 4,
+        "L3": 1,
+        "L4": 2
+      },
+      "starsDist": {
+        "3★": 12,
+        "2★": 12,
+        "4★": 7,
+        "1★": 1
+      },
+      "typeDist": {
+        "未标注": 29,
+        "潜力达人": 2,
+        "高曝光": 1
+      },
+      "newOfficialDist": {
+        "L2": 25,
+        "L0-1": 4,
+        "L3": 1,
+        "L4": 2
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "28173": {
+      "total": {
+        "count": 86,
+        "orderedCount": 23,
+        "totalOrders": "0020901000004020000001000000001008400500000001000000000010000201000020001020002010000001001010001000000030010000",
+        "orderRate": 26.7,
+        "samples": 86
+      },
+      "newCreators": {
+        "count": 83,
+        "orderedCount": 21,
+        "totalOrders": "001000004020000001000000001008400500000001000000000010000201000020001020002010000001001000100000003001000",
+        "orderRate": 25.3,
+        "samples": 83
+      },
+      "oldCreators": {
+        "count": 3,
+        "orderedCount": 2,
+        "totalOrders": "00209010",
+        "orderRate": 66.7,
+        "samples": 3
+      },
+      "provenOldCreators": {
+        "count": 2,
+        "orderedCount": 2,
+        "totalOrders": "0020901",
+        "orderRate": 100,
+        "samples": 2
+      },
+      "officialDist": {
+        "L2": 58,
+        "L6": 1,
+        "L4": 8,
+        "L3": 12,
+        "L5": 1,
+        "L0-1": 6
+      },
+      "starsDist": {
+        "3★": 43,
+        "5★": 10,
+        "2★": 14,
+        "4★": 19
+      },
+      "typeDist": {
+        "未标注": 80,
+        "核心达人": 5,
+        "潜力达人": 1
+      },
+      "newOfficialDist": {
+        "L2": 57,
+        "L4": 7,
+        "L3": 12,
+        "L5": 1,
+        "L0-1": 6
+      },
+      "oldOfficialDist": {
+        "L6": 1,
+        "L4": 1,
+        "L2": 1
+      },
+      "provenOfficialDist": {
+        "L6": 1,
+        "L4": 1
+      }
+    },
+    "28193": {
+      "total": {
+        "count": 6,
+        "orderedCount": 1,
+        "totalOrders": "001000",
+        "orderRate": 16.7,
+        "samples": 6
+      },
+      "newCreators": {
+        "count": 6,
+        "orderedCount": 1,
+        "totalOrders": "001000",
+        "orderRate": 16.7,
+        "samples": 6
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 3,
+        "L5": 1,
+        "L3": 2
+      },
+      "starsDist": {
+        "3★": 3,
+        "5★": 1,
+        "4★": 2
+      },
+      "typeDist": {
+        "未标注": 2,
+        "核心达人": 4
+      },
+      "newOfficialDist": {
+        "L2": 3,
+        "L5": 1,
+        "L3": 2
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    },
+    "2A19": {
+      "total": {
+        "count": 32,
+        "orderedCount": 4,
+        "totalOrders": "001030005000001000000000000000000000",
+        "orderRate": 12.5,
+        "samples": 32
+      },
+      "newCreators": {
+        "count": 32,
+        "orderedCount": 4,
+        "totalOrders": "001030005000001000000000000000000000",
+        "orderRate": 12.5,
+        "samples": 32
+      },
+      "oldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "provenOldCreators": {
+        "count": 0,
+        "orderedCount": 0,
+        "totalOrders": 0,
+        "orderRate": 0,
+        "samples": 0
+      },
+      "officialDist": {
+        "L2": 22,
+        "L3": 9,
+        "L4": 1
+      },
+      "starsDist": {
+        "3★": 16,
+        "4★": 11,
+        "2★": 5
+      },
+      "typeDist": {
+        "未标注": 28,
+        "核心达人": 4
+      },
+      "newOfficialDist": {
+        "L2": 22,
+        "L3": 9,
+        "L4": 1
+      },
+      "oldOfficialDist": {},
+      "provenOfficialDist": {}
+    }
+  }
+}
