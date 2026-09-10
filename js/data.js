@@ -1102,23 +1102,21 @@
       }
     });
 
-    // SKU排名（达人维度：出单率 = 出单达人数 / 履约达人数）
+    // SKU排名（达人维度：出单率 = 出单达人数 / 有视频链接达人数）
     var skuRanking = Object.entries(bySKU)
       .map(function (entry) {
         var d = getSKUDetail(entry[0]);
         // 该SKU的样品
         var skuSamples = filteredSamples.filter(function (s) { return s.sku === entry[0]; });
-        var fulfilledCreators = {};  // 履约达人
-        var orderedCreators = {};    // 出单达人
+        var videoCreators = {};      // 有视频达人（实际发了视频的达人，分母用这个）
+        var orderedCreators = {};    // 出单达人（有视频且出单）
         skuSamples.forEach(function (s) {
-          if (s.fulfillMethod === '视频' || (s.fulfillMethod && s.fulfillMethod.indexOf('直播') >= 0)) {
-            fulfilledCreators[s.creator] = true;
+          if (s.videos && s.videos.some(function (v) { return v && v.url && String(v.url).trim(); })) {
+            videoCreators[s.creator] = true;
           }
-          if (s.orderCount && s.orderCount > 0) {
-            orderedCreators[s.creator] = true;
-          }
+          if (s.orderCount && s.orderCount > 0) orderedCreators[s.creator] = true;
         });
-        var fCount = Object.keys(fulfilledCreators).length;
+        var fCount = Object.keys(videoCreators).length;
         var oCount = Object.keys(orderedCreators).length;
         return {
           sku: entry[0],
@@ -1127,6 +1125,7 @@
           videoCount: entry[1].total,
           orderedCount: entry[1].ordered,
           fulfilledCreators: fCount,
+          videoCreators: fCount,
           orderedCreators: oCount,
           orderRate: fCount > 0 ? Math.round(oCount / fCount * 1000) / 10 : 0,
         };
@@ -1170,18 +1169,16 @@
       .sort(function (a, b) { return b.count - a.count; })
       .slice(0, 10);
 
-    // 整体出单率（达人维度：出单达人数 / 履约达人数）
-    var allFulfilledCreators = {};
+    // 整体出单率（达人维度：出单达人数 / 有视频达人数）
+    var allVideoCreators = {};
     var allOrderedCreators = {};
     filteredSamples.forEach(function (s) {
-      if (s.fulfillMethod === '视频' || (s.fulfillMethod && s.fulfillMethod.indexOf('直播') >= 0)) {
-        allFulfilledCreators[s.creator] = true;
+      if (s.videos && s.videos.some(function (v) { return v && v.url && String(v.url).trim(); })) {
+        allVideoCreators[s.creator] = true;
       }
-      if (s.orderCount && s.orderCount > 0) {
-        allOrderedCreators[s.creator] = true;
-      }
+      if (s.orderCount && s.orderCount > 0) allOrderedCreators[s.creator] = true;
     });
-    var totalFulfilledCreators = Object.keys(allFulfilledCreators).length;
+    var totalFulfilledCreators = Object.keys(allVideoCreators).length;
     var totalOrderedCreators = Object.keys(allOrderedCreators).length;
 
     return {
@@ -2311,13 +2308,15 @@
     var samples = D.samples;
     if (sku) samples = samples.filter(function (s) { return s.sku === sku; });
     if (startDate || endDate) samples = samples.filter(function (s) { return s.sampleTime && attrInRange(s.sampleTime, { start: startDate, end: endDate }); });
-    var fulfilled = {}, ordered = {};
+    // 出单率 = 出单达人 ÷ 有视频链接达人（实际发了视频链接的达人）
+    var videoCreators = {}, ordered = {};
     samples.forEach(function (s) {
-      var m = s.fulfillMethod || '';
-      if (m === '视频' || m.indexOf('直播') >= 0) fulfilled[s.creator] = true;
+      if (s.videos && s.videos.some(function (v) { return v && v.url && String(v.url).trim(); })) {
+        videoCreators[s.creator] = true;
+      }
       if (s.orderCount && s.orderCount > 0) ordered[s.creator] = true;
     });
-    var f = Object.keys(fulfilled).length, o = Object.keys(ordered).length;
+    var f = Object.keys(videoCreators).length, o = Object.keys(ordered).length;
     return { sampleCount: samples.length, fulfilledCreators: f, orderedCreators: o, orderRate: f > 0 ? Math.round(o / f * 1000) / 10 : 0 };
   }
 

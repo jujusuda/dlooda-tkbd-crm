@@ -150,7 +150,7 @@
       + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
       + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-2);">SKU</th>'
       + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-2);">寄样</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--c-info);">履约达人</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--c-info);">有视频达人</th>'
       + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--pink-500);">出单达人</th>'
       + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-3);">出单率</th>'
       + '</tr></thead><tbody>';
@@ -160,7 +160,7 @@
       html += '<tr style="border-bottom:1px solid var(--border-1);">'
         + '<td style="padding:6px 4px;font-weight:600;color:var(--text-1);">SKU ' + App.escapeHtml(p.sku) + '</td>'
         + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + p.approved + '</td>'
-        + '<td style="padding:6px 4px;text-align:center;color:var(--c-info);">' + p.fulfilledCreators + '</td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--c-info);">' + (p.videoCreators != null ? p.videoCreators : p.fulfilledCreators) + '</td>'
         + '<td style="padding:6px 4px;text-align:center;color:var(--pink-500);font-weight:700;">' + p.orderedCreators + '</td>'
         + '<td style="padding:6px 4px;">'
         + '<div style="display:flex;align-items:center;gap:6px;">'
@@ -209,7 +209,7 @@
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-primary);">' + App.formatNumber(analytics.total) + '</div><div class="stat-card__label">视频总数</div></div>'
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + App.formatNumber(analytics.orderedVideos) + '</div><div class="stat-card__label">出单视频</div></div>'
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-success);">' + analytics.orderRate + '%</div><div class="stat-card__label">出单率</div></div>'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + App.formatNumber(analytics.uniqueCreators) + '</div><div class="stat-card__label">有视频达人</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + App.formatNumber(analytics.fulfilledCreators) + '</div><div class="stat-card__label">有视频达人</div></div>'
       + '</div>';
 
     // 达人出单视频 TOP 20（含视频链接）

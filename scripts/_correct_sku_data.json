@@ -1,51 +1,363 @@
 {
   "periods": {
-    "7月常卖": ["2722", "2178", "2190", "2189", "2789", "28173"],
-    "7月测款": ["28193", "2A19"],
-    "8月常卖": ["2178", "2190", "2722", "2189", "28173", "2789"],
-    "8月测款": ["2757"]
+    "7月常卖": [
+      "2722",
+      "2178",
+      "2190",
+      "2189",
+      "2789",
+      "28173"
+    ],
+    "7月测款": [
+      "28193",
+      "2A19"
+    ],
+    "8月常卖": [
+      "2178",
+      "2190",
+      "2722",
+      "2189",
+      "28173",
+      "2789"
+    ],
+    "8月测款": [
+      "2757"
+    ]
   },
   "skuMeta": {
-    "2178": {"name": "Work Pants(Micro Flare)", "position": "爆品"},
-    "2190": {"name": "Work Pants(升级版)", "position": "爆品"},
-    "2722": {"name": "Crossover Skort", "position": "爆品"},
-    "2189": {"name": "Work Pants(经典款)", "position": "销售"},
-    "28173": {"name": "Wide Leg Work Pants", "position": "销售"},
-    "2789": {"name": "Four-Pocket Skort", "position": "销售"},
-    "2757": {"name": "Lace Skort", "position": "测品"},
-    "28193": {"name": "Work Pants(新款)", "position": "测品"},
-    "2A19": {"name": "(未知)", "position": "测品"}
+    "2178": {
+      "name": "Work Pants(Micro Flare)",
+      "position": "爆品"
+    },
+    "2189": {
+      "name": "Work Pants(经典款)",
+      "position": "销售"
+    },
+    "2190": {
+      "name": "Work Pants(升级版)",
+      "position": "爆品"
+    },
+    "2722": {
+      "name": "Crossover Skort",
+      "position": "爆品"
+    },
+    "2757": {
+      "name": "Lace Skort",
+      "position": "测品"
+    },
+    "2789": {
+      "name": "Four-Pocket Skort",
+      "position": "销售"
+    },
+    "28173": {
+      "name": "Wide Leg Work Pants",
+      "position": "销售"
+    },
+    "28193": {
+      "name": "Work Pants(新款)",
+      "position": "测品"
+    },
+    "2A19": {
+      "name": "(未知)",
+      "position": "测品"
+    }
   },
   "data": {
     "7月常卖": {
-      "2722": {"samples": 105, "fulfilled": 84, "fulfillRate": 0.8000, "orderCreators": 22, "creatorOrderRate": 0.2095, "videos": 556, "orderVideos": 141, "videoOrderRate": 0.2536, "plays": 3618554, "clicks": 125190, "orders": 1805, "ctr": 0.0346, "cvr": 0.0144, "naturalRate": 0.76, "monthlyOrders": 1509},
-      "2178": {"samples": 33, "fulfilled": 28, "fulfillRate": 0.8485, "orderCreators": 4, "creatorOrderRate": 0.1212, "videos": 267, "orderVideos": 94, "videoOrderRate": 0.3521, "plays": 3658449, "clicks": 131488, "orders": 1587, "ctr": 0.0359, "cvr": 0.0121, "naturalRate": 0.79, "monthlyOrders": 1289},
-      "2190": {"samples": 27, "fulfilled": 27, "fulfillRate": 1.0000, "orderCreators": 5, "creatorOrderRate": 0.1852, "videos": 211, "orderVideos": 61, "videoOrderRate": 0.2891, "plays": 2540712, "clicks": 64592, "orders": 1730, "ctr": 0.0254, "cvr": 0.0266, "naturalRate": 0.69, "monthlyOrders": 1506},
-      "2189": {"samples": 33, "fulfilled": 29, "fulfillRate": 0.8788, "orderCreators": 14, "creatorOrderRate": 0.4242, "videos": 106, "orderVideos": 40, "videoOrderRate": 0.3774, "plays": 160240, "clicks": 7645, "orders": 186, "ctr": 0.0477, "cvr": 0.0243, "naturalRate": 0.8980, "monthlyOrders": 148},
-      "2789": {"samples": 53, "fulfilled": 45, "fulfillRate": 0.8491, "orderCreators": 12, "creatorOrderRate": 0.2264, "videos": 59, "orderVideos": 17, "videoOrderRate": 0.2881, "plays": 79817, "clicks": 3022, "orders": 107, "ctr": 0.0479, "cvr": 0.0273, "naturalRate": 0.3010, "monthlyOrders": 88},
-      "28173": {"samples": 67, "fulfilled": 59, "fulfillRate": 0.8806, "orderCreators": 16, "creatorOrderRate": 0.2388, "videos": 138, "orderVideos": 33, "videoOrderRate": 0.2391, "plays": 251397, "clicks": 11936, "orders": 298, "ctr": 0.0475, "cvr": 0.0250, "naturalRate": 0.6070, "monthlyOrders": 252}
+      "2178": {
+        "samples": 33,
+        "fulfilled": 28,
+        "fulfillRate": 0.8485,
+        "orderCreators": 5,
+        "creatorOrderRate": 0.1724137931034483,
+        "videos": 267,
+        "orderVideos": 94,
+        "videoOrderRate": 0.3521,
+        "plays": 3658449,
+        "clicks": 131488,
+        "orders": 1587,
+        "ctr": 0.0359,
+        "cvr": 0.0121,
+        "naturalRate": 0.79,
+        "monthlyOrders": 1289
+      },
+      "2189": {
+        "samples": 33,
+        "fulfilled": 29,
+        "fulfillRate": 0.8788,
+        "orderCreators": 13,
+        "creatorOrderRate": 0.5416666666666666,
+        "videos": 106,
+        "orderVideos": 40,
+        "videoOrderRate": 0.3774,
+        "plays": 160240,
+        "clicks": 7645,
+        "orders": 186,
+        "ctr": 0.0477,
+        "cvr": 0.0243,
+        "naturalRate": 0.898,
+        "monthlyOrders": 148
+      },
+      "2190": {
+        "samples": 27,
+        "fulfilled": 27,
+        "fulfillRate": 1,
+        "orderCreators": 5,
+        "creatorOrderRate": 0.20833333333333334,
+        "videos": 211,
+        "orderVideos": 61,
+        "videoOrderRate": 0.2891,
+        "plays": 2540712,
+        "clicks": 64592,
+        "orders": 1730,
+        "ctr": 0.0254,
+        "cvr": 0.0266,
+        "naturalRate": 0.69,
+        "monthlyOrders": 1506
+      },
+      "2722": {
+        "samples": 105,
+        "fulfilled": 84,
+        "fulfillRate": 0.8,
+        "orderCreators": 23,
+        "creatorOrderRate": 0.2804878048780488,
+        "videos": 556,
+        "orderVideos": 141,
+        "videoOrderRate": 0.2536,
+        "plays": 3618554,
+        "clicks": 125190,
+        "orders": 1805,
+        "ctr": 0.0346,
+        "cvr": 0.0144,
+        "naturalRate": 0.76,
+        "monthlyOrders": 1509
+      },
+      "2789": {
+        "samples": 53,
+        "fulfilled": 45,
+        "fulfillRate": 0.8491,
+        "orderCreators": 17,
+        "creatorOrderRate": 0.38636363636363635,
+        "videos": 59,
+        "orderVideos": 17,
+        "videoOrderRate": 0.2881,
+        "plays": 79817,
+        "clicks": 3022,
+        "orders": 107,
+        "ctr": 0.0479,
+        "cvr": 0.0273,
+        "naturalRate": 0.301,
+        "monthlyOrders": 88
+      },
+      "28173": {
+        "samples": 67,
+        "fulfilled": 59,
+        "fulfillRate": 0.8806,
+        "orderCreators": 20,
+        "creatorOrderRate": 0.3448275862068966,
+        "videos": 138,
+        "orderVideos": 33,
+        "videoOrderRate": 0.2391,
+        "plays": 251397,
+        "clicks": 11936,
+        "orders": 298,
+        "ctr": 0.0475,
+        "cvr": 0.025,
+        "naturalRate": 0.607,
+        "monthlyOrders": 252
+      }
     },
     "7月测款": {
-      "28193": {"samples": 32, "fulfilled": 20, "fulfillRate": 0.6250, "orderCreators": 3, "creatorOrderRate": 0.0938, "videos": 24, "orderVideos": 3, "videoOrderRate": 0.1250, "plays": 15421, "clicks": 208, "orders": 4, "ctr": 0.0135, "cvr": 0.0192, "naturalRate": 1.0000, "monthlyOrders": 5},
-      "2A19": {"samples": 76, "fulfilled": 48, "fulfillRate": 0.6316, "orderCreators": 11, "creatorOrderRate": 0.1447, "videos": 42, "orderVideos": 6, "videoOrderRate": 0.1429, "plays": 27013, "clicks": 1169, "orders": 11, "ctr": 0.0433, "cvr": 0.0094, "naturalRate": 0.7690, "monthlyOrders": 13}
+      "28193": {
+        "samples": 32,
+        "fulfilled": 20,
+        "fulfillRate": 0.625,
+        "orderCreators": 2,
+        "creatorOrderRate": 0.1111111111111111,
+        "videos": 24,
+        "orderVideos": 3,
+        "videoOrderRate": 0.125,
+        "plays": 15421,
+        "clicks": 208,
+        "orders": 4,
+        "ctr": 0.0135,
+        "cvr": 0.0192,
+        "naturalRate": 1,
+        "monthlyOrders": 5
+      },
+      "2A19": {
+        "samples": 76,
+        "fulfilled": 48,
+        "fulfillRate": 0.6316,
+        "orderCreators": 7,
+        "creatorOrderRate": 0.16279069767441862,
+        "videos": 42,
+        "orderVideos": 6,
+        "videoOrderRate": 0.1429,
+        "plays": 27013,
+        "clicks": 1169,
+        "orders": 11,
+        "ctr": 0.0433,
+        "cvr": 0.0094,
+        "naturalRate": 0.769,
+        "monthlyOrders": 13
+      }
     },
     "8月常卖": {
-      "2178": {"samples": 73, "fulfilled": 56, "fulfillRate": 0.7671, "orderCreators": 5, "creatorOrderRate": 0.0685, "videos": 255, "orderVideos": 70, "videoOrderRate": 0.2745, "plays": 2847143, "clicks": 103934, "orders": 1616, "ctr": 0.0365, "cvr": 0.0155, "naturalRate": 0.7910, "monthlyOrders": 1768},
-      "2190": {"samples": 55, "fulfilled": 46, "fulfillRate": 0.8364, "orderCreators": 3, "creatorOrderRate": 0.0545, "videos": 217, "orderVideos": 60, "videoOrderRate": 0.2764, "plays": 2203093, "clicks": 60298, "orders": 1841, "ctr": 0.0274, "cvr": 0.0305, "naturalRate": 0.8200, "monthlyOrders": 1776},
-      "2722": {"samples": 45, "fulfilled": 37, "fulfillRate": 0.8222, "orderCreators": 12, "creatorOrderRate": 0.2667, "videos": 471, "orderVideos": 155, "videoOrderRate": 0.3291, "plays": 3148354, "clicks": 101610, "orders": 2005, "ctr": 0.0323, "cvr": 0.0197, "naturalRate": 0.8030, "monthlyOrders": 1640},
-      "2189": {"samples": 38, "fulfilled": 35, "fulfillRate": 0.9211, "orderCreators": 8, "creatorOrderRate": 0.2105, "videos": 162, "orderVideos": 58, "videoOrderRate": 0.3580, "plays": 731282, "clicks": 26306, "orders": 932, "ctr": 0.0360, "cvr": 0.0354, "naturalRate": 0.6150, "monthlyOrders": 681},
-      "28173": {"samples": 86, "fulfilled": 78, "fulfillRate": 0.9070, "orderCreators": 23, "creatorOrderRate": 0.2674, "videos": 265, "orderVideos": 84, "videoOrderRate": 0.3170, "plays": 650131, "clicks": 36194, "orders": 843, "ctr": 0.0557, "cvr": 0.0233, "naturalRate": 0.8160, "monthlyOrders": 771},
-      "2789": {"samples": 32, "fulfilled": 23, "fulfillRate": 0.7188, "orderCreators": 7, "creatorOrderRate": 0.2188, "videos": 61, "orderVideos": 13, "videoOrderRate": 0.2131, "plays": 53003, "clicks": 2129, "orders": 38, "ctr": 0.0402, "cvr": 0.0178, "naturalRate": 0.4590, "monthlyOrders": 37}
+      "2178": {
+        "samples": 73,
+        "fulfilled": 56,
+        "fulfillRate": 0.7671,
+        "orderCreators": 5,
+        "creatorOrderRate": 0.09803921568627451,
+        "videos": 255,
+        "orderVideos": 70,
+        "videoOrderRate": 0.2745,
+        "plays": 2847143,
+        "clicks": 103934,
+        "orders": 1616,
+        "ctr": 0.0365,
+        "cvr": 0.0155,
+        "naturalRate": 0.791,
+        "monthlyOrders": 1768
+      },
+      "2189": {
+        "samples": 38,
+        "fulfilled": 35,
+        "fulfillRate": 0.9211,
+        "orderCreators": 8,
+        "creatorOrderRate": 0.23529411764705882,
+        "videos": 162,
+        "orderVideos": 58,
+        "videoOrderRate": 0.358,
+        "plays": 731282,
+        "clicks": 26306,
+        "orders": 932,
+        "ctr": 0.036,
+        "cvr": 0.0354,
+        "naturalRate": 0.615,
+        "monthlyOrders": 681
+      },
+      "2190": {
+        "samples": 55,
+        "fulfilled": 46,
+        "fulfillRate": 0.8364,
+        "orderCreators": 3,
+        "creatorOrderRate": 0.075,
+        "videos": 217,
+        "orderVideos": 60,
+        "videoOrderRate": 0.2764,
+        "plays": 2203093,
+        "clicks": 60298,
+        "orders": 1841,
+        "ctr": 0.0274,
+        "cvr": 0.0305,
+        "naturalRate": 0.82,
+        "monthlyOrders": 1776
+      },
+      "2722": {
+        "samples": 45,
+        "fulfilled": 37,
+        "fulfillRate": 0.8222,
+        "orderCreators": 12,
+        "creatorOrderRate": 0.34285714285714286,
+        "videos": 471,
+        "orderVideos": 155,
+        "videoOrderRate": 0.3291,
+        "plays": 3148354,
+        "clicks": 101610,
+        "orders": 2005,
+        "ctr": 0.0323,
+        "cvr": 0.0197,
+        "naturalRate": 0.803,
+        "monthlyOrders": 1640
+      },
+      "2789": {
+        "samples": 32,
+        "fulfilled": 23,
+        "fulfillRate": 0.7188,
+        "orderCreators": 7,
+        "creatorOrderRate": 0.3333333333333333,
+        "videos": 61,
+        "orderVideos": 13,
+        "videoOrderRate": 0.2131,
+        "plays": 53003,
+        "clicks": 2129,
+        "orders": 38,
+        "ctr": 0.0402,
+        "cvr": 0.0178,
+        "naturalRate": 0.459,
+        "monthlyOrders": 37
+      },
+      "28173": {
+        "samples": 86,
+        "fulfilled": 78,
+        "fulfillRate": 0.907,
+        "orderCreators": 25,
+        "creatorOrderRate": 0.33783783783783783,
+        "videos": 265,
+        "orderVideos": 84,
+        "videoOrderRate": 0.317,
+        "plays": 650131,
+        "clicks": 36194,
+        "orders": 843,
+        "ctr": 0.0557,
+        "cvr": 0.0233,
+        "naturalRate": 0.816,
+        "monthlyOrders": 771
+      }
     },
     "8月测款": {
-      "2757": {"samples": 35, "fulfilled": 29, "fulfillRate": 0.8286, "orderCreators": 8, "creatorOrderRate": 0.2286, "videos": 39, "orderVideos": 10, "videoOrderRate": 0.2564, "plays": 110685, "clicks": 3323, "orders": 35, "ctr": 0.0300, "cvr": 0.0306, "naturalRate": 0.4050, "monthlyOrders": 37}
+      "2757": {
+        "samples": 35,
+        "fulfilled": 29,
+        "fulfillRate": 0.8286,
+        "orderCreators": 6,
+        "creatorOrderRate": 0.4,
+        "videos": 39,
+        "orderVideos": 10,
+        "videoOrderRate": 0.2564,
+        "plays": 110685,
+        "clicks": 3323,
+        "orders": 35,
+        "ctr": 0.03,
+        "cvr": 0.0306,
+        "naturalRate": 0.405,
+        "monthlyOrders": 37
+      }
     }
   },
   "monthlyOrders": {
-    "7月": {"2178": 1289, "2190": 1506, "2722": 1509, "2189": 148, "28173": 252, "2789": 88, "28193": 5, "2A19": 13},
-    "8月": {"2178": 1768, "2190": 1776, "2722": 1640, "2189": 681, "28173": 771, "2789": 37, "2757": 37}
+    "7月": {
+      "2178": 1289,
+      "2189": 148,
+      "2190": 1506,
+      "2722": 1509,
+      "2789": 88,
+      "28173": 252,
+      "28193": 5,
+      "2A19": 13
+    },
+    "8月": {
+      "2178": 1768,
+      "2189": 681,
+      "2190": 1776,
+      "2722": 1640,
+      "2757": 37,
+      "2789": 37,
+      "28173": 771
+    }
   },
-  "totalMonthlyOrders": {"7月": 4710, "8月": 6670},
-  "samplesTotal": {"7月": 323, "8月": 329},
-  "fulfillRateAvg": {"7月": 0.865, "8月": 0.825}
+  "totalMonthlyOrders": {
+    "7月": 4710,
+    "8月": 6670
+  },
+  "samplesTotal": {
+    "7月": 323,
+    "8月": 329
+  },
+  "fulfillRateAvg": {
+    "7月": 0.865,
+    "8月": 0.825
+  }
 }
