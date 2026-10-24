@@ -18,20 +18,21 @@
       <div class="page-header">
         <div class="page-header__left">
           <h1 class="page-header__title">达人名单库</h1>
-          <p class="page-header__subtitle">模块一：寄样邀约名单 · 模块二：建联名单（TK/邮件/官号）</p>
+          <p class="page-header__subtitle">自动达人名单 · 竞品达人+爆单达人复投名单 · 指定达人名单</p>
         </div>
         <div class="page-header__actions">
           <button class="btn btn--ghost btn--sm" id="btn-export-roster">导出名单</button>
         </div>
       </div>
 
-      <!-- 模块切换 -->
+      <!-- 名单库切换 -->
       <div id="roster-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
-        <button class="btn btn--primary btn--sm" data-roster-tab="sample">模块一 · 寄样名单</button>
-        <button class="btn btn--ghost btn--sm" data-roster-tab="outreach">模块二 · 建联名单</button>
+        <button class="btn btn--primary btn--sm" data-roster-tab="sample">自动达人名单</button>
+        <button class="btn btn--ghost btn--sm" data-roster-tab="outreach">竞品达人+爆单达人复投名单</button>
+        <button class="btn btn--ghost btn--sm" data-roster-tab="designated">指定达人名单</button>
       </div>
 
-      <!-- ============ 模块一：寄样名单（原有） ============ -->
+      <!-- ============ 自动达人名单（原有） ============ -->
       <div id="tab-sample">
 
       <!-- 存储说明 -->
@@ -130,7 +131,7 @@
       </div>
       </div><!-- /tab-sample -->
 
-      <!-- ============ 模块二：建联名单 ============ -->
+      <!-- ============ 竞品达人+爆单达人复投名单 ============ -->
       <div id="tab-outreach" style="display:none;">
 
         <div class="card card--padding-lg" style="margin-bottom:4px;background:var(--bg-pink-soft);">
@@ -251,6 +252,32 @@
           <div id="ob-batches"></div>
         </div>
       </div><!-- /tab-outreach -->
+
+      <!-- ============ 指定达人名单 ============ -->
+      <div id="tab-designated" style="display:none;">
+
+        <div class="card card--padding-lg" style="margin-bottom:4px;background:var(--bg-pink-soft);">
+          <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
+            <strong style="color:var(--pink-600);">指定达人定向名单</strong>：按店铺（图片）分好组的达人名单，
+            <strong>同一店铺内已去重，跨店铺允许重复</strong>。
+            点击卡片弹出达人 ID 名单一键复制；旁边标注「什么时间已发什么产品」；
+            店铺、图片、产品、达人都可以增删改。
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">店铺卡片</h2>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <input type="search" class="input" id="des-search"
+                placeholder="搜店铺 / 产品 / handle" style="width:180px;padding:5px 10px;font-size:12.5px;">
+              <button class="btn btn--primary btn--sm" id="btn-des-add">＋ 新增店铺</button>
+            </div>
+          </div>
+          <div id="des-cats" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;"></div>
+          <div id="des-grid"></div>
+        </div>
+      </div><!-- /tab-designated -->
     </main>
     <nav class="bottom-nav"></nav>
   </div>
@@ -261,6 +288,7 @@
   <script src="js/store.js"></script>
   <script src="js/matcher.js"></script>
   <script src="js/reminder.js"></script>
+  <script src="js/designated-data.js"></script>
   <script src="js/roster.js"></script>
 </body>
 </html>

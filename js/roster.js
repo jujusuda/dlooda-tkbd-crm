@@ -1179,18 +1179,503 @@
     });
   }
 
+  /* ================================================================
+     模块三：指定达人名单（按店铺/图片分组的定向名单）
+     静态数据：js/designated-data.js（DloodaDesignated）
+     本机只存：已发标记 / 卡片修改 / 删除 / 新增 / 达人增删
+     ================================================================ */
+
+  var desState = { cat: '', q: '', openCard: '', editCard: '' };
+
+  // 合并静态数据 + 本机改动 → 当前生效的卡片列表
+  function desAllCards() {
+    var D = global.DloodaDesignated;
+    var st = Store.getDesignated();
+    var cards = [];
+    if (D && D.cats) {
+      D.cats.forEach(function (cat) {
+        (cat.items || []).forEach(function (it) {
+          if (st.deleted.indexOf(it.id) !== -1) return;
+          var o = st.overrides[it.id] || {};
+          var adds = st.handleAdds[it.id] || [];
+          var rems = st.handleRems[it.id] || [];
+          var handles = (it.handles || []).filter(function (h) { return rems.indexOf(h) === -1; });
+          cards.push({
+            id: it.id,
+            cat: cat.id,
+            catName: cat.name,
+            store: o.store != null ? o.store : it.store,
+            title: o.title != null ? o.title : it.title,
+            product: o.product != null ? o.product : it.product,
+            note: o.note != null ? o.note : it.note,
+            img: o.img != null ? o.img : (it.img || ''),
+            handles: handles.concat(adds),
+          });
+        });
+      });
+    }
+    (st.added || []).forEach(function (c) {
+      if (st.deleted.indexOf(c.id) !== -1) return;
+      var o = st.overrides[c.id] || {};
+      var adds = st.handleAdds[c.id] || [];
+      var rems = st.handleRems[c.id] || [];
+      cards.push({
+        id: c.id,
+        cat: c.cat || 'custom',
+        catName: c.catName || (c.cat === 'pants' ? '裤子' : c.cat === 'dress' ? '裙子' : '自建'),
+        store: o.store != null ? o.store : c.store,
+        title: o.title != null ? o.title : c.title,
+        product: o.product != null ? o.product : c.product,
+        note: o.note != null ? o.note : c.note,
+        img: o.img != null ? o.img : (c.img || ''),
+        handles: (c.handles || []).filter(function (h) { return rems.indexOf(h) === -1; }).concat(adds),
+      });
+    });
+    return cards;
+  }
+
+  function desFiltered() {
+    var q = desState.q.trim().toLowerCase();
+    return desAllCards().filter(function (c) {
+      if (desState.cat && c.cat !== desState.cat) return false;
+      if (!q) return true;
+      if ((c.store || '').toLowerCase().indexOf(q) !== -1) return true;
+      if ((c.product || '').toLowerCase().indexOf(q) !== -1) return true;
+      if ((c.title || '').toLowerCase().indexOf(q) !== -1) return true;
+      return (c.handles || []).some(function (h) { return h.indexOf(q) !== -1; });
+    });
+  }
+
+  function renderDesCats() {
+    var box = document.getElementById('des-cats');
+    if (!box) return;
+    var cards = desAllCards();
+    var cats = [{ key: '', name: '全部' }];
+    var seen = {};
+    cards.forEach(function (c) {
+      if (!seen[c.cat]) { seen[c.cat] = { key: c.cat, name: c.catName || c.cat }; cats.push(seen[c.cat]); }
+    });
+    box.innerHTML = cats.map(function (cat) {
+      var n = cat.key ? cards.filter(function (c) { return c.cat === cat.key; }).length : cards.length;
+      var on = desState.cat === cat.key;
+      return '<button class="btn btn--sm ' + (on ? 'btn--secondary' : 'btn--ghost')
+        + '" data-des-cat="' + App.escapeHtml(cat.key) + '">'
+        + App.escapeHtml(cat.name) + ' ' + n + '</button>';
+    }).join('');
+  }
+
+  function desMarkSummary(cardId) {
+    var marks = Store.desMarks(cardId);
+    if (!marks.length) return '';
+    var last = marks[marks.length - 1];
+    return '<div style="margin-top:6px;font-size:11.5px;color:var(--c-success);line-height:1.5;">'
+      + '📋 已发 ' + marks.length + ' 次 · 最近：' + App.escapeHtml(last.date)
+      + (last.product ? ' 发 ' + App.escapeHtml(last.product) : '')
+      + '</div>';
+  }
+
+  function renderDesGrid() {
+    var box = document.getElementById('des-grid');
+    if (!box) return;
+    var cards = desFiltered();
+
+    if (!cards.length) {
+      box.innerHTML = '<div class="card card--padding-lg"><div class="empty-state" style="padding:16px;">'
+        + '<div class="empty-state__icon">🎀</div>'
+        + '<div class="empty-state__text">'
+        + (desState.q ? '没找到匹配的店铺 / 达人，换个关键词试试'
+          : '指定达人名单是空的（静态数据没加载？检查 js/designated-data.js）')
+        + '</div></div></div>';
+      return;
+    }
+
+    box.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));'
+      + 'gap:12px;padding:2px 0;">'
+      + cards.map(function (c) {
+          var marks = Store.desMarks(c.id);
+          var imgHtml = c.img
+            ? '<img src="' + App.escapeHtml(c.img) + '" alt="' + App.escapeHtml(c.store) + '" '
+              + 'style="width:100%;height:130px;object-fit:cover;display:block;" loading="lazy">'
+            : '<div style="width:100%;height:130px;display:flex;align-items:center;justify-content:center;'
+              + 'background:var(--bg-hover);color:var(--text-3);font-size:26px;">🛍️</div>';
+          return ''
+            + '<div style="border:1px solid var(--border-1);border-radius:var(--r-lg);overflow:hidden;'
+            +   'background:#fff;cursor:pointer;display:flex;flex-direction:column;" '
+            +   'data-des-open="' + App.escapeHtml(c.id) + '" title="点击查看达人名单">'
+            +   '<div style="position:relative;">'
+            +     imgHtml
+            +     '<span style="position:absolute;top:6px;left:6px;" class="badge badge--gray">'
+            +       App.escapeHtml(c.catName) + '</span>'
+            +     (marks.length
+            ?       '<span style="position:absolute;top:6px;right:6px;" class="badge badge--green">已发 '
+            +       marks.length + '</span>' : '')
+            +   '</div>'
+            +   '<div style="padding:9px 11px 11px;flex:1;display:flex;flex-direction:column;">'
+            +     '<div style="font-size:13.5px;font-weight:700;color:var(--text-1);'
+            +       'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
+            +       App.escapeHtml(c.store || '（未标注店铺）') + '</div>'
+            +     (c.product
+            ?       '<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;">'
+            +         c.product.split(/[、,，\/\s]+/).filter(Boolean).slice(0, 4).map(function (p) {
+                      return '<span class="sku-tag" style="font-size:10.5px;">'
+                        + App.escapeHtml(p) + '</span>';
+                    }).join('') + '</div>'
+            :       '')
+            +     '<div style="margin-top:5px;font-size:11.5px;color:var(--text-3);">'
+            +       '达人 <strong style="color:var(--text-2);">' + c.handles.length + '</strong> 个</div>'
+            +     desMarkSummary(c.id)
+            +   '</div>'
+            + '</div>';
+        }).join('')
+      + '</div>';
+  }
+
+  function renderDesAll() {
+    renderDesCats();
+    renderDesGrid();
+  }
+
+  /* ---------- 卡片详情弹窗 ---------- */
+
+  function desFindCard(cardId) {
+    return desAllCards().filter(function (c) { return c.id === cardId; })[0] || null;
+  }
+
+  function openDesCard(cardId) {
+    closeDesCard();
+    var c = desFindCard(cardId);
+    if (!c) { App.showToast('卡片不存在'); return; }
+    desState.openCard = cardId;
+    var marks = Store.desMarks(cardId);
+
+    var handleChips = c.handles.slice(0, 200).map(function (h) {
+      return ''
+        + '<span style="display:inline-flex;align-items:center;gap:2px;padding:3px 4px 3px 9px;'
+        +   'border-radius:999px;background:var(--bg-pink-soft);border:1px solid var(--border-1);max-width:100%;">'
+        +   '<button class="link-btn" data-des-copy-h="' + App.escapeHtml(h) + '" '
+        +     'style="font-size:12px;color:var(--text-1);font-weight:500;" title="点击复制">'
+        +     App.escapeHtml(h) + '</button>'
+        +   '<button data-des-rem-h="' + App.escapeHtml(h) + '" title="移除这个达人" '
+        +     'style="border:0;background:transparent;color:var(--text-3);cursor:pointer;'
+        +     'font-size:14px;line-height:1;padding:0 3px;">×</button>'
+        + '</span>';
+    }).join('');
+
+    var mask = document.createElement('div');
+    mask.id = 'des-card-mask';
+    mask.style.cssText = 'position:fixed;inset:0;background:rgba(60,45,50,.35);z-index:9999;'
+      + 'display:flex;align-items:center;justify-content:center;padding:16px;';
+
+    mask.innerHTML = ''
+      + '<div style="background:#fff;border-radius:var(--r-lg);width:100%;max-width:560px;'
+      +   'max-height:86vh;display:flex;flex-direction:column;overflow:hidden;">'
+      +   '<div style="padding:13px 16px;border-bottom:1px solid var(--border-1);display:flex;gap:10px;align-items:flex-start;">'
+      +     (c.img ? '<img src="' + App.escapeHtml(c.img) + '" style="width:52px;height:52px;object-fit:cover;border-radius:var(--r-md);flex:none;">' : '')
+      +     '<div style="flex:1;min-width:0;">'
+      +       '<div style="font-size:15.5px;font-weight:700;color:var(--text-1);">'
+      +         App.escapeHtml(c.store || '（未标注店铺）') + '</div>'
+      +       '<div style="font-size:11.5px;color:var(--text-3);margin-top:3px;line-height:1.5;">'
+      +         (c.product ? '产品：' + App.escapeHtml(c.product) + ' · ' : '')
+      +         (c.title ? App.escapeHtml(c.title) + ' · ' : '')
+      +         c.handles.length + ' 个达人</div>'
+      +     '</div>'
+      +     '<button class="btn btn--ghost btn--sm" id="des-edit-info">编辑</button>'
+      +     '<button class="btn btn--ghost btn--sm" id="des-del-card" style="color:var(--c-danger);">删除</button>'
+      +   '</div>'
+      +   '<div style="flex:1;overflow-y:auto;padding:12px 16px;">'
+      +     '<div style="font-size:12.5px;font-weight:700;color:var(--pink-600);margin-bottom:6px;">'
+      +       '已发记录（什么时间已发什么产品）</div>'
+      +     '<div id="des-marks-list">'
+      +       (marks.length
+      ?         marks.map(function (m) {
+                  return ''
+                    + '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12.5px;">'
+                    +   '<span class="badge badge--green">' + App.escapeHtml(m.date) + '</span>'
+                    +   '<span style="flex:1;color:var(--text-2);">'
+                    +     (m.product ? '已发 ' + App.escapeHtml(m.product) : '已发送')
+                    +     (m.note ? ' <span style="color:var(--text-3);">' + App.escapeHtml(m.note) + '</span>' : '')
+                    +   '</span>'
+                    +   '<button class="link-btn" data-des-del-mark="' + App.escapeHtml(m.id) + '" '
+                    +     'style="color:var(--c-danger);font-size:11.5px;">删除</button>'
+                    + '</div>';
+                }).join('')
+      :         '<div style="font-size:12px;color:var(--text-3);padding:2px 0 6px;">还没发过，发了就记一笔 ↓</div>')
+      +     '</div>'
+      +     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">'
+      +       '<input type="date" class="input" id="des-mark-date" value="' + Store.todayStr() + '" style="width:130px;padding:5px 8px;font-size:12px;">'
+      +       '<input type="text" class="input" id="des-mark-product" placeholder="发的产品，如 2722、2789" style="flex:1;min-width:150px;padding:5px 8px;font-size:12px;">'
+      +       '<button class="btn btn--primary btn--sm" id="des-mark-add">＋ 记一笔已发</button>'
+      +     '</div>'
+      +     '<div style="font-size:12.5px;font-weight:700;color:var(--pink-600);margin-bottom:6px;">'
+      +       '达人 ID 名单（' + c.handles.length + ' 个，同店铺已去重）</div>'
+      +     (c.handles.length
+      ?       '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">' + handleChips + '</div>'
+      +       (c.handles.length > 200
+      ?         '<div style="font-size:11.5px;color:var(--text-3);margin-bottom:8px;">'
+      +           '只展示前 200 个，点下面「一键复制全部」会复制所有 ' + c.handles.length + ' 个</div>' : '')
+      :       '<div style="font-size:12px;color:var(--text-3);padding:2px 0 6px;">这个卡片还没有达人</div>')
+      +     '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+      +       '<textarea class="textarea" id="des-add-handles" rows="2" '
+      +         'placeholder="往这个店铺加达人：粘贴 handle，每行一个或逗号分隔" style="flex:1;min-width:200px;font-size:12px;"></textarea>'
+      +       '<button class="btn btn--secondary btn--sm" id="des-add-handles-btn" style="align-self:flex-start;">＋ 加入</button>'
+      +     '</div>'
+      +   '</div>'
+      +   '<div style="padding:11px 16px;border-top:1px solid var(--border-1);display:flex;gap:8px;justify-content:flex-end;">'
+      +     '<button class="btn btn--ghost btn--sm" id="des-close">关闭</button>'
+      +     '<button class="btn btn--primary btn--sm" id="des-copy-all"'
+      +       (c.handles.length ? '' : ' disabled style="opacity:.5;cursor:not-allowed;"') + '>'
+      +       '一键复制全部 ' + c.handles.length + ' 个</button>'
+      +   '</div>'
+      + '</div>';
+
+    document.body.appendChild(mask);
+
+    mask.addEventListener('click', function (e) {
+      if (e.target === mask) { closeDesCard(); return; }
+      var t = e.target.closest('[data-des-copy-h],[data-des-rem-h],[data-des-del-mark],'
+        + '#des-close,#des-copy-all,#des-mark-add,#des-add-handles-btn,#des-edit-info,#des-del-card');
+      if (!t) return;
+
+      if (t.hasAttribute('data-des-copy-h')) {
+        App.copyToClipboard(t.getAttribute('data-des-copy-h'), 'handle');
+        return;
+      }
+      if (t.hasAttribute('data-des-rem-h')) {
+        var h = t.getAttribute('data-des-rem-h');
+        if (global.confirm('把 ' + h + ' 从这个店铺移除？（只影响本机显示，可重新加回）')) {
+          Store.desRemoveHandle(cardId, h);
+          openDesCard(cardId); renderDesAll();
+          App.showToast('已移除 ' + h);
+        }
+        return;
+      }
+      if (t.hasAttribute('data-des-del-mark')) {
+        Store.desDeleteMark(cardId, t.getAttribute('data-des-del-mark'));
+        openDesCard(cardId); renderDesAll();
+        App.showToast('已删除这条记录');
+        return;
+      }
+      if (t.id === 'des-close') { closeDesCard(); return; }
+      if (t.id === 'des-copy-all') {
+        var cur = desFindCard(cardId);
+        if (cur) copyHandles(cur.handles, cur.store + ' 的 ' + cur.handles.length + ' 个 handle');
+        return;
+      }
+      if (t.id === 'des-mark-add') {
+        var d = document.getElementById('des-mark-date');
+        var p = document.getElementById('des-mark-product');
+        Store.desAddMark(cardId, d ? d.value : Store.todayStr(), p ? p.value.trim() : '', '');
+        openDesCard(cardId); renderDesAll();
+        App.showToast('已记录：' + (d ? d.value : '') + ' 已发 ' + (p ? p.value : ''));
+        return;
+      }
+      if (t.id === 'des-add-handles-btn') {
+        var ta = document.getElementById('des-add-handles');
+        var list = ta ? Matcher.dedupe(Matcher.parseHandles(ta.value)) : [];
+        if (!list.length) { App.showToast('没识别到 handle'); return; }
+        var existing = desFindCard(cardId);
+        var fresh = list.filter(function (x) {
+          return !existing || existing.handles.indexOf(x) === -1;
+        });
+        if (!fresh.length) { App.showToast('这些达人已经在这个店铺里了'); return; }
+        Store.desAddHandles(cardId, fresh);
+        openDesCard(cardId); renderDesAll();
+        App.showToast('已加入 ' + fresh.length + ' 个达人');
+        return;
+      }
+      if (t.id === 'des-edit-info') { openDesEdit(cardId); return; }
+      if (t.id === 'des-del-card') {
+        var card = desFindCard(cardId);
+        if (card && global.confirm('删除店铺「' + (card.store || card.id) + '」整张卡片？\n（本机操作，删除后刷新页面不恢复）')) {
+          Store.desDeleteCard(cardId);
+          closeDesCard(); renderDesAll();
+          App.showToast('卡片已删除');
+        }
+        return;
+      }
+    });
+  }
+
+  function closeDesCard() {
+    var m = document.getElementById('des-card-mask');
+    if (m) m.remove();
+    desState.openCard = '';
+  }
+
+  /* ---------- 卡片编辑 / 新增弹窗 ---------- */
+
+  function desFileToDataURL(file, cb) {
+    var fr = new FileReader();
+    fr.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var s = Math.min(1, 360 / Math.max(img.width, img.height));
+        var cv = document.createElement('canvas');
+        cv.width = Math.round(img.width * s);
+        cv.height = Math.round(img.height * s);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        cb(cv.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = function () { cb(''); };
+      img.src = fr.result;
+    };
+    fr.onerror = function () { cb(''); };
+    fr.readAsDataURL(file);
+  }
+
+  function openDesEdit(cardId) {
+    var c = cardId ? desFindCard(cardId) : null;
+    var isEdit = !!c;
+
+    var oldMask = document.getElementById('des-edit-mask');
+    if (oldMask) oldMask.remove();
+
+    var mask = document.createElement('div');
+    mask.id = 'des-edit-mask';
+    mask.style.cssText = 'position:fixed;inset:0;background:rgba(60,45,50,.45);z-index:10001;'
+      + 'display:flex;align-items:center;justify-content:center;padding:16px;';
+
+    mask.innerHTML = ''
+      + '<div style="background:#fff;border-radius:var(--r-lg);width:100%;max-width:420px;'
+      +   'max-height:86vh;display:flex;flex-direction:column;overflow:hidden;">'
+      +   '<div style="padding:13px 16px;border-bottom:1px solid var(--border-1);font-size:15px;font-weight:700;color:var(--text-1);">'
+      +     (isEdit ? '编辑店铺卡片' : '新增店铺卡片') + '</div>'
+      +   '<div style="flex:1;overflow-y:auto;padding:12px 16px;">'
+      +     '<div class="form-group">'
+      +       '<label class="form-label">分类</label>'
+      +       '<select class="select" id="des-f-cat">'
+      +         '<option value="dress"' + (isEdit && c.cat === 'dress' ? ' selected' : '') + '>裙子</option>'
+      +         '<option value="pants"' + (isEdit && c.cat === 'pants' ? ' selected' : '') + '>裤子</option>'
+      +       '</select>'
+      +     '</div>'
+      +     '<div class="form-group">'
+      +       '<label class="form-label">店铺名</label>'
+      +       '<input type="text" class="input" id="des-f-store" value="' + App.escapeHtml(isEdit ? c.store : '') + '">'
+      +     '</div>'
+      +     '<div class="form-group">'
+      +       '<label class="form-label">产品（SKU，多个用 、 或逗号分隔）</label>'
+      +       '<input type="text" class="input" id="des-f-product" value="' + App.escapeHtml(isEdit ? (c.product || '') : '') + '">'
+      +     '</div>'
+      +     '<div class="form-group">'
+      +       '<label class="form-label">标题 / 备注</label>'
+      +       '<input type="text" class="input" id="des-f-title" value="' + App.escapeHtml(isEdit ? (c.title || '') : '') + '">'
+      +     '</div>'
+      +     '<div class="form-group">'
+      +       '<label class="form-label">产品图片（可换可不换）</label>'
+      +       '<input type="file" class="input" id="des-f-img" accept="image/*" style="padding:6px;">'
+      +       '<div id="des-f-img-preview" style="margin-top:6px;">'
+      +         (isEdit && c.img ? '<img src="' + App.escapeHtml(c.img) + '" style="width:80px;height:80px;object-fit:cover;border-radius:var(--r-md);">' : '')
+      +       '</div>'
+      +     '</div>'
+      +     (!isEdit
+      ?       '<div class="form-group">'
+      +         '<label class="form-label">达人 handle（每行一个或逗号分隔，可留空以后加）</label>'
+      +         '<textarea class="textarea" id="des-f-handles" rows="4"></textarea>'
+      +       '</div>'
+      :       '')
+      +   '</div>'
+      +   '<div style="padding:11px 16px;border-top:1px solid var(--border-1);display:flex;gap:8px;justify-content:flex-end;">'
+      +     '<button class="btn btn--ghost btn--sm" id="des-f-cancel">取消</button>'
+      +     '<button class="btn btn--primary btn--sm" id="des-f-save">' + (isEdit ? '保存' : '创建') + '</button>'
+      +   '</div>'
+      + '</div>';
+
+    document.body.appendChild(mask);
+
+    var imgData = '';
+    var imgInput = mask.querySelector('#des-f-img');
+    if (imgInput) imgInput.addEventListener('change', function () {
+      var f = imgInput.files && imgInput.files[0];
+      if (!f) return;
+      desFileToDataURL(f, function (dataUrl) {
+        imgData = dataUrl;
+        var pv = document.getElementById('des-f-img-preview');
+        if (pv) pv.innerHTML = dataUrl
+          ? '<img src="' + dataUrl + '" style="width:80px;height:80px;object-fit:cover;border-radius:var(--r-md);">'
+          : '<span style="font-size:12px;color:var(--c-danger);">图片读取失败</span>';
+      });
+    });
+
+    mask.querySelector('#des-f-cancel').addEventListener('click', function () { mask.remove(); });
+    mask.addEventListener('click', function (e) { if (e.target === mask) mask.remove(); });
+    mask.querySelector('#des-f-save').addEventListener('click', function () {
+      var cat = mask.querySelector('#des-f-cat').value;
+      var store = mask.querySelector('#des-f-store').value.trim();
+      var product = mask.querySelector('#des-f-product').value.trim();
+      var title = mask.querySelector('#des-f-title').value.trim();
+      if (!store) { App.showToast('店铺名总要有一个吧'); return; }
+
+      if (isEdit) {
+        var patch = { store: store, product: product, title: title };
+        if (imgData) patch.img = imgData;
+        if (cat !== c.cat) patch.cat = cat;
+        Store.desUpdateCard(cardId, patch);
+        mask.remove();
+        renderDesAll();
+        if (desState.openCard) openDesCard(cardId);
+        App.showToast('已保存');
+      } else {
+        var handles = Matcher.dedupe(Matcher.parseHandles(mask.querySelector('#des-f-handles').value));
+        Store.desAddCard({
+          cat: cat,
+          catName: cat === 'pants' ? '裤子' : '裙子',
+          store: store, product: product, title: title,
+          img: imgData, handles: handles,
+        });
+        mask.remove();
+        renderDesAll();
+        App.showToast('已创建「' + store + '」' + (handles.length ? '，含 ' + handles.length + ' 个达人' : ''));
+      }
+    });
+  }
+
+  /* ---------- 模块三事件绑定 ---------- */
+
+  function bindDesEvents() {
+    var box = document.getElementById('des-grid');
+    if (box) {
+      box.addEventListener('click', function (e) {
+        var t = e.target.closest('[data-des-open]');
+        if (!t) return;
+        openDesCard(t.getAttribute('data-des-open'));
+      });
+    }
+
+    var cats = document.getElementById('des-cats');
+    if (cats) {
+      cats.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-des-cat]');
+        if (!b) return;
+        desState.cat = b.getAttribute('data-des-cat');
+        renderDesAll();
+      });
+    }
+
+    var search = document.getElementById('des-search');
+    if (search) search.addEventListener('input', function () {
+      desState.q = search.value;
+      renderDesGrid();
+    });
+
+    var btnAdd = document.getElementById('btn-des-add');
+    if (btnAdd) btnAdd.addEventListener('click', function () { openDesEdit(''); });
+  }
+
   /* ---------- 模块切换 ---------- */
   function switchTab(name) {
     var t1 = document.getElementById('tab-sample');
     var t2 = document.getElementById('tab-outreach');
+    var t3 = document.getElementById('tab-designated');
     if (t1) t1.style.display = (name === 'sample') ? '' : 'none';
     if (t2) t2.style.display = (name === 'outreach') ? '' : 'none';
+    if (t3) t3.style.display = (name === 'designated') ? '' : 'none';
     var btns = document.querySelectorAll('#roster-tabs [data-roster-tab]');
     [].forEach.call(btns, function (b) {
       var on = b.getAttribute('data-roster-tab') === name;
       b.className = 'btn btn--sm ' + (on ? 'btn--primary' : 'btn--ghost');
     });
     if (name === 'outreach') renderObAll();
+    if (name === 'designated') renderDesAll();
   }
 
   function bindTabs() {
@@ -1239,6 +1724,9 @@
     bindObEvents();
     obUpdateCount();
     renderObAll();
+
+    // 模块三：指定达人名单
+    bindDesEvents();
 
     var ta = document.getElementById('roster-input');
     if (ta) ta.addEventListener('input', updateCount);
@@ -1302,6 +1790,9 @@
     // 模块二：建联名单
     renderOutreach: function () { renderObAll(); },
     openBatch: function (id) { obState.open = id; renderObBatches(); },
+    // 模块三：指定达人名单
+    renderDesignated: function () { renderDesAll(); },
+    openDesignatedCard: function (id) { openDesCard(id); },
     switchTab: switchTab,
     parseOutreach: obParse,
     // 批量标记某组已发送 / 重置；返回影响条数

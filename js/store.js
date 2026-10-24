@@ -71,6 +71,13 @@
       groups: [],
       // 建联名单（模块二）：批次 + 成员
       outreach: { batches: [], members: [] },
+      // 指定达人名单（模块三）：只存本机改动+标记，静态数据在 js/designated-data.js
+      // marks: {cardId: [{id,date,product,note}]}  已发记录
+      // overrides: {cardId: {store,product,title,note,img}}  卡片信息修改
+      // deleted: [cardId]  已删除的卡片
+      // added: [card]  用户新增的卡片（img 为 dataURL）
+      // handleAdds / handleRems: {cardId: [handle]}  卡片内增删的达人
+      designated: { marks: {}, overrides: {}, deleted: [], added: [], handleAdds: {}, handleRems: {} },
       rules: JSON.parse(JSON.stringify(DEFAULT_RULES)),
       tracking: {},
       settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
@@ -91,8 +98,15 @@
     if (!data || typeof data !== 'object') { cache = defaults(); persist(); return cache; }
     // 补齐缺失字段（向后兼容）
     var base = defaults();
-    ['roster', 'groups', 'outreach', 'rules', 'tracking', 'settings'].forEach(function (k) {
+    ['roster', 'groups', 'outreach', 'designated', 'rules', 'tracking', 'settings'].forEach(function (k) {
       if (data[k] === undefined || data[k] === null) data[k] = base[k];
+    });
+    if (!data.designated || typeof data.designated !== 'object') data.designated = base.designated;
+    ['marks', 'overrides', 'handleAdds', 'handleRems'].forEach(function (k) {
+      if (!data.designated[k] || typeof data.designated[k] !== 'object') data.designated[k] = {};
+    });
+    ['deleted', 'added'].forEach(function (k) {
+      if (!Array.isArray(data.designated[k])) data.designated[k] = [];
     });
     if (!data.outreach || !Array.isArray(data.outreach.batches)) data.outreach = base.outreach;
     if (!Array.isArray(data.outreach.members)) data.outreach.members = [];
@@ -445,6 +459,89 @@
     persist();
   }
 
+  /* ---------- 指定达人名单（模块三） ---------- */
+
+  function getDesignated() { return load().designated; }
+
+  function desMarks(cardId) {
+    return getDesignated().marks[cardId] || [];
+  }
+
+  function desAddMark(cardId, date, product, note) {
+    var db = load();
+    if (!db.designated.marks[cardId]) db.designated.marks[cardId] = [];
+    var m = { id: uid('dmark'), date: date || todayStr(), product: product || '', note: note || '' };
+    db.designated.marks[cardId].push(m);
+    persist();
+    return m;
+  }
+
+  function desDeleteMark(cardId, markId) {
+    var db = load();
+    db.designated.marks[cardId] = (db.designated.marks[cardId] || [])
+      .filter(function (m) { return m.id !== markId; });
+    persist();
+  }
+
+  function desUpdateCard(cardId, patch) {
+    var db = load();
+    var o = db.designated.overrides[cardId] || {};
+    Object.keys(patch).forEach(function (k) { o[k] = patch[k]; });
+    db.designated.overrides[cardId] = o;
+    persist();
+  }
+
+  function desDeleteCard(cardId) {
+    var db = load();
+    if (db.designated.deleted.indexOf(cardId) === -1) db.designated.deleted.push(cardId);
+    persist();
+  }
+
+  function desRestoreCard(cardId) {
+    var db = load();
+    db.designated.deleted = db.designated.deleted.filter(function (x) { return x !== cardId; });
+    persist();
+  }
+
+  function desAddCard(card) {
+    var db = load();
+    var c = {
+      id: uid('dcard'),
+      cat: card.cat || 'custom',
+      catName: card.catName || '',
+      store: card.store || '',
+      title: card.title || '',
+      product: card.product || '',
+      note: card.note || '',
+      img: card.img || '',
+      handles: (card.handles || []).slice(),
+    };
+    db.designated.added.push(c);
+    persist();
+    return c;
+  }
+
+  function desAddHandles(cardId, handles) {
+    var db = load();
+    var a = db.designated.handleAdds[cardId] || [];
+    handles.forEach(function (h) {
+      if (h && a.indexOf(h) === -1) a.push(h);
+    });
+    db.designated.handleAdds[cardId] = a;
+    persist();
+  }
+
+  function desRemoveHandle(cardId, handle) {
+    var db = load();
+    var r = db.designated.handleRems[cardId] || [];
+    if (r.indexOf(handle) === -1) r.push(handle);
+    db.designated.handleRems[cardId] = r;
+    // 如果是本机新增的，直接从 handleAdds 里删掉
+    db.designated.handleAdds[cardId] = (db.designated.handleAdds[cardId] || [])
+      .filter(function (h) { return h !== handle; });
+    persist();
+  }
+
   /* ---------- 导入导出 ---------- */
 
   function exportAll() {
@@ -456,9 +553,10 @@
     if (!data || typeof data !== 'object') throw new Error('不是有效的 JSON 对象');
     cache = null;
     var base = defaults();
-    ['roster', 'groups', 'outreach', 'rules', 'tracking', 'settings'].forEach(function (k) {
+    ['roster', 'groups', 'outreach', 'designated', 'rules', 'tracking', 'settings'].forEach(function (k) {
       base[k] = data[k] !== undefined ? data[k] : base[k];
     });
+    if (!base.designated || typeof base.designated !== 'object') base.designated = defaults().designated;
     if (!base.outreach || !Array.isArray(base.outreach.batches)) base.outreach = defaults().outreach;
     cache = base;
     persist();
@@ -527,6 +625,17 @@
     deleteMember: deleteMember,
     addTouch: addTouch,
     setMemberStatus: setMemberStatus,
+    // designated（指定达人名单）
+    getDesignated: getDesignated,
+    desMarks: desMarks,
+    desAddMark: desAddMark,
+    desDeleteMark: desDeleteMark,
+    desUpdateCard: desUpdateCard,
+    desDeleteCard: desDeleteCard,
+    desRestoreCard: desRestoreCard,
+    desAddCard: desAddCard,
+    desAddHandles: desAddHandles,
+    desRemoveHandle: desRemoveHandle,
     // rules
     getRules: getRules,
     getRule: getRule,
