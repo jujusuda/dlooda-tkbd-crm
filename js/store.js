@@ -66,9 +66,11 @@
 
   function defaults() {
     return {
-      version: 1,
+      version: 2,
       roster: [],
       groups: [],
+      // 建联名单（模块二）：批次 + 成员
+      outreach: { batches: [], members: [] },
       rules: JSON.parse(JSON.stringify(DEFAULT_RULES)),
       tracking: {},
       settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
@@ -89,9 +91,11 @@
     if (!data || typeof data !== 'object') { cache = defaults(); persist(); return cache; }
     // 补齐缺失字段（向后兼容）
     var base = defaults();
-    ['roster', 'groups', 'rules', 'tracking', 'settings'].forEach(function (k) {
+    ['roster', 'groups', 'outreach', 'rules', 'tracking', 'settings'].forEach(function (k) {
       if (data[k] === undefined || data[k] === null) data[k] = base[k];
     });
+    if (!data.outreach || !Array.isArray(data.outreach.batches)) data.outreach = base.outreach;
+    if (!Array.isArray(data.outreach.members)) data.outreach.members = [];
     Object.keys(base.settings).forEach(function (k) {
       if (data.settings[k] === undefined) data.settings[k] = base.settings[k];
     });
@@ -220,6 +224,118 @@
     persist();
   }
 
+  /* ---------- 建联名单 outreach（名单库模块二）----------
+     批次 batch:
+       { id, date:'2026-10-20', type:'old'|'hot'|'competitor'|'other',
+         source:'halara us', sku:'2178', note:'', createdAt }
+     成员 member:
+       { id, batchId, handle, raw, email, sku, level, note, type,
+         status:'pending'|'contacted'|'replied'|'success'|'fail'|'invalid',
+         failReason, updatedAt, touches:[{date, channel, note}] }
+     type / status 常量见 js/roster.js 的 OUTREACH_* 定义
+     ⚠️ 与 roster（寄样名单）完全独立：不写飞书，只存本机
+  ------------------------------------------------------------ */
+
+  function getOutreach() {
+    var db = load();
+    if (!db.outreach) db.outreach = { batches: [], members: [] };
+    return db.outreach;
+  }
+
+  function getBatches() { return getOutreach().batches; }
+  function getBatch(id) { return getBatches().filter(function (b) { return b.id === id; })[0] || null; }
+
+  function addBatch(batch) {
+    var db = getOutreach();
+    batch.id = batch.id || uid('batch');
+    batch.createdAt = batch.createdAt || Date.now();
+    db.batches.unshift(batch);
+    persist();
+    return batch;
+  }
+
+  function updateBatch(id, patch) {
+    var b = getBatch(id);
+    if (!b) return null;
+    Object.keys(patch).forEach(function (k) { b[k] = patch[k]; });
+    persist();
+    return b;
+  }
+
+  function deleteBatch(id) {
+    var db = getOutreach();
+    db.batches = db.batches.filter(function (b) { return b.id !== id; });
+    db.members = db.members.filter(function (m) { return m.batchId !== id; });
+    persist();
+  }
+
+  function getMembers(batchId) {
+    var ms = getOutreach().members;
+    return batchId ? ms.filter(function (m) { return m.batchId === batchId; }) : ms;
+  }
+
+  function getMember(id) {
+    return getOutreach().members.filter(function (m) { return m.id === id; })[0] || null;
+  }
+
+  // 批量加人：handle 已存在于同批次则跳过（跨批次允许重复）
+  function addMembers(batchId, list) {
+    var db = getOutreach();
+    var exist = {};
+    db.members.forEach(function (m) {
+      if (m.batchId === batchId) exist[m.handle] = true;
+    });
+    var added = 0;
+    list.forEach(function (m) {
+      if (!m.handle || exist[m.handle]) return;
+      exist[m.handle] = true;
+      m.id = m.id || uid('om');
+      m.batchId = batchId;
+      m.status = m.status || 'pending';
+      m.touches = m.touches || [];
+      db.members.push(m);
+      added++;
+    });
+    persist();
+    return added;
+  }
+
+  function updateMember(id, patch) {
+    var m = getMember(id);
+    if (!m) return null;
+    Object.keys(patch).forEach(function (k) { m[k] = patch[k]; });
+    persist();
+    return m;
+  }
+
+  function deleteMember(id) {
+    var db = getOutreach();
+    db.members = db.members.filter(function (m) { return m.id !== id; });
+    persist();
+  }
+
+  // 记一次建联动作（渠道：TK私信 / 邮件 / 官号 / 抖音私信 / WhatsApp / 其他）
+  function addTouch(id, channel, note) {
+    var m = getMember(id);
+    if (!m) return null;
+    m.touches = m.touches || [];
+    m.touches.push({ date: todayStr(), channel: channel, note: note || '' });
+    if (m.status === 'pending') m.status = 'contacted';
+    m.updatedAt = todayStr();
+    persist();
+    return m;
+  }
+
+  function setMemberStatus(id, status, failReason) {
+    var m = getMember(id);
+    if (!m) return null;
+    m.status = status;
+    m.failReason = (status === 'fail') ? (failReason || m.failReason || '') : '';
+    m.updatedAt = todayStr();
+    persist();
+    return m;
+  }
+
   /* ---------- 提醒规则 rules ---------- */
 
   function getRules() { return load().rules; }
@@ -340,9 +456,10 @@
     if (!data || typeof data !== 'object') throw new Error('不是有效的 JSON 对象');
     cache = null;
     var base = defaults();
-    ['roster', 'groups', 'rules', 'tracking', 'settings'].forEach(function (k) {
+    ['roster', 'groups', 'outreach', 'rules', 'tracking', 'settings'].forEach(function (k) {
       base[k] = data[k] !== undefined ? data[k] : base[k];
     });
+    if (!base.outreach || !Array.isArray(base.outreach.batches)) base.outreach = defaults().outreach;
     cache = base;
     persist();
     return true;
@@ -396,6 +513,20 @@
     getGroups: getGroups,
     upsertGroup: upsertGroup,
     deleteGroup: deleteGroup,
+    // outreach（建联名单）
+    getOutreach: getOutreach,
+    getBatches: getBatches,
+    getBatch: getBatch,
+    addBatch: addBatch,
+    updateBatch: updateBatch,
+    deleteBatch: deleteBatch,
+    getMembers: getMembers,
+    getMember: getMember,
+    addMembers: addMembers,
+    updateMember: updateMember,
+    deleteMember: deleteMember,
+    addTouch: addTouch,
+    setMemberStatus: setMemberStatus,
     // rules
     getRules: getRules,
     getRule: getRule,

@@ -554,6 +554,130 @@
   }
 
   /* ================================================================
+     话术库（来自「话术１」Excel，数据文件 js/scripts-data.js）
+     ================================================================ */
+  var LIB = global.DloodaScriptLibrary || null;
+  var scriptState = { group: 'all', kw: '' };
+
+  function libGroups() { return (LIB && LIB.groups) || []; }
+
+  function scriptMatches(it, kw) {
+    if (!kw) return true;
+    var hay = [it.scene, it.group, it.en, it.zh, it.body, it.subject]
+      .concat(it.alt || []).join(' ').toLowerCase();
+    return hay.indexOf(kw) !== -1;
+  }
+
+  function scriptFlat() {
+    var out = [];
+    libGroups().forEach(function (g) {
+      if (scriptState.group !== 'all' && scriptState.group !== g.id) return;
+      (g.items || []).forEach(function (it) {
+        if (scriptMatches(it, scriptState.kw)) out.push({ g: g, it: it });
+      });
+    });
+    return out;
+  }
+
+  function renderScriptTabs() {
+    var box = document.getElementById('script-group-tabs');
+    if (!box) return;
+    var gs = libGroups();
+    var tabs = [{ id: 'all', name: '全部', n: gs.reduce(function (a, g) { return a + (g.items || []).length; }, 0) }]
+      .concat(gs.map(function (g) { return { id: g.id, name: g.name, n: (g.items || []).length }; }));
+    box.innerHTML = tabs.map(function (t) {
+      var on = scriptState.group === t.id;
+      return '<button class="btn btn--sm ' + (on ? 'btn--primary' : 'btn--ghost') + '"'
+        + ' data-script-group="' + App.escapeHtml(t.id) + '">' + App.escapeHtml(t.name)
+        + ' ' + t.n + '</button>';
+    }).join('');
+  }
+
+  function copyBlock(title, text) {
+    if (!text) return '';
+    return ''
+      + '<div style="margin-top:8px;">'
+      +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
+      +     '<span style="font-size:11.5px;color:var(--text-3);font-weight:600;">' + title + '</span>'
+      +     '<button class="btn btn--ghost btn--sm" data-copy-script="' + App.escapeHtml(title) + '" '
+      +       'style="font-size:11px;padding:1px 7px;">复制</button>'
+      +   '</div>'
+      +   '<div data-script-text="' + App.escapeHtml(title) + '" style="white-space:pre-wrap;font-size:12.5px;'
+      +     'line-height:1.7;color:var(--text-1);background:var(--bg-pink-soft);'
+      +     'border-radius:var(--r-sm);padding:9px 10px;">' + App.escapeHtml(text) + '</div>'
+      + '</div>';
+  }
+
+  function renderScriptList() {
+    var box = document.getElementById('script-list');
+    if (!box) return;
+    var list = scriptFlat();
+    if (!list.length) {
+      box.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-3);font-size:13px;">'
+        + '没有匹配的话术，换个关键词试试</div>';
+      return;
+    }
+    box.innerHTML = list.map(function (x) {
+      var it = x.it;
+      var title = String(it.scene || it.group || '话术').replace(/\n/g, ' ');
+      var badge = it.body ? '邮件' : (it.en && it.zh ? '中英' : (it.zh ? '中文' : '英文'));
+      return ''
+        + '<details style="border:1px solid var(--border-1);border-radius:var(--r-md);'
+        +   'margin-bottom:6px;background:var(--bg-surface);overflow:hidden;">'
+        +   '<summary style="padding:10px 12px;cursor:pointer;font-size:13px;font-weight:600;'
+        +     'color:var(--text-1);display:flex;align-items:center;gap:8px;">'
+        +     '<span style="flex:1;min-width:0;">' + App.escapeHtml(title) + '</span>'
+        +     '<span class="badge badge--gray" style="font-size:10.5px;">' + badge + '</span>'
+        +     '<span class="badge badge--sand" style="font-size:10.5px;">' + App.escapeHtml(x.g.name) + '</span>'
+        +   '</summary>'
+        +   '<div style="padding:2px 12px 12px;">'
+        +     copyBlock('主题', it.subject)
+        +     copyBlock('英文', it.en || it.body)
+        +     copyBlock('中文', it.zh)
+        +     ((it.alt || []).map(function (a, j) { return copyBlock('变体' + (j + 1), a); }).join(''))
+        +   '</div>'
+        + '</details>';
+    }).join('');
+  }
+
+  function renderScriptLibrary() {
+    var meta = document.getElementById('script-lib-meta');
+    if (meta && LIB) {
+      var n = libGroups().reduce(function (a, g) { return a + (g.items || []).length; }, 0);
+      meta.textContent = '共 ' + n + ' 条 · 更新于 ' + (LIB.updated || '');
+    }
+    renderScriptTabs();
+    renderScriptList();
+  }
+
+  function bindScriptEvents() {
+    var tabs = document.getElementById('script-group-tabs');
+    if (tabs) tabs.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-script-group]');
+      if (!b) return;
+      scriptState.group = b.getAttribute('data-script-group');
+      renderScriptTabs();
+      renderScriptList();
+    });
+
+    var search = document.getElementById('script-search');
+    if (search) search.addEventListener('input', function () {
+      scriptState.kw = (search.value || '').trim().toLowerCase();
+      renderScriptList();
+    });
+
+    var list = document.getElementById('script-list');
+    if (list) list.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-copy-script]');
+      if (!b) return;
+      var key = b.getAttribute('data-copy-script');
+      var node = (b.closest && b.closest('details')) || list;
+      var txt = node.querySelector('[data-script-text="' + key.replace(/"/g, '&quot;') + '"]');
+      if (txt) App.copyToClipboard(txt.textContent, '话术');
+    });
+  }
+
+  /* ================================================================
      初始化
      ================================================================ */
   function init() {
@@ -562,6 +686,8 @@
 
     renderCategoryList();
     renderSavedList();
+    renderScriptLibrary();
+    bindScriptEvents();
 
     /* --- 写私信弹窗 --- */
     var newBtn = document.getElementById('btn-new-dm');

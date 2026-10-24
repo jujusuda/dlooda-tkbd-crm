@@ -48,7 +48,10 @@
       <div class="section">
         <div class="section__header">
           <h2 class="section__title">每日固定任务</h2>
-          <span class="section__hint">不可删除</span>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span class="section__hint">按你每天真实的工作项列的</span>
+            <button class="btn btn--ghost btn--sm" id="btn-edit-fixed">编辑</button>
+          </div>
         </div>
         <div class="card">
           <div id="fixed-tasks"></div>
@@ -96,6 +99,29 @@
       <div class="modal__footer">
         <button class="btn btn--ghost btn--sm" id="btn-cancel-add-task">取消</button>
         <button class="btn btn--primary btn--sm" id="btn-save-task">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 固定任务编辑弹窗 -->
+  <div class="modal-overlay" id="fixed-modal" style="display:none;">
+    <div class="modal" style="max-width:440px;">
+      <div class="modal__header">
+        <h3 class="modal__title">编辑每日固定任务</h3>
+        <button class="modal__close" id="btn-close-fixed">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div class="form-group">
+          <label class="form-label">每行一条（行首可带 emoji 当图标）</label>
+          <textarea class="textarea" id="fixed-text" rows="10"
+            placeholder="🔄 出单复投&#10;🏃 跑达人&#10;✅ 审核达人"></textarea>
+          <div class="form-hint">保存后每天的任务清单就按这个来，已勾选的完成记录不受影响</div>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost btn--sm" id="btn-fixed-default">恢复默认</button>
+        <button class="btn btn--secondary btn--sm" id="btn-cancel-fixed">取消</button>
+        <button class="btn btn--primary btn--sm" id="btn-save-fixed">保存</button>
       </div>
     </div>
   </div>

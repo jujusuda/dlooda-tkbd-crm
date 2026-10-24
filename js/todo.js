@@ -11,15 +11,54 @@
   var Data = global.DloodaData;
   var Store = global.DloodaStore;
 
-  var FIXED_TASKS = [
-    { id: 'f1', name: '创建自动邀请模板', icon: '📝' },
-    { id: 'f2', name: '跑达人', icon: '🏃' },
-    { id: 'f3', name: '复投', icon: '🔄' },
-    { id: 'f4', name: '发送自动邀请', icon: '📤' },
-    { id: 'f5', name: '审核寄样达人', icon: '✅' },
-    { id: 'f6', name: '登记每天寄样', icon: '📦' },
-    { id: 'f7', name: '登记每日视频', icon: '🎬' },
+  // 每日固定任务：默认取自「每日工作.xlsx · 每日工作」表的真实任务清单，可自己编辑
+  var DEFAULT_FIXED_TASKS = [
+    { id: 'f1', name: '出单复投', icon: '\u{1F504}' },
+    { id: 'f2', name: '跑达人', icon: '\u{1F3C3}' },
+    { id: 'f3', name: '审核达人', icon: '✅' },
+    { id: 'f4', name: '官号私信', icon: '\u{1F4AC}' },
+    { id: 'f5', name: '处理达人消息', icon: '\u{1F4E8}' },
+    { id: 'f6', name: '登记寄样（ID、sku、时间、L几、星级）', icon: '\u{1F4E6}' },
+    { id: 'f7', name: '登记每日视频（达人画像、品类、备注）', icon: '\u{1F3AC}' },
+    { id: 'f8', name: '找新达人', icon: '\u{1F50D}' },
+    { id: 'f9', name: 'fastmoss 找达人', icon: '\u{1F9F2}' },
   ];
+  var FIXED_STORAGE_KEY = 'dlooda_todo_fixed_tasks';
+
+  var FIXED_TASKS = (function () {
+    try {
+      var raw = global.localStorage.getItem(FIXED_STORAGE_KEY);
+      var arr = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(arr) && arr.length) return arr;
+    } catch (e) {}
+    return JSON.parse(JSON.stringify(DEFAULT_FIXED_TASKS));
+  })();
+
+  // 用文本行覆盖固定任务（每行一条，行首可带 emoji 当图标）
+  function setFixedTasksFromText(text) {
+    var lines = String(text || '').split(/[\n\r]+/).map(function (s) { return s.trim(); })
+      .filter(function (s) { return s; });
+    if (!lines.length) { App.showToast('至少要有一条任务'); return 0; }
+    var list = lines.map(function (line, i) {
+      var m = line.match(/^(\S+)\s+(.+)$/);
+      var icon = '•';
+      var name = line;
+      if (m && /\p{Extended_Pictographic}/u.test(m[1])) { icon = m[1]; name = m[2]; }
+      return { id: 'ft' + (i + 1) + '_' + Date.now().toString(36), name: name, icon: icon };
+    });
+    saveFixedTasks(list);
+    return list.length;
+  }
+
+  function saveFixedTasks(list) {
+    while (FIXED_TASKS.length) FIXED_TASKS.pop();
+    list.forEach(function (t) { FIXED_TASKS.push(t); });
+    try { global.localStorage.setItem(FIXED_STORAGE_KEY, JSON.stringify(FIXED_TASKS)); } catch (e) {}
+  }
+
+  function restoreDefaultFixed() {
+    saveFixedTasks(JSON.parse(JSON.stringify(DEFAULT_FIXED_TASKS)));
+  }
 
   var STORAGE_KEY = 'dlooda_todo_data';
   var currentDate = '';
@@ -121,6 +160,30 @@
         if (cb.checked) App.showToast('任务完成！');
       });
     });
+  }
+
+  /* ---------- 固定任务编辑 ---------- */
+
+  function openFixedModal() {
+    var ta = document.getElementById('fixed-text');
+    if (ta) {
+      ta.value = FIXED_TASKS.map(function (t) {
+        return (t.icon && t.icon !== '•' ? t.icon + ' ' : '') + t.name;
+      }).join('\n');
+    }
+    App.openModal('fixed-modal');
+  }
+
+  function closeFixedModal() { App.closeModal('fixed-modal'); }
+
+  function saveFixedModal() {
+    var ta = document.getElementById('fixed-text');
+    var n = setFixedTasksFromText(ta ? ta.value : '');
+    if (!n) return;
+    renderFixedTasks();
+    renderProgress();
+    closeFixedModal();
+    App.showToast('固定任务已更新（' + n + ' 条）');
   }
 
   /* ---------- 渲染自定义任务 ---------- */
@@ -523,6 +586,35 @@
     if (modalRule) {
       modalRule.addEventListener('click', function (e) {
         if (e.target === modalRule) closeRuleModal();
+      });
+    }
+
+    // ---- 固定任务编辑弹窗 ----
+    var btnEditFixed = document.getElementById('btn-edit-fixed');
+    if (btnEditFixed) btnEditFixed.addEventListener('click', openFixedModal);
+
+    var btnCloseFixed = document.getElementById('btn-close-fixed');
+    if (btnCloseFixed) btnCloseFixed.addEventListener('click', closeFixedModal);
+
+    var btnCancelFixed = document.getElementById('btn-cancel-fixed');
+    if (btnCancelFixed) btnCancelFixed.addEventListener('click', closeFixedModal);
+
+    var btnSaveFixed = document.getElementById('btn-save-fixed');
+    if (btnSaveFixed) btnSaveFixed.addEventListener('click', saveFixedModal);
+
+    var btnDefaultFixed = document.getElementById('btn-fixed-default');
+    if (btnDefaultFixed) btnDefaultFixed.addEventListener('click', function () {
+      restoreDefaultFixed();
+      renderFixedTasks();
+      renderProgress();
+      closeFixedModal();
+      App.showToast('已恢复为默认任务清单');
+    });
+
+    var modalFixed = document.getElementById('fixed-modal');
+    if (modalFixed) {
+      modalFixed.addEventListener('click', function (e) {
+        if (e.target === modalFixed) closeFixedModal();
       });
     }
   }

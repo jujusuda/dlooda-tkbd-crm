@@ -35,6 +35,21 @@
         <div id="dm-category-list"></div>
       </div>
 
+      <!-- 话术库（来自「话术１」表） -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card__header" style="display:flex;justify-content:space-between;align-items:center;">
+          <h3 class="card__title">话术库</h3>
+          <span id="script-lib-meta" style="font-size:11.5px;color:var(--text-3);"></span>
+        </div>
+        <div style="font-size:13px;color:var(--text-3);padding:0 0 8px;">
+          来自你的「话术１」表格，点开任意一条即可复制。支持按场景搜索
+        </div>
+        <input type="text" class="input" id="script-search"
+          placeholder="搜场景关键词：催视频 / 砍价 / 代码 / 直播 / 寄样" style="margin-bottom:8px;">
+        <div id="script-group-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
+        <div id="script-list"></div>
+      </div>
+
       <!-- 已保存的私信 -->
       <div class="card" style="margin-top:16px;">
         <div class="card__header"><h3 class="card__title">已保存的私信</h3></div>
@@ -154,6 +169,7 @@
   <script src="js/matcher.js?v=20261023"></script>
   <script src="js/reminder.js?v=20261023"></script>
   <script src="js/translator.js"></script>
+  <script src="js/scripts-data.js"></script>
   <script src="js/message.js"></script>
 </body>
 </html>

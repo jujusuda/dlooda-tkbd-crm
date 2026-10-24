@@ -18,12 +18,21 @@
       <div class="page-header">
         <div class="page-header__left">
           <h1 class="page-header__title">达人名单库</h1>
-          <p class="page-header__subtitle">按 SKU 分批备名单 · 一键复制 handle 去发邀约</p>
+          <p class="page-header__subtitle">模块一：寄样邀约名单 · 模块二：建联名单（TK/邮件/官号）</p>
         </div>
         <div class="page-header__actions">
           <button class="btn btn--ghost btn--sm" id="btn-export-roster">导出名单</button>
         </div>
       </div>
+
+      <!-- 模块切换 -->
+      <div id="roster-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="btn btn--primary btn--sm" data-roster-tab="sample">模块一 · 寄样名单</button>
+        <button class="btn btn--ghost btn--sm" data-roster-tab="outreach">模块二 · 建联名单</button>
+      </div>
+
+      <!-- ============ 模块一：寄样名单（原有） ============ -->
+      <div id="tab-sample">
 
       <!-- 存储说明 -->
       <div class="card card--padding-lg" style="margin-bottom:4px;background:var(--bg-pink-soft);">
@@ -37,7 +46,7 @@
       <div class="section">
         <div class="section__header">
           <h2 class="section__title">导入名单</h2>
-          <span class="section__hint">支持换行 / 逗号 / 空格分隔，自动清洗 @ 与链接</span>
+          <span class="section__hint">从「自动达人名单」表复制时，只粘「自动」那几列，手动列不要粘进来</span>
         </div>
         <div class="card card--padding-lg">
           <div class="form-row">
@@ -119,6 +128,129 @@
           </div>
         </div>
       </div>
+      </div><!-- /tab-sample -->
+
+      <!-- ============ 模块二：建联名单 ============ -->
+      <div id="tab-outreach" style="display:none;">
+
+        <div class="card card--padding-lg" style="margin-bottom:4px;background:var(--bg-pink-soft);">
+          <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
+            <strong style="color:var(--pink-600);">建联名单 = 你要主动去联系的那批人</strong>：老达人出单 / 爆单达人 / 竞品达人，
+            通过 <strong>TK 私信、邮件、官号</strong> 建联，跟进状态与每次联系记录。
+            同样<strong>只存本机</strong>，不写回飞书。
+          </div>
+        </div>
+
+        <!-- 新建批次 -->
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">建联批次</h2>
+            <span class="section__hint">一批名单 = 一个批次，按类型分开跟进</span>
+          </div>
+          <div class="card card--padding-lg">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">日期</label>
+                <input type="date" class="input" id="ob-date">
+              </div>
+              <div class="form-group">
+                <label class="form-label">类型</label>
+                <select class="select" id="ob-type">
+                  <option value="old">老达人出单</option>
+                  <option value="hot">爆单达人</option>
+                  <option value="competitor">竞品达人</option>
+                  <option value="other">其他</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">来源 / 竞品店铺</label>
+                <input type="text" class="input" id="ob-source" list="ob-source-list"
+                  placeholder="如 halara us / baleaf / Fire Swan">
+                <datalist id="ob-source-list">
+                  <option value="halara us"></option>
+                  <option value="Halara US"></option>
+                  <option value="baleaf"></option>
+                  <option value="Fire Swan"></option>
+                  <option value="G4Free"></option>
+                  <option value="PINSPARK"></option>
+                  <option value="B2PRITY"></option>
+                  <option value="AnotherChill"></option>
+                  <option value="Eomenie"></option>
+                  <option value="Cider"></option>
+                  <option value="CHICME"></option>
+                  <option value="TCVC"></option>
+                </datalist>
+              </div>
+              <div class="form-group">
+                <label class="form-label">目标 SKU</label>
+                <select class="select" id="ob-sku"></select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">批次说明</label>
+              <input type="text" class="input" id="ob-note" placeholder="如：2178 出单50以上的L2达人">
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn--primary btn--sm" id="btn-add-batch">+ 新建批次</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 导入名单到批次 -->
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">导入名单</h2>
+            <span class="section__hint">支持整片粘贴（Excel 多列），自动识别 handle / 邮箱 / SKU / 等级</span>
+          </div>
+          <div class="card card--padding-lg">
+            <div class="form-group">
+              <label class="form-label">导入到批次</label>
+              <select class="select" id="ob-batch"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">名单（每行一个；多列用 Tab / 逗号分隔：handle、邮箱、SKU、等级L、备注）</label>
+              <textarea class="textarea" id="ob-input" rows="8"
+                placeholder="staygoldlex&#9;hello@alexisbarreto.com&#9;2178&#9;L4&#10;briannametzger1,briannametzgerfitness@gmail.com,2178,L5&#10;@kayleemacomber"></textarea>
+              <div class="form-hint" id="ob-count">已识别 0 个</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn--primary btn--sm" id="btn-check-ob">解析预览</button>
+              <button class="btn btn--secondary btn--sm" id="btn-import-ob">确认导入</button>
+              <button class="btn btn--ghost btn--sm" id="btn-clear-ob">清空输入</button>
+            </div>
+            <div id="ob-preview" style="margin-top:10px;"></div>
+          </div>
+        </div>
+
+        <!-- 统计 -->
+        <div class="stat-grid" id="ob-stats" style="margin-bottom:4px;"></div>
+
+        <!-- 批次列表 -->
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">批次跟进</h2>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <select class="select" id="ob-filter-type" style="min-width:120px;">
+                <option value="">全部类型</option>
+                <option value="old">老达人出单</option>
+                <option value="hot">爆单达人</option>
+                <option value="competitor">竞品达人</option>
+                <option value="other">其他</option>
+              </select>
+              <select class="select" id="ob-filter-status" style="min-width:120px;">
+                <option value="">全部状态</option>
+                <option value="pending">待联系</option>
+                <option value="contacted">已联系</option>
+                <option value="replied">已回复</option>
+                <option value="success">成功</option>
+                <option value="fail">未成功</option>
+                <option value="invalid">无效/注销</option>
+              </select>
+            </div>
+          </div>
+          <div id="ob-batches"></div>
+        </div>
+      </div><!-- /tab-outreach -->
     </main>
     <nav class="bottom-nav"></nav>
   </div>

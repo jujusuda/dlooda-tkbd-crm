@@ -38,6 +38,9 @@
     var sel = document.getElementById('roster-sku');
     if (sel) App.populateSkuSelect(sel, { placeholder: '请选择 SKU' });
 
+    var osel = document.getElementById('ob-sku');
+    if (osel) App.populateSkuSelect(osel, { placeholder: '未指定' });
+
     var fsel = document.getElementById('roster-filter-sku');
     if (fsel) {
       var skus = Data ? Data.getAvailableSKUs() : [];
@@ -742,6 +745,464 @@
     App.showToast('名单已导出');
   }
 
+  /* ================================================================
+     模块二：建联名单（老达人出单 / 爆单 / 竞品达人）
+     渠道：TK 私信 / 邮件 / 官号 / 抖音私信 / WhatsApp
+     ================================================================ */
+
+  var TYPES = {
+    old:        { label: '老达人出单', cls: 'badge--green' },
+    hot:        { label: '爆单达人',   cls: 'badge--pink' },
+    competitor: { label: '竞品达人',   cls: 'badge--blue' },
+    other:      { label: '其他',       cls: 'badge--gray' },
+  };
+  var OB_STATUS = {
+    pending:   { label: '待联系',    cls: 'badge--gray' },
+    contacted: { label: '已联系',    cls: 'badge--sand' },
+    replied:   { label: '已回复',    cls: 'badge--blue' },
+    success:   { label: '成功',      cls: 'badge--green' },
+    fail:      { label: '未成功',    cls: 'badge--red' },
+    invalid:   { label: '无效/注销', cls: 'badge--gray' },
+  };
+  var CHANNELS = ['TK私信', '邮件', '官号', '抖音私信', 'WhatsApp', '其他'];
+
+  var obState = { open: '', filterType: '', filterStatus: '', preview: [] };
+
+  function typeLabel(t) { return (TYPES[t] || TYPES.other).label; }
+  function typeBadge(t) {
+    var d = TYPES[t] || TYPES.other;
+    return '<span class="badge ' + d.cls + '">' + d.label + '</span>';
+  }
+  function statusBadge2(s) {
+    var d = OB_STATUS[s] || OB_STATUS.pending;
+    return '<span class="badge ' + d.cls + '">' + d.label + '</span>';
+  }
+
+  /* ---------- 解析粘贴的名单 ---------- */
+  // 每行：handle、邮箱、SKU、等级L、备注（Tab / 逗号 / 多个空格分隔，顺序不限）
+  function obParse(text) {
+    var lines = String(text || '').split(/[\n\r]+/);
+    var out = [];
+    lines.forEach(function (line) {
+      var raw = line.trim();
+      if (!raw) return;
+      var cells = raw.split(/[\t,，;；]+|\s{2,}/).map(function (s) { return s.trim(); })
+        .filter(function (s) { return s; });
+      if (!cells.length) return;
+      var handle = '', email = '', sku = '', level = '', notes = [];
+      cells.forEach(function (c) {
+        if (!handle && /@/.test(c) && /\.[a-z]{2,}$/i.test(c) && /^[\w.+-]+@/.test(c)) { email = c; return; }
+        if (!email && /^[\w.+-]+@[\w-]+\.[\w.]+$/.test(c)) { email = c; return; }
+        if (!sku && /^[0-9]{4,6}$/.test(c)) { sku = c; return; }
+        if (!level && /^L?[0-6]$/i.test(c)) { level = c.toUpperCase(); return; }
+        if (!handle) {
+          var h = Matcher.normalize(c);
+          if (h) { handle = h; return; }
+        }
+        notes.push(c);
+      });
+      if (!handle) return;
+      out.push({
+        handle: handle, raw: cells[0], email: email, sku: sku,
+        level: level, note: notes.join(' '),
+      });
+    });
+    return out;
+  }
+
+  function obUpdateCount() {
+    var ta = document.getElementById('ob-input');
+    var el = document.getElementById('ob-count');
+    if (!ta || !el) return;
+    var list = obParse(ta.value);
+    el.textContent = '已识别 ' + list.length + ' 个达人'
+      + (list.filter(function (x) { return x.email; }).length
+          ? '，其中 ' + list.filter(function (x) { return x.email; }).length + ' 个带邮箱' : '');
+  }
+
+  function obCheck() {
+    var ta = document.getElementById('ob-input');
+    var box = document.getElementById('ob-preview');
+    if (!ta || !box) return;
+    var list = obParse(ta.value);
+    if (!list.length) { box.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:8px 0;">没识别到达人，检查一下格式</div>'; return; }
+    obState.preview = list;
+    box.innerHTML = ''
+      + '<div style="font-size:12.5px;color:var(--text-2);margin-bottom:6px;">'
+      +   '共解析 <strong>' + list.length + '</strong> 条，确认后将加入所选批次</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:5px;">'
+      +   list.slice(0, 40).map(function (x) {
+            return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;'
+              + 'border-radius:999px;background:var(--bg-pink-soft);border:1px solid var(--border-1);font-size:12px;">'
+              + App.escapeHtml(x.raw || x.handle)
+              + (x.email ? ' <span style="color:var(--text-3);font-size:10.5px;">✉</span>' : '')
+              + '</span>';
+          }).join('')
+      + (list.length > 40 ? '<span style="font-size:12px;color:var(--text-3);align-self:center;">…等 ' + list.length + ' 个</span>' : '')
+      + '</div>';
+  }
+
+  function obImport() {
+    var sel = document.getElementById('ob-batch');
+    var ta = document.getElementById('ob-input');
+    if (!sel || !ta) return;
+    var batchId = sel.value;
+    if (!batchId) { App.showToast('先选一个批次（没有就先新建）'); return; }
+    var list = obParse(ta.value);
+    if (!list.length) { App.showToast('没识别到达人'); return; }
+    var b = Store.getBatch(batchId);
+    var n = Store.addMembers(batchId, list.map(function (x) {
+      return {
+        handle: x.handle, raw: x.raw, email: x.email,
+        sku: x.sku || (b && b.sku) || '', level: x.level, note: x.note,
+        type: (b && b.type) || 'other', status: 'pending', touches: [],
+      };
+    }));
+    ta.value = '';
+    obState.preview = [];
+    var box = document.getElementById('ob-preview');
+    if (box) box.innerHTML = '';
+    obUpdateCount();
+    App.showToast('已导入 ' + n + ' 位' + (list.length - n ? '（' + (list.length - n) + ' 位已在批次中）' : ''));
+    renderObAll();
+  }
+
+  function obAddBatch() {
+    var date = (document.getElementById('ob-date') || {}).value || Store.todayStr();
+    var type = (document.getElementById('ob-type') || {}).value || 'other';
+    var source = ((document.getElementById('ob-source') || {}).value || '').trim();
+    var sku = (document.getElementById('ob-sku') || {}).value || '';
+    var note = ((document.getElementById('ob-note') || {}).value || '').trim();
+    var b = Store.addBatch({ date: date, type: type, source: source, sku: sku, note: note });
+    var noteEl = document.getElementById('ob-note');
+    var srcEl = document.getElementById('ob-source');
+    if (noteEl) noteEl.value = '';
+    if (srcEl) srcEl.value = '';
+    obState.open = b.id;
+    App.showToast('批次已创建');
+    renderObAll();
+  }
+
+  /* ---------- 统计 ---------- */
+  function obStats() {
+    var ms = Store.getMembers();
+    var byType = {};
+    var st = { pending: 0, contacted: 0, replied: 0, success: 0, fail: 0, invalid: 0 };
+    var withEmail = 0;
+    ms.forEach(function (m) {
+      byType[m.type || 'other'] = (byType[m.type || 'other'] || 0) + 1;
+      st[m.status || 'pending'] = (st[m.status || 'pending'] || 0) + 1;
+      if (m.email) withEmail++;
+    });
+    var done = st.success + st.fail + st.invalid;
+    var rate = done ? Math.round(st.success / done * 100) : 0;
+    var touched = ms.length - st.pending;
+    return { total: ms.length, byType: byType, st: st, withEmail: withEmail, rate: rate, touched: touched };
+  }
+
+  function renderObStats() {
+    var box = document.getElementById('ob-stats');
+    if (!box) return;
+    var s = obStats();
+    box.innerHTML = ''
+      + statCard(s.total, '建联达人总数', 'var(--text-1)')
+      + statCard(s.touched, '已联系', 'var(--c-info)')
+      + statCard(s.st.success, '成功', 'var(--c-success)')
+      + statCard(s.rate + '%', '成功率', 'var(--pink-600)')
+      + statCard(s.withEmail, '有邮箱', 'var(--c-warning)');
+  }
+
+  /* ---------- 批次卡片 ---------- */
+  function renderObBatches() {
+    var box = document.getElementById('ob-batches');
+    if (!box) return;
+    var batches = Store.getBatches();
+    if (obState.filterType) batches = batches.filter(function (b) { return b.type === obState.filterType; });
+    if (!batches.length) {
+      box.innerHTML = '<div class="card card--padding-lg" style="text-align:center;color:var(--text-3);font-size:13px;">'
+        + '还没有批次，先在上面「＋ 新建批次」，再把名单导进来</div>';
+      return;
+    }
+    box.innerHTML = batches.map(function (b) {
+      var all = Store.getMembers(b.id);
+      var ms = all.filter(function (m) {
+        return !obState.filterStatus || (m.status || 'pending') === obState.filterStatus;
+      });
+      var c = { pending: 0, contacted: 0, replied: 0, success: 0, fail: 0, invalid: 0 };
+      ms.forEach(function (m) { c[m.status || 'pending']++; });
+      var emails = ms.filter(function (m) { return m.email; }).map(function (m) { return m.email; });
+      var open = obState.open === b.id;
+      return ''
+        + '<div class="card card--padding-lg" style="margin-bottom:10px;">'
+        +   '<div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">'
+        +     '<div style="flex:1;min-width:0;">'
+        +       '<div style="font-size:14px;font-weight:700;color:var(--text-1);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+        +         typeBadge(b.type)
+        +         App.escapeHtml(b.date || '')
+        +         (b.sku ? '<span class="badge badge--gray">SKU ' + App.escapeHtml(b.sku) + '</span>' : '')
+        +       '</div>'
+        +       '<div style="font-size:12px;color:var(--text-3);margin-top:3px;">'
+        +         App.escapeHtml(b.note || '（无说明）')
+        +         (b.source ? ' · 来源 ' + App.escapeHtml(b.source) : '')
+        +       '</div>'
+        +     '</div>'
+        +     '<div style="font-size:12px;color:var(--text-2);text-align:right;">'
+        +       '共 ' + ms.length + ' 位 · 待联系 ' + c.pending + ' · 成功 ' + c.success + ' · 未成功 ' + c.fail
+        +     '</div>'
+        +   '</div>'
+        +   '<div style="display:flex;gap:6px;margin:10px 0;flex-wrap:wrap;">'
+        +     '<button class="btn btn--primary btn--sm" data-ob-copy-h="' + App.escapeHtml(b.id) + '"'
+        +       (ms.length ? '' : ' disabled style="opacity:.5;cursor:not-allowed;"') + '>'
+        +       '复制 handle ' + ms.length + '</button>'
+        +     '<button class="btn btn--secondary btn--sm" data-ob-copy-e="' + App.escapeHtml(b.id) + '"'
+        +       (emails.length ? '' : ' disabled style="opacity:.5;cursor:not-allowed;"') + '>'
+        +       '复制邮箱 ' + emails.length + '</button>'
+        +     '<button class="btn btn--ghost btn--sm" data-ob-toggle="' + App.escapeHtml(b.id) + '">'
+        +       (open ? '收起成员' : '展开成员') + '</button>'
+        +     '<button class="btn btn--ghost btn--sm" data-ob-export="' + App.escapeHtml(b.id) + '">导出</button>'
+        +     '<button class="btn btn--ghost btn--sm" data-ob-del-batch="' + App.escapeHtml(b.id) + '" '
+        +       'style="color:var(--c-danger);">删批次</button>'
+        +   '</div>'
+        +   (open ? obMembersHtml(b.id, ms) : '')
+        + '</div>';
+    }).join('');
+  }
+
+  function obMembersHtml(batchId, ms) {
+    if (!ms.length) {
+      return '<div style="font-size:12.5px;color:var(--text-3);padding:8px 0;">'
+        + '这个批次还没有达人，在上面粘贴名单导入</div>';
+    }
+    var rows = ms.map(function (m) {
+      var last = (m.touches && m.touches.length) ? m.touches[m.touches.length - 1] : null;
+      return ''
+        + '<tr>'
+        +   '<td style="text-align:left;">'
+        +     '<button class="link-btn" data-ob-copy-one="' + App.escapeHtml(m.handle) + '" '
+        +       'title="点击复制 handle" style="font-weight:600;">' + App.escapeHtml(m.raw || m.handle) + '</button>'
+        +     (m.note ? '<div style="font-size:11px;color:var(--text-3);">' + App.escapeHtml(m.note) + '</div>' : '')
+        +   '</td>'
+        +   '<td style="text-align:left;">'
+        +     (m.email
+        ? '<button class="link-btn" data-ob-copy-mail="' + App.escapeHtml(m.email) + '" style="font-size:12px;">' + App.escapeHtml(m.email) + '</button>'
+        : '<span style="color:var(--text-3);font-size:12px;">—</span>')
+        +   '</td>'
+        +   '<td style="text-align:left;">' + App.escapeHtml(m.sku || '') + '</td>'
+        +   '<td style="text-align:left;">' + App.escapeHtml(m.level || '') + '</td>'
+        +   '<td style="text-align:left;">'
+        +     '<select class="select" data-ob-status="' + App.escapeHtml(m.id) + '" style="min-width:96px;padding:3px 6px;font-size:12px;">'
+        +       Object.keys(OB_STATUS).map(function (k) {
+          return '<option value="' + k + '"' + ((m.status || 'pending') === k ? ' selected' : '') + '>'
+            + OB_STATUS[k].label + '</option>';
+        }).join('')
+        +     '</select>'
+        +   '</td>'
+        +   '<td style="text-align:left;font-size:12px;color:var(--text-2);">'
+        +     (last ? App.escapeHtml(last.date + ' · ' + last.channel) : '<span style="color:var(--text-3);">未跟进</span>')
+        +     (m.touches && m.touches.length > 1 ? ' <span style="color:var(--text-3);">×' + m.touches.length + '</span>' : '')
+        +   '</td>'
+        +   '<td style="text-align:right;white-space:nowrap;">'
+        +     '<button class="btn btn--ghost btn--sm" data-ob-touch="' + App.escapeHtml(m.id) + '" data-ch="TK私信" style="padding:2px 6px;font-size:11px;">TK</button> '
+        +     '<button class="btn btn--ghost btn--sm" data-ob-touch="' + App.escapeHtml(m.id) + '" data-ch="邮件" style="padding:2px 6px;font-size:11px;">邮</button> '
+        +     '<button class="btn btn--ghost btn--sm" data-ob-touch="' + App.escapeHtml(m.id) + '" data-ch="官号" style="padding:2px 6px;font-size:11px;">官</button> '
+        +     '<button class="btn btn--ghost btn--sm" data-ob-del="' + App.escapeHtml(m.id) + '" '
+        +       'style="padding:2px 6px;font-size:11px;color:var(--c-danger);">×</button>'
+        +   '</td>'
+        + '</tr>';
+    }).join('');
+    return ''
+      + '<div style="overflow-x:auto;border-top:1px solid var(--border-1);padding-top:8px;">'
+      +   '<table class="data-table">'
+      +     '<thead><tr>'
+      +       '<th style="text-align:left;">达人</th>'
+      +       '<th style="text-align:left;">邮箱</th>'
+      +       '<th style="text-align:left;">SKU</th>'
+      +       '<th style="text-align:left;">等级</th>'
+      +       '<th style="text-align:left;">状态</th>'
+      +       '<th style="text-align:left;">最近跟进</th>'
+      +       '<th style="text-align:right;">操作</th>'
+      +     '</tr></thead>'
+      +     '<tbody>' + rows + '</tbody>'
+      +   '</table>'
+      + '</div>';
+  }
+
+  function renderObAll() {
+    renderObStats();
+    renderObBatches();
+    var sel = document.getElementById('ob-batch');
+    if (sel) {
+      var cur = sel.value;
+      sel.innerHTML = Store.getBatches().map(function (b) {
+        return '<option value="' + App.escapeHtml(b.id) + '">'
+          + App.escapeHtml(b.date + ' · ' + typeLabel(b.type) + (b.note ? ' · ' + b.note : '')) + '</option>';
+      }).join('') || '<option value="">（请先新建批次）</option>';
+      if (cur) sel.value = cur;
+    }
+  }
+
+  function obExport(batchId) {
+    var b = Store.getBatch(batchId);
+    if (!b) return;
+    var ms = Store.getMembers(batchId);
+    var head = ['handle', '邮箱', 'SKU', '等级', '类型', '状态', '未成功原因', '跟进次数', '最近跟进', '备注'];
+    var lines = [head.join(',')];
+    ms.forEach(function (m) {
+      var last = (m.touches && m.touches.length) ? m.touches[m.touches.length - 1] : null;
+      lines.push([
+        m.handle, m.email || '', m.sku || '', m.level || '', typeLabel(m.type),
+        (OB_STATUS[m.status || 'pending'] || {}).label || '', m.failReason || '',
+        (m.touches || []).length, last ? (last.date + ' ' + last.channel) : '', m.note || '',
+      ].map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(','));
+    });
+    var blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '建联名单_' + b.date + '_' + typeLabel(b.type) + '.csv';
+    a.click();
+    App.showToast('已导出 ' + ms.length + ' 条');
+  }
+
+  /* ---------- 事件绑定 ---------- */
+  function bindObEvents() {
+    var btnAdd = document.getElementById('btn-add-batch');
+    if (btnAdd) btnAdd.addEventListener('click', obAddBatch);
+
+    var ta = document.getElementById('ob-input');
+    if (ta) ta.addEventListener('input', obUpdateCount);
+
+    var btnCheck = document.getElementById('btn-check-ob');
+    if (btnCheck) btnCheck.addEventListener('click', obCheck);
+
+    var btnImport = document.getElementById('btn-import-ob');
+    if (btnImport) btnImport.addEventListener('click', obImport);
+
+    var btnClear = document.getElementById('btn-clear-ob');
+    if (btnClear) btnClear.addEventListener('click', function () {
+      if (ta) ta.value = '';
+      var box = document.getElementById('ob-preview');
+      if (box) box.innerHTML = '';
+      obUpdateCount();
+    });
+
+    var ft = document.getElementById('ob-filter-type');
+    if (ft) ft.addEventListener('change', function () {
+      obState.filterType = ft.value;
+      renderObBatches();
+    });
+
+    var fs = document.getElementById('ob-filter-status');
+    if (fs) fs.addEventListener('change', function () {
+      obState.filterStatus = fs.value;
+      renderObBatches();
+    });
+
+    var box = document.getElementById('ob-batches');
+    if (!box) return;
+
+    box.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-ob-toggle],[data-ob-del-batch],[data-ob-export],'
+        + '[data-ob-copy-h],[data-ob-copy-e],[data-ob-copy-one],[data-ob-copy-mail],'
+        + '[data-ob-touch],[data-ob-del]');
+      if (!t) return;
+
+      if (t.hasAttribute('data-ob-toggle')) {
+        var bid = t.getAttribute('data-ob-toggle');
+        obState.open = (obState.open === bid) ? '' : bid;
+        renderObBatches();
+        return;
+      }
+      if (t.hasAttribute('data-ob-del-batch')) {
+        var dbid = t.getAttribute('data-ob-del-batch');
+        if (global.confirm('删除这个批次？批次下的达人记录也会一起删除')) {
+          Store.deleteBatch(dbid);
+          renderObAll();
+          App.showToast('批次已删除');
+        }
+        return;
+      }
+      if (t.hasAttribute('data-ob-export')) {
+        obExport(t.getAttribute('data-ob-export'));
+        return;
+      }
+      if (t.hasAttribute('data-ob-copy-h')) {
+        var hid = t.getAttribute('data-ob-copy-h');
+        var hs = Store.getMembers(hid).map(function (m) { return m.handle; });
+        App.copyToClipboard(formatHandles(hs), 'handle');
+        return;
+      }
+      if (t.hasAttribute('data-ob-copy-e')) {
+        var eid = t.getAttribute('data-ob-copy-e');
+        var es = Store.getMembers(eid).filter(function (m) { return m.email; })
+          .map(function (m) { return m.email; });
+        App.copyToClipboard(es.join('\n'), '邮箱');
+        return;
+      }
+      if (t.hasAttribute('data-ob-copy-one')) {
+        App.copyToClipboard(t.getAttribute('data-ob-copy-one'), 'handle');
+        return;
+      }
+      if (t.hasAttribute('data-ob-copy-mail')) {
+        App.copyToClipboard(t.getAttribute('data-ob-copy-mail'), '邮箱');
+        return;
+      }
+      if (t.hasAttribute('data-ob-touch')) {
+        var mid = t.getAttribute('data-ob-touch');
+        var ch = t.getAttribute('data-ch');
+        Store.addTouch(mid, ch, '');
+        renderObAll();
+        App.showToast('已记录：' + ch);
+        return;
+      }
+      if (t.hasAttribute('data-ob-del')) {
+        var did = t.getAttribute('data-ob-del');
+        Store.deleteMember(did);
+        renderObAll();
+        App.showToast('已移除');
+        return;
+      }
+    });
+
+    box.addEventListener('change', function (e) {
+      var t = e.target;
+      if (!t || !t.hasAttribute || !t.hasAttribute('data-ob-status')) return;
+      var id = t.getAttribute('data-ob-status');
+      var val = t.value;
+      if (val === 'fail') {
+        var why = global.prompt('未成功原因？（可留空）', '') || '';
+        Store.setMemberStatus(id, val, why);
+      } else {
+        Store.setMemberStatus(id, val, '');
+      }
+      renderObAll();
+      App.showToast('状态已更新');
+    });
+  }
+
+  /* ---------- 模块切换 ---------- */
+  function switchTab(name) {
+    var t1 = document.getElementById('tab-sample');
+    var t2 = document.getElementById('tab-outreach');
+    if (t1) t1.style.display = (name === 'sample') ? '' : 'none';
+    if (t2) t2.style.display = (name === 'outreach') ? '' : 'none';
+    var btns = document.querySelectorAll('#roster-tabs [data-roster-tab]');
+    [].forEach.call(btns, function (b) {
+      var on = b.getAttribute('data-roster-tab') === name;
+      b.className = 'btn btn--sm ' + (on ? 'btn--primary' : 'btn--ghost');
+    });
+    if (name === 'outreach') renderObAll();
+  }
+
+  function bindTabs() {
+    var tabs = document.getElementById('roster-tabs');
+    if (!tabs) return;
+    tabs.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-roster-tab]');
+      if (!b) return;
+      switchTab(b.getAttribute('data-roster-tab'));
+    });
+  }
+
   /* ---------- 初始化 ---------- */
 
   function renderAll() {
@@ -770,6 +1231,14 @@
     renderAll();
     syncFormatButtons();
     bindGroupActions();
+
+    // 模块二：建联名单
+    var obDate = document.getElementById('ob-date');
+    if (obDate) obDate.value = Store.todayStr();
+    bindTabs();
+    bindObEvents();
+    obUpdateCount();
+    renderObAll();
 
     var ta = document.getElementById('roster-input');
     if (ta) ta.addEventListener('input', updateCount);
@@ -830,6 +1299,11 @@
       syncFormatButtons();
     },
     getFormat: function () { return copyFormat; },
+    // 模块二：建联名单
+    renderOutreach: function () { renderObAll(); },
+    openBatch: function (id) { obState.open = id; renderObBatches(); },
+    switchTab: switchTab,
+    parseOutreach: obParse,
     // 批量标记某组已发送 / 重置；返回影响条数
     markGroupSent: function (sku) {
       var m = groupMembers(Store.getRoster(), sku);
