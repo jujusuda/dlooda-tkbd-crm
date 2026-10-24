@@ -1,0 +1,1371 @@
+{
+  "period": {
+    "P7": "2026-06-15~2026-07-15",
+    "P8": "2026-07-15~2026-08-15"
+  },
+  "overall": {
+    "P7": {
+      "total": 434,
+      "creatorCount": 348,
+      "newCreators": 14,
+      "fulfilled": 367,
+      "fulfillRate": 84.6,
+      "ordered": 96,
+      "orderRate": 22.1,
+      "totalPieces": 1570,
+      "topOrdered": [
+        {
+          "name": "imaniiibrooks",
+          "samples": 1,
+          "ordered": 1,
+          "pieces": 379
+        },
+        {
+          "name": "heyitsamber44",
+          "samples": 2,
+          "ordered": 2,
+          "pieces": 281
+        },
+        {
+          "name": "ljac888",
+          "samples": 2,
+          "ordered": 2,
+          "pieces": 113
+        },
+        {
+          "name": "yetsika_homedecor",
+          "samples": 1,
+          "ordered": 1,
+          "pieces": 105
+        },
+        {
+          "name": "nairireyes",
+          "samples": 1,
+          "ordered": 1,
+          "pieces": 88
+        }
+      ],
+      "orderRateFo": 29.1
+    },
+    "P8": {
+      "total": 394,
+      "creatorCount": 347,
+      "newCreators": 276,
+      "fulfilled": 326,
+      "fulfillRate": 82.7,
+      "ordered": 69,
+      "orderRate": 17.5,
+      "totalPieces": 595,
+      "topOrdered": [
+        {
+          "name": "heyitsamber44",
+          "samples": 2,
+          "ordered": 2,
+          "pieces": 214
+        },
+        {
+          "name": "danakkt",
+          "samples": 1,
+          "ordered": 1,
+          "pieces": 84
+        },
+        {
+          "name": "jerlenimarte",
+          "samples": 1,
+          "ordered": 1,
+          "pieces": 64
+        },
+        {
+          "name": "gabriepearl",
+          "samples": 1,
+          "ordered": 1,
+          "pieces": 46
+        },
+        {
+          "name": "madirjo",
+          "samples": 1,
+          "ordered": 1,
+          "pieces": 28
+        }
+      ],
+      "orderRateFo": 22.8
+    },
+    "P7m": {
+      "coop": 348,
+      "video": 295,
+      "ordered": 86,
+      "pieces": 1570,
+      "fulfillRate": 84.6,
+      "orderRate": 24.7,
+      "perCreator": 18.3
+    },
+    "P8m": {
+      "coop": 347,
+      "video": 289,
+      "ordered": 66,
+      "pieces": 595,
+      "fulfillRate": 82.7,
+      "orderRate": 19,
+      "perCreator": 9
+    }
+  },
+  "rows": [
+    {
+      "sku": "2178",
+      "tier": "爆品",
+      "type": "长裤",
+      "P7": {
+        "total": 39,
+        "creatorCount": 39,
+        "newCreators": 4,
+        "fulfilled": 33,
+        "fulfillRate": 84.6,
+        "ordered": 5,
+        "orderRate": 12.8,
+        "totalPieces": 387,
+        "topOrdered": [
+          {
+            "name": "imaniiibrooks",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 379
+          },
+          {
+            "name": "alondr0707",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 3
+          },
+          {
+            "name": "shop_with_sheena",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 2
+          },
+          {
+            "name": "isabella.gzp5",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 2
+          },
+          {
+            "name": "mg3888",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          }
+        ]
+      },
+      "P8": {
+        "total": 73,
+        "creatorCount": 73,
+        "newCreators": 55,
+        "fulfilled": 56,
+        "fulfillRate": 76.7,
+        "ordered": 5,
+        "orderRate": 6.8,
+        "totalPieces": 59,
+        "topOrdered": [
+          {
+            "name": "gabriepearl",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 46
+          },
+          {
+            "name": "heyitsamber44",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 5
+          },
+          {
+            "name": "itsmaribelxo",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 4
+          },
+          {
+            "name": "motherrucker3",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 2
+          },
+          {
+            "name": "shop_with_sheena",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 2
+          }
+        ]
+      },
+      "P7m": {
+        "coop": 39,
+        "video": 33,
+        "ordered": 5,
+        "pieces": 387,
+        "fulfillRate": 84.6,
+        "orderRate": 12.8,
+        "perCreator": 77.4
+      },
+      "P8m": {
+        "coop": 73,
+        "video": 56,
+        "ordered": 5,
+        "pieces": 59,
+        "fulfillRate": 76.7,
+        "orderRate": 6.8,
+        "perCreator": 11.8
+      }
+    },
+    {
+      "sku": "2190",
+      "tier": "爆品",
+      "type": "长裤",
+      "P7": {
+        "total": 28,
+        "creatorCount": 28,
+        "newCreators": 1,
+        "fulfilled": 24,
+        "fulfillRate": 85.7,
+        "ordered": 5,
+        "orderRate": 17.9,
+        "totalPieces": 19,
+        "topOrdered": [
+          {
+            "name": "isabella.gzp5",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 15
+          },
+          {
+            "name": "l0nd0nthecreator",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          },
+          {
+            "name": "irina.sablon",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          },
+          {
+            "name": "annettemork",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          },
+          {
+            "name": "blancafashionista",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          }
+        ]
+      },
+      "P8": {
+        "total": 55,
+        "creatorCount": 54,
+        "newCreators": 43,
+        "fulfilled": 47,
+        "fulfillRate": 85.5,
+        "ordered": 3,
+        "orderRate": 5.5,
+        "totalPieces": 10,
+        "topOrdered": [
+          {
+            "name": "j.milanbb",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 6
+          },
+          {
+            "name": "dianamillerok",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 3
+          },
+          {
+            "name": "nailajoyeriaa",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          }
+        ]
+      },
+      "P7m": {
+        "coop": 28,
+        "video": 24,
+        "ordered": 5,
+        "pieces": 19,
+        "fulfillRate": 85.7,
+        "orderRate": 17.9,
+        "perCreator": 3.8
+      },
+      "P8m": {
+        "coop": 54,
+        "video": 46,
+        "ordered": 3,
+        "pieces": 10,
+        "fulfillRate": 85.5,
+        "orderRate": 5.6,
+        "perCreator": 3.3
+      }
+    },
+    {
+      "sku": "2722",
+      "tier": "爆品",
+      "type": "Skort",
+      "P7": {
+        "total": 107,
+        "creatorCount": 103,
+        "newCreators": 1,
+        "fulfilled": 88,
+        "fulfillRate": 82.2,
+        "ordered": 24,
+        "orderRate": 22.4,
+        "totalPieces": 336,
+        "topOrdered": [
+          {
+            "name": "nairireyes",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 88
+          },
+          {
+            "name": "kerri_justlivinglife",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 45
+          },
+          {
+            "name": "estheralaniz123",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 39
+          },
+          {
+            "name": "anayjose.25",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 39
+          },
+          {
+            "name": "notmoniiatall",
+            "samples": 2,
+            "ordered": 2,
+            "pieces": 34
+          }
+        ]
+      },
+      "P8": {
+        "total": 45,
+        "creatorCount": 45,
+        "newCreators": 34,
+        "fulfilled": 37,
+        "fulfillRate": 82.2,
+        "ordered": 12,
+        "orderRate": 26.7,
+        "totalPieces": 49,
+        "topOrdered": [
+          {
+            "name": "blue89water",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 21
+          },
+          {
+            "name": "hernameterrica",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 16
+          },
+          {
+            "name": "iamcorirose",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 3
+          },
+          {
+            "name": "stramasocial",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          },
+          {
+            "name": "lucypalma3",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          }
+        ]
+      },
+      "P7m": {
+        "coop": 103,
+        "video": 86,
+        "ordered": 23,
+        "pieces": 336,
+        "fulfillRate": 82.2,
+        "orderRate": 22.3,
+        "perCreator": 14.6
+      },
+      "P8m": {
+        "coop": 45,
+        "video": 37,
+        "ordered": 12,
+        "pieces": 49,
+        "fulfillRate": 82.2,
+        "orderRate": 26.7,
+        "perCreator": 4.1
+      }
+    },
+    {
+      "sku": "28173",
+      "tier": "销售",
+      "type": "长裤",
+      "P7": {
+        "total": 72,
+        "creatorCount": 70,
+        "newCreators": 4,
+        "fulfilled": 66,
+        "fulfillRate": 91.7,
+        "ordered": 20,
+        "orderRate": 27.8,
+        "totalPieces": 510,
+        "topOrdered": [
+          {
+            "name": "heyitsamber44",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 209
+          },
+          {
+            "name": "ljac888",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 110
+          },
+          {
+            "name": "yetsika_homedecor",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 105
+          },
+          {
+            "name": "yourbrabestie",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 42
+          },
+          {
+            "name": "_s.cris_",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 7
+          }
+        ]
+      },
+      "P8": {
+        "total": 86,
+        "creatorCount": 86,
+        "newCreators": 58,
+        "fulfilled": 78,
+        "fulfillRate": 90.7,
+        "ordered": 23,
+        "orderRate": 26.7,
+        "totalPieces": 328,
+        "topOrdered": [
+          {
+            "name": "heyitsamber44",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 209
+          },
+          {
+            "name": "danakkt",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 84
+          },
+          {
+            "name": "rocilay",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 5
+          },
+          {
+            "name": "nairyserranodiaz",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 4
+          },
+          {
+            "name": "mialiaboutique_",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 3
+          }
+        ]
+      },
+      "P7m": {
+        "coop": 70,
+        "video": 63,
+        "ordered": 20,
+        "pieces": 510,
+        "fulfillRate": 91.7,
+        "orderRate": 28.6,
+        "perCreator": 25.5
+      },
+      "P8m": {
+        "coop": 86,
+        "video": 78,
+        "ordered": 23,
+        "pieces": 328,
+        "fulfillRate": 90.7,
+        "orderRate": 26.7,
+        "perCreator": 14.3
+      }
+    },
+    {
+      "sku": "2189",
+      "tier": "销售",
+      "type": "长裤",
+      "P7": {
+        "total": 33,
+        "creatorCount": 32,
+        "newCreators": 0,
+        "fulfilled": 29,
+        "fulfillRate": 87.9,
+        "ordered": 14,
+        "orderRate": 42.4,
+        "totalPieces": 185,
+        "topOrdered": [
+          {
+            "name": "heyitsamber44",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 72
+          },
+          {
+            "name": "yady2208",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 68
+          },
+          {
+            "name": "dianamillerok",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 10
+          },
+          {
+            "name": "guerreronew26",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 8
+          },
+          {
+            "name": "karlithaa24",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 6
+          }
+        ]
+      },
+      "P8": {
+        "total": 38,
+        "creatorCount": 37,
+        "newCreators": 27,
+        "fulfilled": 35,
+        "fulfillRate": 92.1,
+        "ordered": 8,
+        "orderRate": 21.1,
+        "totalPieces": 103,
+        "topOrdered": [
+          {
+            "name": "jerlenimarte",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 64
+          },
+          {
+            "name": "madirjo",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 28
+          },
+          {
+            "name": "francelymotivacion",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 3
+          },
+          {
+            "name": "angieskinover50",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 3
+          },
+          {
+            "name": "yaslizzeth",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 2
+          }
+        ]
+      },
+      "P7m": {
+        "coop": 32,
+        "video": 28,
+        "ordered": 13,
+        "pieces": 185,
+        "fulfillRate": 87.9,
+        "orderRate": 40.6,
+        "perCreator": 14.2
+      },
+      "P8m": {
+        "coop": 37,
+        "video": 34,
+        "ordered": 8,
+        "pieces": 103,
+        "fulfillRate": 92.1,
+        "orderRate": 21.6,
+        "perCreator": 12.9
+      }
+    },
+    {
+      "sku": "2789",
+      "tier": "销售",
+      "type": "Skort",
+      "P7": {
+        "total": 55,
+        "creatorCount": 54,
+        "newCreators": 1,
+        "fulfilled": 50,
+        "fulfillRate": 90.9,
+        "ordered": 17,
+        "orderRate": 30.9,
+        "totalPieces": 97,
+        "topOrdered": [
+          {
+            "name": "frantastic714",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 33
+          },
+          {
+            "name": "lollithefarmwife",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 18
+          },
+          {
+            "name": "_ericahhh",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 17
+          },
+          {
+            "name": "max_n_millie_",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 6
+          },
+          {
+            "name": "crystal.2483",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 3
+          }
+        ]
+      },
+      "P8": {
+        "total": 32,
+        "creatorCount": 32,
+        "newCreators": 19,
+        "fulfilled": 23,
+        "fulfillRate": 71.9,
+        "ordered": 7,
+        "orderRate": 21.9,
+        "totalPieces": 11,
+        "topOrdered": [
+          {
+            "name": "orfelinda78",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 2
+          },
+          {
+            "name": "nannyperez1",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 2
+          },
+          {
+            "name": "amysmithers5",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 2
+          },
+          {
+            "name": "cindysfunfinds",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 2
+          },
+          {
+            "name": "menakue",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          }
+        ]
+      },
+      "P7m": {
+        "coop": 54,
+        "video": 49,
+        "ordered": 17,
+        "pieces": 97,
+        "fulfillRate": 90.9,
+        "orderRate": 31.5,
+        "perCreator": 5.7
+      },
+      "P8m": {
+        "coop": 32,
+        "video": 23,
+        "ordered": 7,
+        "pieces": 11,
+        "fulfillRate": 71.9,
+        "orderRate": 21.9,
+        "perCreator": 1.6
+      }
+    },
+    {
+      "sku": "2A19",
+      "tier": "测品",
+      "type": "未分类",
+      "P7": {
+        "total": 58,
+        "creatorCount": 57,
+        "newCreators": 1,
+        "fulfilled": 46,
+        "fulfillRate": 79.3,
+        "ordered": 7,
+        "orderRate": 12.1,
+        "totalPieces": 29,
+        "topOrdered": [
+          {
+            "name": "ligia.aguilera",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 14
+          },
+          {
+            "name": "lisajoyled1414",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 5
+          },
+          {
+            "name": "pattyunfinished",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 4
+          },
+          {
+            "name": "barbaraga25",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 3
+          },
+          {
+            "name": "mrsqueenbrownsvalley",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          }
+        ]
+      },
+      "P8": {
+        "total": 32,
+        "creatorCount": 32,
+        "newCreators": 17,
+        "fulfilled": 26,
+        "fulfillRate": 81.3,
+        "ordered": 4,
+        "orderRate": 12.5,
+        "totalPieces": 10,
+        "topOrdered": [
+          {
+            "name": "niamtsevtiam21",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 5
+          },
+          {
+            "name": "amaliazofficial",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 3
+          },
+          {
+            "name": "bakcup0707",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          },
+          {
+            "name": "k9momkaren",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          }
+        ]
+      },
+      "P7m": {
+        "coop": 57,
+        "video": 45,
+        "ordered": 7,
+        "pieces": 29,
+        "fulfillRate": 79.3,
+        "orderRate": 12.3,
+        "perCreator": 4.1
+      },
+      "P8m": {
+        "coop": 32,
+        "video": 26,
+        "ordered": 4,
+        "pieces": 10,
+        "fulfillRate": 81.3,
+        "orderRate": 12.5,
+        "perCreator": 2.5
+      }
+    },
+    {
+      "sku": "2757",
+      "tier": "测品",
+      "type": "Skort",
+      "P7": {
+        "total": 15,
+        "creatorCount": 15,
+        "newCreators": 2,
+        "fulfilled": 12,
+        "fulfillRate": 80,
+        "ordered": 2,
+        "orderRate": 13.3,
+        "totalPieces": 3,
+        "topOrdered": [
+          {
+            "name": "lissygainza_lifestyle",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 2
+          },
+          {
+            "name": ".g33nani",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          }
+        ]
+      },
+      "P8": {
+        "total": 22,
+        "creatorCount": 22,
+        "newCreators": 19,
+        "fulfilled": 18,
+        "fulfillRate": 81.8,
+        "ordered": 6,
+        "orderRate": 27.3,
+        "totalPieces": 24,
+        "topOrdered": [
+          {
+            "name": "noeliaalvarado2001",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 17
+          },
+          {
+            "name": "leonorbarajas16",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 2
+          },
+          {
+            "name": "pdxariana",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 2
+          },
+          {
+            "name": "sammysspam38",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          },
+          {
+            "name": "notjaylenejoy",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          }
+        ]
+      },
+      "P7m": {
+        "coop": 15,
+        "video": 12,
+        "ordered": 2,
+        "pieces": 3,
+        "fulfillRate": 80,
+        "orderRate": 13.3,
+        "perCreator": 1.5
+      },
+      "P8m": {
+        "coop": 22,
+        "video": 18,
+        "ordered": 6,
+        "pieces": 24,
+        "fulfillRate": 81.8,
+        "orderRate": 27.3,
+        "perCreator": 4
+      }
+    },
+    {
+      "sku": "28193",
+      "tier": "测品",
+      "type": "长裤",
+      "P7": {
+        "total": 26,
+        "creatorCount": 25,
+        "newCreators": 0,
+        "fulfilled": 19,
+        "fulfillRate": 73.1,
+        "ordered": 2,
+        "orderRate": 7.7,
+        "totalPieces": 4,
+        "topOrdered": [
+          {
+            "name": "kelsied89",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 3
+          },
+          {
+            "name": "angieskinover50",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          }
+        ]
+      },
+      "P8": {
+        "total": 6,
+        "creatorCount": 6,
+        "newCreators": 1,
+        "fulfilled": 1,
+        "fulfillRate": 16.7,
+        "ordered": 1,
+        "orderRate": 16.7,
+        "totalPieces": 1,
+        "topOrdered": [
+          {
+            "name": "niamtsevtiam21",
+            "samples": 1,
+            "ordered": 1,
+            "pieces": 1
+          }
+        ]
+      },
+      "P7m": {
+        "coop": 25,
+        "video": 18,
+        "ordered": 2,
+        "pieces": 4,
+        "fulfillRate": 73.1,
+        "orderRate": 8,
+        "perCreator": 2
+      },
+      "P8m": {
+        "coop": 6,
+        "video": 1,
+        "ordered": 1,
+        "pieces": 1,
+        "fulfillRate": 16.7,
+        "orderRate": 16.7,
+        "perCreator": 1
+      }
+    },
+    {
+      "sku": "28102",
+      "tier": "未标记",
+      "type": "未分类",
+      "P7": {
+        "total": 0,
+        "creatorCount": 0,
+        "newCreators": 0,
+        "fulfilled": 0,
+        "fulfillRate": null,
+        "ordered": 0,
+        "orderRate": null,
+        "totalPieces": 0,
+        "topOrdered": []
+      },
+      "P8": {
+        "total": 3,
+        "creatorCount": 3,
+        "newCreators": 2,
+        "fulfilled": 3,
+        "fulfillRate": 100,
+        "ordered": 0,
+        "orderRate": 0,
+        "totalPieces": 0,
+        "topOrdered": []
+      },
+      "P7m": {
+        "coop": 0,
+        "video": 0,
+        "ordered": 0,
+        "pieces": 0,
+        "fulfillRate": null,
+        "orderRate": null,
+        "perCreator": null
+      },
+      "P8m": {
+        "coop": 3,
+        "video": 3,
+        "ordered": 0,
+        "pieces": 0,
+        "fulfillRate": 100,
+        "orderRate": 0,
+        "perCreator": null
+      }
+    },
+    {
+      "sku": "2881",
+      "tier": "未标记",
+      "type": "未分类",
+      "P7": {
+        "total": 0,
+        "creatorCount": 0,
+        "newCreators": 0,
+        "fulfilled": 0,
+        "fulfillRate": null,
+        "ordered": 0,
+        "orderRate": null,
+        "totalPieces": 0,
+        "topOrdered": []
+      },
+      "P8": {
+        "total": 1,
+        "creatorCount": 1,
+        "newCreators": 0,
+        "fulfilled": 1,
+        "fulfillRate": 100,
+        "ordered": 0,
+        "orderRate": 0,
+        "totalPieces": 0,
+        "topOrdered": []
+      },
+      "P7m": {
+        "coop": 0,
+        "video": 0,
+        "ordered": 0,
+        "pieces": 0,
+        "fulfillRate": null,
+        "orderRate": null,
+        "perCreator": null
+      },
+      "P8m": {
+        "coop": 1,
+        "video": 1,
+        "ordered": 0,
+        "pieces": 0,
+        "fulfillRate": 100,
+        "orderRate": 0,
+        "perCreator": null
+      }
+    },
+    {
+      "sku": "2A08",
+      "tier": "未标记",
+      "type": "未分类",
+      "P7": {
+        "total": 0,
+        "creatorCount": 0,
+        "newCreators": 0,
+        "fulfilled": 0,
+        "fulfillRate": null,
+        "ordered": 0,
+        "orderRate": null,
+        "totalPieces": 0,
+        "topOrdered": []
+      },
+      "P8": {
+        "total": 1,
+        "creatorCount": 1,
+        "newCreators": 1,
+        "fulfilled": 1,
+        "fulfillRate": 100,
+        "ordered": 0,
+        "orderRate": 0,
+        "totalPieces": 0,
+        "topOrdered": []
+      },
+      "P7m": {
+        "coop": 0,
+        "video": 0,
+        "ordered": 0,
+        "pieces": 0,
+        "fulfillRate": null,
+        "orderRate": null,
+        "perCreator": null
+      },
+      "P8m": {
+        "coop": 1,
+        "video": 1,
+        "ordered": 0,
+        "pieces": 0,
+        "fulfillRate": 100,
+        "orderRate": 0,
+        "perCreator": null
+      }
+    }
+  ],
+  "waterfall": [
+    {
+      "sku": "2789",
+      "tier": "销售",
+      "d": -51
+    },
+    {
+      "sku": "2722",
+      "tier": "爆品",
+      "d": 131
+    },
+    {
+      "sku": "2190",
+      "tier": "爆品",
+      "d": 270
+    },
+    {
+      "sku": "2178",
+      "tier": "爆品",
+      "d": 479
+    },
+    {
+      "sku": "28173",
+      "tier": "销售",
+      "d": 519
+    },
+    {
+      "sku": "2189",
+      "tier": "销售",
+      "d": 533
+    }
+  ],
+  "relay": {
+    "oldP7": 1534,
+    "oldP8": 560,
+    "newP7": 36,
+    "newP8": 35,
+    "totalP7": 1570,
+    "totalP8": 595,
+    "oldChg": -974,
+    "newChg": -1,
+    "newShare": 6
+  },
+  "matrix": [
+    {
+      "sku": "2178",
+      "tier": "爆品",
+      "x": 1768,
+      "y": 37
+    },
+    {
+      "sku": "2190",
+      "tier": "爆品",
+      "x": 1776,
+      "y": 18
+    },
+    {
+      "sku": "2722",
+      "tier": "爆品",
+      "x": 1640,
+      "y": 9
+    },
+    {
+      "sku": "28173",
+      "tier": "销售",
+      "x": 771,
+      "y": 206
+    },
+    {
+      "sku": "2189",
+      "tier": "销售",
+      "x": 681,
+      "y": 360
+    },
+    {
+      "sku": "2789",
+      "tier": "销售",
+      "x": 37,
+      "y": -58
+    },
+    {
+      "sku": "2A19",
+      "tier": "测品",
+      "x": 10,
+      "y": -66
+    },
+    {
+      "sku": "2757",
+      "tier": "测品",
+      "x": 24,
+      "y": 700
+    },
+    {
+      "sku": "28193",
+      "tier": "测品",
+      "x": 1,
+      "y": -75
+    },
+    {
+      "sku": "28102",
+      "tier": "未标记",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "sku": "2881",
+      "tier": "未标记",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "sku": "2A08",
+      "tier": "未标记",
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "reinvest": {
+    "total": 1502,
+    "success": 124,
+    "failed": 1280,
+    "watching": 98,
+    "medianDays": 28,
+    "withinWatchRate": 52,
+    "bySku": [
+      {
+        "sku": "2178",
+        "productName": "Work Pants (Micro Flare)",
+        "reinvest": 312,
+        "success": 21,
+        "failed": 258,
+        "watching": 33,
+        "rate": 8,
+        "rawRate": 7,
+        "total": 1369
+      },
+      {
+        "sku": "2190",
+        "productName": "Work Pants (Upgraded)",
+        "reinvest": 243,
+        "success": 13,
+        "failed": 206,
+        "watching": 24,
+        "rate": 6,
+        "rawRate": 5,
+        "total": 337
+      },
+      {
+        "sku": "2722",
+        "productName": "Crossover Skort",
+        "reinvest": 135,
+        "success": 12,
+        "failed": 118,
+        "watching": 5,
+        "rate": 9,
+        "rawRate": 9,
+        "total": 630
+      },
+      {
+        "sku": "2189",
+        "productName": "Work Pants (Classic)",
+        "reinvest": 203,
+        "success": 14,
+        "failed": 174,
+        "watching": 15,
+        "rate": 7,
+        "rawRate": 7,
+        "total": 151
+      },
+      {
+        "sku": "28173",
+        "productName": "Wide Leg Work Pants",
+        "reinvest": 162,
+        "success": 17,
+        "failed": 140,
+        "watching": 5,
+        "rate": 11,
+        "rawRate": 10,
+        "total": 293
+      },
+      {
+        "sku": "2789",
+        "productName": "Four-Pocket Skort",
+        "reinvest": 141,
+        "success": 10,
+        "failed": 124,
+        "watching": 7,
+        "rate": 7,
+        "rawRate": 7,
+        "total": 103
+      },
+      {
+        "sku": "2A19",
+        "productName": "",
+        "reinvest": 157,
+        "success": 10,
+        "failed": 139,
+        "watching": 8,
+        "rate": 7,
+        "rawRate": 6,
+        "total": 125
+      },
+      {
+        "sku": "2757",
+        "productName": "Lace Skort",
+        "reinvest": 17,
+        "success": 0,
+        "failed": 16,
+        "watching": 1,
+        "rate": 0,
+        "rawRate": 0,
+        "total": 35
+      },
+      {
+        "sku": "28193",
+        "productName": "Work Pants (New)",
+        "reinvest": 7,
+        "success": 1,
+        "failed": 6,
+        "watching": 0,
+        "rate": 14,
+        "rawRate": 14,
+        "total": 32
+      },
+      {
+        "sku": "2L06",
+        "productName": "",
+        "reinvest": 3,
+        "success": 2,
+        "failed": 1,
+        "watching": 0,
+        "rate": 67,
+        "rawRate": 67,
+        "total": 48
+      }
+    ]
+  }
+}

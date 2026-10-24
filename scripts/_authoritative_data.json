@@ -1,0 +1,30 @@
+{
+  "source": "用户 2026-09-13 文字提供的权威明细表（寄样端/视频端/自然单占比），替代之前误用的 real-data.js 与 _correct_sku_data.json",
+  "note": "常卖款窗口：7月=上上个月15日~上个月15日；8月=上个月15日~本月15日。月度达人总出单=纯达人单。",
+  "skus": {
+    "2722":  {"name": "Crossover Skort (夏)", "main": true},
+    "2178":  {"name": "Work Pants Micro Flare (秋)", "main": true},
+    "2190":  {"name": "Work Pants Upgraded (秋)", "main": true},
+    "2189":  {"name": "Work Pants Classic (秋)", "main": true},
+    "28173": {"name": "Wide Leg Work Pants (秋)", "main": true},
+    "2789":  {"name": "Four-Pocket Skort (夏)", "main": true},
+    "2757":  {"name": "Lace Skort (夏测款)", "main": false}
+  },
+  "jul": {
+    "2722":  {"send":105,"fulfilled":84,"fulfill_rate":0.8000,"order_creators":22,"creator_rate":0.2750,"videos":556,"order_videos":141,"video_rate":0.2536,"views":3618554,"clicks":125190,"convert":1805,"ctr":0.0346,"cvr":0.0144,"organic":0.76,"orders":1763},
+    "2178":  {"send":33, "fulfilled":28,"fulfill_rate":0.8485,"order_creators":4, "creator_rate":0.1600,"videos":267,"order_videos":94, "video_rate":0.3521,"views":3658449,"clicks":131488,"convert":1587,"ctr":0.0359,"cvr":0.0121,"organic":0.79,"orders":1455},
+    "2190":  {"send":27, "fulfilled":27,"fulfill_rate":1.0000,"order_creators":5, "creator_rate":0.2083,"videos":211,"order_videos":61, "video_rate":0.2891,"views":2540712,"clicks":64592, "convert":1730,"ctr":0.0254,"cvr":0.0268,"organic":0.69,"orders":1696},
+    "2189":  {"send":33, "fulfilled":29,"fulfill_rate":0.8788,"order_creators":14,"creator_rate":0.5600,"videos":106,"order_videos":40, "video_rate":0.3774,"views":160240, "clicks":7645,  "convert":186, "ctr":0.0477,"cvr":0.0243,"organic":0.698,"orders":176},
+    "2789":  {"send":53, "fulfilled":45,"fulfill_rate":0.8491,"order_creators":12,"creator_rate":0.3000,"videos":59, "order_videos":17, "video_rate":0.2881,"views":79817,  "clicks":3922,  "convert":107, "ctr":0.0491,"cvr":0.0273,"organic":0.301,"orders":100},
+    "28173": {"send":67, "fulfilled":59,"fulfill_rate":0.8806,"order_creators":16,"creator_rate":0.3019,"videos":138,"order_videos":33, "video_rate":0.2391,"views":251397, "clicks":11936, "convert":298, "ctr":0.0475,"cvr":0.0250,"organic":0.607,"orders":321}
+  },
+  "aug": {
+    "2178":  {"send":73, "fulfilled":56,"fulfill_rate":0.7671,"order_creators":5, "creator_rate":0.0980,"videos":255,"order_videos":70, "video_rate":0.2745,"views":2847143,"clicks":103934,"convert":1616,"ctr":0.0365,"cvr":0.0155,"organic":0.791,"orders":1904},
+    "2190":  {"send":55, "fulfilled":46,"fulfill_rate":0.8364,"order_creators":3, "creator_rate":0.0750,"videos":217,"order_videos":60, "video_rate":0.2765,"views":2203093,"clicks":60298, "convert":1841,"ctr":0.0274,"cvr":0.0305,"organic":0.82, "orders":1872},
+    "2722":  {"send":45, "fulfilled":37,"fulfill_rate":0.8222,"order_creators":12,"creator_rate":0.3429,"videos":471,"order_videos":155,"video_rate":0.3291,"views":3148354,"clicks":101610,"convert":2005,"ctr":0.0323,"cvr":0.0197,"organic":0.803,"orders":1752},
+    "2189":  {"send":38, "fulfilled":35,"fulfill_rate":0.9211,"order_creators":8, "creator_rate":0.2286,"videos":162,"order_videos":58, "video_rate":0.3580,"views":731282, "clicks":26306, "convert":932, "ctr":0.0360,"cvr":0.0354,"organic":0.615,"orders":723},
+    "28173": {"send":86, "fulfilled":78,"fulfill_rate":0.9070,"order_creators":25,"creator_rate":0.3378,"videos":265,"order_videos":84, "video_rate":0.3170,"views":650131, "clicks":36194, "convert":843, "ctr":0.0557,"cvr":0.0233,"organic":0.816,"orders":846},
+    "2789":  {"send":32, "fulfilled":23,"fulfill_rate":0.7188,"order_creators":7, "creator_rate":0.3333,"videos":61, "order_videos":13, "video_rate":0.2131,"views":53003,  "clicks":2129,  "convert":38,  "ctr":0.0402,"cvr":0.0178,"organic":0.459,"orders":39},
+    "2757":  {"send":35, "fulfilled":29,"fulfill_rate":0.8286,"order_creators":8, "creator_rate":0.3077,"videos":38, "order_videos":10, "video_rate":0.2632,"views":110685, "clicks":3323,  "convert":35,  "ctr":0.0300,"cvr":0.0105,"organic":0.405,"orders":25}
+  }
+}
