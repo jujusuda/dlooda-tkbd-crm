@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#FAF6F6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Dlooda TKBD">
+  <link rel="manifest" href="manifest.json">
+  <title>Dlooda TKBD · 达人名单库</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar"></aside>
+    <main class="main">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-header__title">达人名单库</h1>
+          <p class="page-header__subtitle">按 SKU 分批备名单 · 一键复制 handle 去发邀约</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--ghost btn--sm" id="btn-export-roster">导出名单</button>
+        </div>
+      </div>
+
+      <!-- 存储说明 -->
+      <div class="card card--padding-lg" style="margin-bottom:4px;background:var(--bg-pink-soft);">
+        <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
+          <strong style="color:var(--pink-600);">名单只存在这台设备上</strong>：不写回飞书、不上传服务器，换手机/电脑不跟随。
+          校验用的黑名单、低效、历史合作 SKU，全部来自飞书<strong>每日寄样表</strong>，每次打开自动读取最新数据重新判定。
+        </div>
+      </div>
+
+      <!-- 导入区 -->
+      <div class="section">
+        <div class="section__header">
+          <h2 class="section__title">导入名单</h2>
+          <span class="section__hint">支持换行 / 逗号 / 空格分隔，自动清洗 @ 与链接</span>
+        </div>
+        <div class="card card--padding-lg">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">目标 SKU</label>
+              <select class="select" id="roster-sku"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">计划发送日</label>
+              <input type="date" class="input" id="roster-send-date">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">达人 handle 名单</label>
+            <textarea class="textarea" id="roster-input" rows="8"
+              placeholder="每行一个，或用逗号分隔：&#10;sarah.kramer&#10;@candt.usa&#10;https://www.tiktok.com/@justineefloress"></textarea>
+            <div class="form-hint" id="roster-count">已识别 0 个</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn--primary btn--sm" id="btn-check-roster">校验并预览</button>
+            <button class="btn btn--secondary btn--sm" id="btn-import-roster">确认导入</button>
+            <button class="btn btn--ghost btn--sm" id="btn-clear-input">清空输入</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 校验摘要 -->
+      <div class="stat-grid" id="roster-summary" style="margin-bottom:4px;"></div>
+
+      <!-- 按 SKU 分组（主视图） -->
+      <div class="section">
+        <div class="section__header">
+          <h2 class="section__title">按 SKU 看名单</h2>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <span class="section__hint">复制格式</span>
+            <div id="copy-format-group" style="display:flex;gap:4px;">
+              <button class="btn btn--ghost btn--sm" data-format="line">一行一个</button>
+              <button class="btn btn--ghost btn--sm" data-format="comma">逗号分隔</button>
+              <button class="btn btn--ghost btn--sm" data-format="at">带 @</button>
+            </div>
+          </div>
+        </div>
+        <div id="roster-groups"></div>
+      </div>
+
+      <!-- 名单表格 -->
+      <div class="section">
+        <div class="section__header">
+          <h2 class="section__title">名单明细</h2>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <select class="select" id="roster-filter-sku" style="min-width:120px;"></select>
+            <select class="select" id="roster-filter-status" style="min-width:120px;">
+              <option value="">全部状态</option>
+              <option value="ok">可发送</option>
+              <option value="cooperated">已合作该款</option>
+              <option value="skuLimit">已达3款上限</option>
+              <option value="blacklist">黑名单</option>
+              <option value="inefficient">低效</option>
+            </select>
+            <span class="section__hint" id="roster-shown"></span>
+          </div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="overflow-x:auto;">
+            <table class="data-table" id="roster-table">
+              <thead>
+                <tr>
+                  <th style="text-align:left;">达人 handle</th>
+                  <th style="text-align:left;">判定</th>
+                  <th style="text-align:left;">飞书档案</th>
+                  <th style="text-align:left;">历史合作 SKU</th>
+                  <th style="text-align:left;">分组</th>
+                  <th style="text-align:left;">寄样</th>
+                  <th style="text-align:center;">操作</th>
+                </tr>
+              </thead>
+              <tbody id="roster-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+    <nav class="bottom-nav"></nav>
+  </div>
+
+  <script src="js/real-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/matcher.js"></script>
+  <script src="js/reminder.js"></script>
+  <script src="js/roster.js"></script>
+</body>
+</html>

@@ -33,6 +33,17 @@
       <!-- 进度概览 -->
       <div class="stat-grid" id="todo-progress" style="margin-bottom:16px;"></div>
 
+      <!-- 自动待办（提醒规则 + 履约追踪） -->
+      <div class="section">
+        <div class="section__header">
+          <h2 class="section__title">自动待办</h2>
+          <span class="section__hint">按提醒规则与履约窗口自动生成</span>
+        </div>
+        <div class="card">
+          <div id="auto-tasks"></div>
+        </div>
+      </div>
+
       <!-- 固定任务 -->
       <div class="section">
         <div class="section__header">
@@ -52,6 +63,17 @@
         </div>
         <div class="card">
           <div id="custom-tasks"></div>
+        </div>
+      </div>
+
+      <!-- 提醒规则管理 -->
+      <div class="section">
+        <div class="section__header">
+          <h2 class="section__title">提醒规则</h2>
+          <button class="btn btn--ghost btn--sm" id="btn-add-rule">+ 新增规则</button>
+        </div>
+        <div class="card">
+          <div id="rule-list"></div>
         </div>
       </div>
     </main>
@@ -78,9 +100,64 @@
     </div>
   </div>
 
+  <!-- 提醒规则编辑弹窗 -->
+  <div class="modal-overlay" id="rule-modal" style="display:none;">
+    <div class="modal" style="max-width:440px;">
+      <div class="modal__header">
+        <h3 class="modal__title" id="rule-modal-title">新增提醒规则</h3>
+        <button class="modal__close" id="btn-close-rule">&times;</button>
+      </div>
+      <div class="modal__body">
+        <input type="hidden" id="rule-edit-id">
+        <div class="form-group">
+          <label class="form-label">任务名称</label>
+          <input type="text" class="input" id="rule-title" placeholder="如：统计达人出单转化数据" style="width:100%;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">重复方式</label>
+          <select class="select" id="rule-type" style="width:100%;">
+            <option value="monthly">每月固定日</option>
+            <option value="once">一次性（指定日期）</option>
+          </select>
+        </div>
+        <div class="form-group" id="rule-day-group">
+          <label class="form-label">每月几号</label>
+          <input type="number" class="input" id="rule-day" min="1" max="31" value="25" style="width:100%;">
+        </div>
+        <div class="form-group" id="rule-date-group" style="display:none;">
+          <label class="form-label">执行日期</label>
+          <input type="date" class="input" id="rule-date" style="width:100%;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">提前几天预提醒</label>
+          <input type="number" class="input" id="rule-lead" min="0" max="30" value="3" style="width:100%;">
+          <div class="form-hint">0 = 不提前提醒，只在当天弹</div>
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);cursor:pointer;">
+            <input type="checkbox" id="rule-email" style="width:18px;height:18px;accent-color:var(--pink-500);">
+            同时发邮件提醒
+          </label>
+        </div>
+        <div class="form-group" id="rule-email-group" style="display:none;">
+          <label class="form-label">收件邮箱</label>
+          <input type="email" class="input" id="rule-email-to" placeholder="you@example.com" style="width:100%;">
+          <div class="form-hint">需后端配置邮件通道；未配置时自动降级为仅界面提醒</div>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost btn--sm" id="btn-cancel-rule">取消</button>
+        <button class="btn btn--primary btn--sm" id="btn-save-rule">保存</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/real-data.js"></script>
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/matcher.js"></script>
+  <script src="js/reminder.js"></script>
   <script src="js/todo.js"></script>
 </body>
 </html>

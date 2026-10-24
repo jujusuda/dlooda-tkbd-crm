@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#FAF6F6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Dlooda TKBD">
+  <link rel="manifest" href="manifest.json">
+  <title>Dlooda TKBD · 履约追踪</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar"></aside>
+    <main class="main">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-header__title">履约追踪</h1>
+          <p class="page-header__subtitle">寄样后未履约达人 · 窗口期催办 · 状态回填飞书</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--ghost btn--sm" id="btn-export-urge">导出催办名单</button>
+        </div>
+      </div>
+
+      <!-- 窗口状态 -->
+      <div class="card card--padding-lg" id="urge-context" style="margin-bottom:16px;"></div>
+
+      <!-- 统计 -->
+      <div class="stat-grid" id="urge-stats" style="margin-bottom:4px;"></div>
+
+      <!-- 名单 -->
+      <div class="section">
+        <div class="section__header">
+          <h2 class="section__title">待催达人</h2>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <select class="select" id="urge-filter-sku" style="min-width:120px;"></select>
+            <select class="select" id="urge-filter-status" style="min-width:130px;">
+              <option value="">全部状态</option>
+              <option value="__pending">未处理</option>
+              <option value="已催">已催</option>
+              <option value="已发邮件">已发邮件</option>
+              <option value="已私信">已私信</option>
+              <option value="待发邮件">待发邮件</option>
+              <option value="未履约">未履约</option>
+              <option value="已取消">已取消</option>
+            </select>
+          </div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="overflow-x:auto;">
+            <table class="data-table" id="urge-table">
+              <thead>
+                <tr>
+                  <th style="text-align:left;">达人 handle</th>
+                  <th style="text-align:left;">SKU</th>
+                  <th style="text-align:left;">颜色</th>
+                  <th style="text-align:left;">寄样时间</th>
+                  <th style="text-align:right;">已等待</th>
+                  <th style="text-align:left;">履约状态</th>
+                  <th style="text-align:center;">操作</th>
+                </tr>
+              </thead>
+              <tbody id="urge-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+    <nav class="bottom-nav"></nav>
+  </div>
+
+  <script src="js/real-data.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/matcher.js"></script>
+  <script src="js/reminder.js"></script>
+  <script src="js/tracking.js"></script>
+</body>
+</html>
