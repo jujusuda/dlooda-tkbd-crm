@@ -8,3 +8,7 @@ start.bat
 server/.env
 __pycache__/
 work/
+*.pptx
+_preview*
+docx_media/
+nul
