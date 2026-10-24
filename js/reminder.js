@@ -345,7 +345,8 @@
         +       App.escapeHtml(it.title) + '</div>'
         +     '<div style="font-size:12px;color:var(--text-3);margin-top:2px;">'
         +       App.escapeHtml(it.desc) + '</div>'
-        +   '</div>';
+        +   '</div>'
+        + '</div>';
     }).join('');
 
     mask.innerHTML = ''
