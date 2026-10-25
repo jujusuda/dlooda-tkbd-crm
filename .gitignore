@@ -12,3 +12,5 @@ work/
 _preview*
 docx_media/
 nul
+monthly-report-*.html
+scripts/source_xlsx/

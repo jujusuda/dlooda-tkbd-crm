@@ -78,6 +78,15 @@
       // added: [card]  用户新增的卡片（img 为 dataURL）
       // handleAdds / handleRems: {cardId: [handle]}  卡片内增删的达人
       designated: { marks: {}, overrides: {}, deleted: [], added: [], handleAdds: {}, handleRems: {} },
+      // 自动达人名单（模块一 Excel 导入）：只存本机改动+标记，静态数据在 js/auto-data.js
+      // marks:    { groupId: { handle: {date, note} } }  已发/标记
+      // removed:  { groupId: [handle] }  组内移除的达人
+      // added:    { groupId: [handle] }  组内追加的达人
+      // custom:   [{ id, name, handles: [] }]  手动新增分组
+      auto: { marks: {}, removed: {}, added: {}, custom: [] },
+      // 复投名单（模块二 Excel 导入）：只存本机标记，静态数据在 js/reinvest-data.js
+      // marks: { id: { status, note, date } }  id = handle
+      reinvest: { marks: {} },
       rules: JSON.parse(JSON.stringify(DEFAULT_RULES)),
       tracking: {},
       settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
@@ -98,7 +107,7 @@
     if (!data || typeof data !== 'object') { cache = defaults(); persist(); return cache; }
     // 补齐缺失字段（向后兼容）
     var base = defaults();
-    ['roster', 'groups', 'outreach', 'designated', 'rules', 'tracking', 'settings'].forEach(function (k) {
+    ['roster', 'groups', 'outreach', 'designated', 'auto', 'reinvest', 'rules', 'tracking', 'settings'].forEach(function (k) {
       if (data[k] === undefined || data[k] === null) data[k] = base[k];
     });
     if (!data.designated || typeof data.designated !== 'object') data.designated = base.designated;
@@ -108,6 +117,13 @@
     ['deleted', 'added'].forEach(function (k) {
       if (!Array.isArray(data.designated[k])) data.designated[k] = [];
     });
+    if (!data.auto || typeof data.auto !== 'object') data.auto = base.auto;
+    ['marks', 'removed', 'added'].forEach(function (k) {
+      if (!data.auto[k] || typeof data.auto[k] !== 'object') data.auto[k] = {};
+    });
+    if (!Array.isArray(data.auto.custom)) data.auto.custom = [];
+    if (!data.reinvest || typeof data.reinvest !== 'object') data.reinvest = base.reinvest;
+    if (!data.reinvest.marks || typeof data.reinvest.marks !== 'object') data.reinvest.marks = {};
     if (!data.outreach || !Array.isArray(data.outreach.batches)) data.outreach = base.outreach;
     if (!Array.isArray(data.outreach.members)) data.outreach.members = [];
     Object.keys(base.settings).forEach(function (k) {
@@ -542,6 +558,86 @@
     persist();
   }
 
+  /* ---------- 自动达人名单（模块一 Excel 导入） ---------- */
+  function getAuto() { return load().auto; }
+
+  // 某组已发标记: { handle: {date, note} }
+  function autoMarks(groupId) { return (load().auto.marks[groupId] || {}); }
+
+  function autoMark(groupId, handle, date, note) {
+    var db = load();
+    if (!db.auto.marks[groupId]) db.auto.marks[groupId] = {};
+    db.auto.marks[groupId][handle] = { date: date || todayStr(), note: note || '' };
+    persist();
+  }
+
+  function autoUnmark(groupId, handle) {
+    var db = load();
+    if (db.auto.marks[groupId]) {
+      delete db.auto.marks[groupId][handle];
+      if (Object.keys(db.auto.marks[groupId]).length === 0) delete db.auto.marks[groupId];
+    }
+    persist();
+  }
+
+  function autoRemoveHandle(groupId, handle) {
+    var db = load();
+    var r = db.auto.removed[groupId] || [];
+    if (r.indexOf(handle) === -1) r.push(handle);
+    db.auto.removed[groupId] = r;
+    // 若本机新增过，一并清掉
+    db.auto.added[groupId] = (db.auto.added[groupId] || []).filter(function (h) { return h !== handle; });
+    persist();
+  }
+
+  function autoAddHandle(groupId, handle) {
+    var db = load();
+    var a = db.auto.added[groupId] || [];
+    if (handle && a.indexOf(handle) === -1) a.push(handle);
+    db.auto.added[groupId] = a;
+    // 撤销移除
+    db.auto.removed[groupId] = (db.auto.removed[groupId] || []).filter(function (h) { return h !== handle; });
+    persist();
+  }
+
+  function autoAddGroup(name, handles) {
+    var db = load();
+    var id = 'c' + uid();
+    db.auto.custom.push({ id: id, name: name, handles: handles || [] });
+    persist();
+    return id;
+  }
+
+  function autoDeleteGroup(id) {
+    var db = load();
+    db.auto.custom = db.auto.custom.filter(function (g) { return g.id !== id; });
+    persist();
+  }
+
+  function autoGroupName(id) {
+    var db = load();
+    for (var i = 0; i < db.auto.custom.length; i++) {
+      if (db.auto.custom[i].id === id) return db.auto.custom[i].name;
+    }
+    return '';
+  }
+
+  /* ---------- 复投名单（模块二 Excel 导入） ---------- */
+  function getReinvest() { return load().reinvest; }
+
+  // 某记录标记: { status, note, date }
+  function reinvestMark(id, status, note, date) {
+    var db = load();
+    db.reinvest.marks[id] = { status: status || 'contacted', note: note || '', date: date || todayStr() };
+    persist();
+  }
+
+  function reinvestUnmark(id) {
+    var db = load();
+    delete db.reinvest.marks[id];
+    persist();
+  }
+
   /* ---------- 导入导出 ---------- */
 
   function exportAll() {
@@ -553,11 +649,13 @@
     if (!data || typeof data !== 'object') throw new Error('不是有效的 JSON 对象');
     cache = null;
     var base = defaults();
-    ['roster', 'groups', 'outreach', 'designated', 'rules', 'tracking', 'settings'].forEach(function (k) {
+    ['roster', 'groups', 'outreach', 'designated', 'auto', 'reinvest', 'rules', 'tracking', 'settings'].forEach(function (k) {
       base[k] = data[k] !== undefined ? data[k] : base[k];
     });
     if (!base.designated || typeof base.designated !== 'object') base.designated = defaults().designated;
     if (!base.outreach || !Array.isArray(base.outreach.batches)) base.outreach = defaults().outreach;
+    if (!base.auto || typeof base.auto !== 'object') base.auto = defaults().auto;
+    if (!base.reinvest || typeof base.reinvest !== 'object') base.reinvest = defaults().reinvest;
     cache = base;
     persist();
     return true;
@@ -636,6 +734,20 @@
     desAddCard: desAddCard,
     desAddHandles: desAddHandles,
     desRemoveHandle: desRemoveHandle,
+    // auto（自动达人名单）
+    getAuto: getAuto,
+    autoMarks: autoMarks,
+    autoMark: autoMark,
+    autoUnmark: autoUnmark,
+    autoRemoveHandle: autoRemoveHandle,
+    autoAddHandle: autoAddHandle,
+    autoAddGroup: autoAddGroup,
+    autoDeleteGroup: autoDeleteGroup,
+    autoGroupName: autoGroupName,
+    // reinvest（复投名单）
+    getReinvest: getReinvest,
+    reinvestMark: reinvestMark,
+    reinvestUnmark: reinvestUnmark,
     // rules
     getRules: getRules,
     getRule: getRule,

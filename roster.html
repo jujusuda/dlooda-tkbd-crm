@@ -35,6 +35,26 @@
       <!-- ============ 自动达人名单（原有） ============ -->
       <div id="tab-sample">
 
+      <!-- ===== Excel 自动达人名单（主区块） ===== -->
+      <div id="auto-top">
+        <div class="card card--padding-lg" style="margin-bottom:10px;background:var(--bg-pink-soft);">
+          <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
+            <strong style="color:var(--pink-600);">自动达人名单</strong>（来自「每日工作.xlsx · 自动达人名单」+ 2A08&amp;28102自动）：
+            <span id="auto-total">—</span>，组内已去重。点击分组展开达人，可<strong>一键复制</strong>、标记「已发」、移除或追加达人。
+          </div>
+        </div>
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">分组与达人</h2>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <input type="search" class="input" id="auto-search" placeholder="搜分组 / handle" style="width:170px;padding:5px 10px;font-size:12.5px;">
+              <button class="btn btn--primary btn--sm" id="btn-auto-add-group">＋ 新增分组</button>
+            </div>
+          </div>
+          <div id="auto-grid"></div>
+        </div>
+      </div>
+
       <!-- 存储说明 -->
       <div class="card card--padding-lg" style="margin-bottom:4px;background:var(--bg-pink-soft);">
         <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
@@ -133,6 +153,32 @@
 
       <!-- ============ 竞品达人+爆单达人复投名单 ============ -->
       <div id="tab-outreach" style="display:none;">
+
+      <!-- ===== Excel 复投名单（主区块） ===== -->
+      <div id="reinvest-top">
+        <div class="card card--padding-lg" style="margin-bottom:10px;background:var(--bg-pink-soft);">
+          <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
+            <strong style="color:var(--pink-600);">竞品达人 + 爆单达人复投名单</strong>（来自「每日工作.xlsx · 复投」）：
+            <span id="reinvest-total">—</span>。可搜索、按结果筛选、复制达人 ID、标记跟进状态。
+          </div>
+        </div>
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">复投记录</h2>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <input type="search" class="input" id="reinvest-search" placeholder="搜达人 / sku / 方式" style="width:170px;padding:5px 10px;font-size:12.5px;">
+              <select class="select" id="reinvest-filter" style="min-width:120px;font-size:12.5px;">
+                <option value="">全部结果</option>
+                <option value="success">已成功 ✅</option>
+                <option value="fail">未成功 ❌</option>
+                <option value="pending">待跟进</option>
+                <option value="marked">本机已标记</option>
+              </select>
+            </div>
+          </div>
+          <div id="reinvest-list"></div>
+        </div>
+      </div>
 
         <div class="card card--padding-lg" style="margin-bottom:4px;background:var(--bg-pink-soft);">
           <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
@@ -289,6 +335,8 @@
   <script src="js/matcher.js"></script>
   <script src="js/reminder.js"></script>
   <script src="js/designated-data.js"></script>
+  <script src="js/auto-data.js"></script>
+  <script src="js/reinvest-data.js"></script>
   <script src="js/roster.js"></script>
 </body>
 </html>

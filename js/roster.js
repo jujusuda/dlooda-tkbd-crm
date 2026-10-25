@@ -1662,6 +1662,166 @@
   }
 
   /* ---------- 模块切换 ---------- */
+  /* ================= 模块一：自动达人名单（Excel 导入） ================= */
+  var autoOpen = {};
+  var reinvestPage = 1;
+  var reinvestStep = 120;
+
+  function autoAllGroups() {
+    var groups = [];
+    if (global.DloodaAuto && DloodaAuto.groups) {
+      DloodaAuto.groups.forEach(function (g) {
+        groups.push({ id: g.id, name: g.name, handles: g.handles.slice(), custom: false });
+      });
+    }
+    var auto = Store.getAuto();
+    (auto.custom || []).forEach(function (g) {
+      groups.push({ id: g.id, name: g.name, handles: g.handles.slice(), custom: true });
+    });
+    return groups;
+  }
+
+  function autoFinalHandles(g) {
+    var auto = Store.getAuto();
+    var set = {};
+    g.handles.forEach(function (h) { set[h] = true; });
+    (auto.removed[g.id] || []).forEach(function (h) { delete set[h]; });
+    (auto.added[g.id] || []).forEach(function (h) { set[h] = true; });
+    return Object.keys(set);
+  }
+
+  function renderAutoAll() {
+    var grid = document.getElementById('auto-grid');
+    if (!grid) return;
+    var groups = autoAllGroups();
+    var auto = Store.getAuto();
+    var marksAll = auto.marks || {};
+    var totalEl = document.getElementById('auto-total');
+    var totalHandles = 0;
+    groups.forEach(function (g) { totalHandles += autoFinalHandles(g).length; });
+    if (totalEl) totalEl.textContent = groups.length + ' 组 / ' + totalHandles + ' 达人';
+
+    var q = ((document.getElementById('auto-search') || {}).value || '').toLowerCase();
+
+    var html = [];
+    groups.forEach(function (g) {
+      var hs = autoFinalHandles(g);
+      if (q) {
+        var hit = g.name.toLowerCase().indexOf(q) !== -1 ||
+          hs.some(function (h) { return h.indexOf(q) !== -1; });
+        if (!hit) return;
+      }
+      var marks = marksAll[g.id] || {};
+      var markedCount = hs.filter(function (h) { return marks[h]; }).length;
+      var open = autoOpen[g.id];
+      html.push('<div class="auto-group" data-gid="' + App.escapeHtml(g.id) + '" style="border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;">');
+      html.push('  <div class="auto-group__head" data-gid="' + App.escapeHtml(g.id) + '" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer;background:var(--bg-2);">');
+      html.push('    <div style="display:flex;align-items:center;gap:8px;"><strong style="font-size:13.5px;">' + App.escapeHtml(g.name) + '</strong>');
+      html.push('      <span class="badge" style="font-size:11px;">' + hs.length + ' 人</span>');
+      if (markedCount) html.push('<span class="badge badge--green" style="font-size:11px;">已发 ' + markedCount + '</span>');
+      if (g.custom) html.push('<span class="badge badge--pink" style="font-size:11px;">自建</span>');
+      html.push('    </div>');
+      html.push('    <div style="display:flex;align-items:center;gap:6px;">');
+      html.push('      <button class="btn btn--ghost btn--sm" data-auto-copy="' + App.escapeHtml(g.id) + '">复制</button>');
+      if (g.custom) html.push('<button class="btn btn--ghost btn--sm" data-auto-del-group="' + App.escapeHtml(g.id) + '">删组</button>');
+      html.push('      <span style="font-size:12px;color:var(--text-3);">' + (open ? '▴' : '▾') + '</span>');
+      html.push('    </div>');
+      html.push('  </div>');
+      if (open) {
+        html.push('  <div class="auto-group__body" style="padding:10px 12px;">');
+        html.push('    <div class="auto-chips" style="display:flex;flex-wrap:wrap;gap:6px;">');
+        hs.forEach(function (h) {
+          var mk = marks[h];
+          html.push('<span class="chip" data-handle="' + App.escapeHtml(h) + '" title="点击复制" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:var(--bg-2);font-size:12px;cursor:pointer;">');
+          html.push(App.escapeHtml(h));
+          if (mk) html.push('<span style="color:var(--c-success);font-size:10px;">✓' + App.escapeHtml(mk.date.slice(5)) + '</span>');
+          html.push('<button class="link-btn" data-auto-mark="' + App.escapeHtml(g.id) + '" data-handle="' + App.escapeHtml(h) + '" style="color:var(--c-danger);font-size:11px;margin-left:2px;">' + (mk ? '改' : '标') + '</button>');
+          html.push('<button class="link-btn" data-auto-remove="' + App.escapeHtml(g.id) + '" data-handle="' + App.escapeHtml(h) + '" style="color:var(--text-3);font-size:11px;">×</button>');
+          html.push('</span>');
+        });
+        html.push('    </div>');
+        html.push('    <div style="margin-top:8px;display:flex;gap:6px;">');
+        html.push('      <input class="input" id="auto-add-' + App.escapeHtml(g.id) + '" placeholder="追加 handle，逗号分隔" style="flex:1;padding:5px 8px;font-size:12px;">');
+        html.push('      <button class="btn btn--secondary btn--sm" data-auto-add="' + App.escapeHtml(g.id) + '">追加</button>');
+        html.push('    </div>');
+        html.push('  </div>');
+      }
+      html.push('</div>');
+    });
+    grid.innerHTML = html.join('') || '<p style="color:var(--text-3);font-size:12.5px;">无匹配分组</p>';
+  }
+
+  function bindAutoEvents() {
+    var grid = document.getElementById('auto-grid');
+    if (grid) {
+      grid.addEventListener('click', function (e) {
+        var t = e.target;
+        var head = t.closest('.auto-group__head');
+        if (head && !t.hasAttribute('data-auto-copy') && !t.hasAttribute('data-auto-del-group')) {
+          var gid = head.getAttribute('data-gid');
+          autoOpen[gid] = !autoOpen[gid];
+          renderAutoAll();
+          return;
+        }
+        var gid2 = t.getAttribute('data-auto-copy') || t.getAttribute('data-auto-del-group') ||
+          t.getAttribute('data-auto-add') || t.getAttribute('data-auto-mark') || t.getAttribute('data-auto-remove');
+        if (!gid2) return;
+        if (t.hasAttribute('data-auto-copy')) {
+          var g = autoAllGroups().filter(function (x) { return x.id === gid2; })[0];
+          if (g) App.copyToClipboard(autoFinalHandles(g).join('\n'), g.name + ' 的 ' + autoFinalHandles(g).length + ' 个');
+          return;
+        }
+        if (t.hasAttribute('data-auto-del-group')) {
+          if (confirm('确认删除自建分组「' + Store.autoGroupName(gid2) + '」？')) { Store.autoDeleteGroup(gid2); renderAutoAll(); }
+          return;
+        }
+        if (t.hasAttribute('data-auto-remove')) {
+          Store.autoRemoveHandle(gid2, t.getAttribute('data-handle')); renderAutoAll(); return;
+        }
+        if (t.hasAttribute('data-auto-mark')) {
+          var h2 = t.getAttribute('data-handle');
+          var d = prompt('标记已发日期（默认今天）', Store.todayStr());
+          if (d === null) return;
+          var note = prompt('备注（可选，如已发 SKU）', '');
+          if (note === null) return;
+          Store.autoMark(gid2, h2, d, note); renderAutoAll(); return;
+        }
+        if (t.hasAttribute('data-auto-add')) {
+          var inp = document.getElementById('auto-add-' + gid2);
+          if (inp && inp.value.trim()) {
+            var parts = (global.DloodaMatcher && DloodaMatcher.parseHandles)
+              ? DloodaMatcher.parseHandles(inp.value)
+              : inp.value.split(/[,\n]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+            parts.forEach(function (h) { Store.autoAddHandle(gid2, h); });
+            renderAutoAll();
+          }
+          return;
+        }
+      });
+      grid.addEventListener('click', function (e) {
+        var chip = e.target.closest('.chip');
+        if (chip && !e.target.hasAttribute('data-auto-mark') && !e.target.hasAttribute('data-auto-remove')) {
+          var h = chip.getAttribute('data-handle');
+          App.copyToClipboard(h, '已复制 ' + h);
+        }
+      });
+    }
+    var search = document.getElementById('auto-search');
+    if (search) search.addEventListener('input', renderAutoAll);
+    var addBtn = document.getElementById('btn-auto-add-group');
+    if (addBtn) addBtn.addEventListener('click', function () {
+      var name = prompt('分组名称', '新分组');
+      if (!name) return;
+      var handles = prompt('达人 handle（逗号或换行分隔）', '');
+      if (handles === null) return;
+      var parts = (global.DloodaMatcher && DloodaMatcher.parseHandles)
+        ? DloodaMatcher.parseHandles(handles)
+        : handles.split(/[,\n]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+      Store.autoAddGroup(name, parts);
+      renderAutoAll();
+    });
+  }
+
   function switchTab(name) {
     var t1 = document.getElementById('tab-sample');
     var t2 = document.getElementById('tab-outreach');
@@ -1674,8 +1834,124 @@
       var on = b.getAttribute('data-roster-tab') === name;
       b.className = 'btn btn--sm ' + (on ? 'btn--primary' : 'btn--ghost');
     });
-    if (name === 'outreach') renderObAll();
+    if (name === 'outreach') { renderReinvestAll(); }
     if (name === 'designated') renderDesAll();
+    if (name === 'sample') renderAutoAll();
+  }
+
+  /* ================= 模块二：复投名单（Excel 导入） ================= */
+  function renderReinvestAll() {
+    var list = document.getElementById('reinvest-list');
+    if (!list) return;
+    var data = global.DloodaReinvest;
+    if (!data || !data.records) { list.innerHTML = '<p style="color:var(--text-3);">未加载复投数据</p>'; return; }
+    var recs = data.records;
+    var marks = (Store.getReinvest().marks) || {};
+    var totalEl = document.getElementById('reinvest-total');
+    var q = ((document.getElementById('reinvest-search') || {}).value || '').toLowerCase();
+    var f = ((document.getElementById('reinvest-filter') || {}).value || '');
+
+    // 先过滤
+    var filtered = [];
+    recs.forEach(function (r) {
+      var hay = (r.handle + ' ' + (r.sku || '') + ' ' + (r.method || '') + ' ' + (r.type || '') + ' ' + (r.note || '')).toLowerCase();
+      if (q && hay.indexOf(q) === -1) return;
+      var succ = (r.success || '');
+      if (f === 'success' && succ.indexOf('✅') === -1) return;
+      if (f === 'fail' && succ.indexOf('❌') === -1) return;
+      if (f === 'marked' && !marks[r.id]) return;
+      if (f === 'pending' && marks[r.id]) return;
+      filtered.push(r);
+    });
+    if (totalEl) totalEl.textContent = (q || f ? filtered.length + ' 条匹配 / ' : '') + recs.length + ' 条总';
+
+    // 分页
+    var shown = filtered.slice(0, reinvestPage * reinvestStep);
+
+    var html = [];
+    shown.forEach(function (r) {
+      var m = marks[r.id];
+      var succ = (r.success || '');
+      var succCls = succ.indexOf('✅') !== -1 ? 'badge--green' : (succ.indexOf('❌') !== -1 ? 'badge--danger' : '');
+      html.push('<div class="reinvest-card" data-rid="' + App.escapeHtml(r.id) + '" style="border:1px solid var(--border);border-radius:12px;margin-bottom:10px;padding:10px 12px;">');
+      html.push('  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">');
+      html.push('    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">');
+      html.push('      <strong style="font-size:13.5px;cursor:pointer;" data-re-copy="' + App.escapeHtml(r.id) + '" title="点击复制 ID">' + App.escapeHtml(r.handle) + '</strong>');
+      if (r.sku) html.push('<span class="badge" style="font-size:11px;">SKU ' + App.escapeHtml(r.sku) + '</span>');
+      if (r.type) html.push('<span class="badge" style="font-size:11px;">' + App.escapeHtml(r.type) + '</span>');
+      if (succ) html.push('<span class="badge ' + succCls + '" style="font-size:11px;">' + App.escapeHtml(succ) + '</span>');
+      if (r.level) html.push('<span class="badge" style="font-size:11px;">L' + App.escapeHtml(r.level) + '</span>');
+      html.push('    </div>');
+      html.push('    <div style="display:flex;gap:6px;align-items:center;">');
+      if (r.script) html.push('<button class="btn btn--ghost btn--sm" data-re-script="' + App.escapeHtml(r.id) + '">话术</button>');
+      html.push('<button class="btn btn--ghost btn--sm" data-re-mark="' + App.escapeHtml(r.id) + '">' + (m ? '改标记' : '标记') + '</button>');
+      html.push('    </div>');
+      html.push('  </div>');
+      if (r.method) html.push('<div style="font-size:12px;color:var(--text-2);margin-top:4px;">复投方式：' + App.escapeHtml(r.method) + '</div>');
+      if (r.note) html.push('<div style="font-size:12px;color:var(--text-2);margin-top:2px;">备注：' + App.escapeHtml(r.note) + '</div>');
+      if (m) html.push('<div style="font-size:12px;color:var(--c-success);margin-top:2px;">本机标记：' + App.escapeHtml((m.status || '') + (m.date ? (' · ' + m.date) : '') + (m.note ? (' · ' + m.note) : '')) + '</div>');
+      html.push('</div>');
+    });
+    if (filtered.length > shown.length) {
+      html.push('<div style="text-align:center;padding:12px;"><button class="btn btn--ghost btn--sm" data-re-more>显示更多（剩 ' + (filtered.length - shown.length) + ' 条）</button></div>');
+    }
+    list.innerHTML = html.join('') || '<p style="color:var(--text-3);font-size:12.5px;">无匹配记录</p>';
+  }
+
+  function bindReinvestEvents() {
+    var list = document.getElementById('reinvest-list');
+    if (list) {
+      list.addEventListener('click', function (e) {
+        var t = e.target;
+        var rid = t.getAttribute('data-re-copy') || t.getAttribute('data-re-mark') ||
+          t.getAttribute('data-re-script') || t.getAttribute('data-re-copy-script');
+        if (!rid) return;
+        if (t.hasAttribute('data-re-copy')) { App.copyToClipboard(rid, '已复制 ' + rid); return; }
+        if (t.hasAttribute('data-re-copy-script')) {
+          var rec0 = (DloodaReinvest.records || []).filter(function (r) { return r.id === rid; })[0];
+          if (rec0 && rec0.script) App.copyToClipboard(rec0.script, '已复制话术');
+          return;
+        }
+        if (t.hasAttribute('data-re-script')) {
+          var card = t.closest('.reinvest-card');
+          if (!card) return;
+          var box = card.querySelector('.re-script-box');
+          if (box) { box.parentNode.removeChild(box); return; }
+          var rec = (DloodaReinvest.records || []).filter(function (r) { return r.id === rid; })[0];
+          if (rec && rec.script) {
+            var d = document.createElement('div');
+            d.className = 're-script-box';
+            d.style.cssText = 'margin-top:6px;font-size:12px;color:var(--text-2);white-space:pre-wrap;max-height:180px;overflow:auto;';
+            d.textContent = rec.script;
+            var b = document.createElement('button');
+            b.className = 'btn btn--ghost btn--sm';
+            b.textContent = '复制话术';
+            b.setAttribute('data-re-copy-script', rid);
+            d.appendChild(b);
+            card.appendChild(d);
+          }
+          return;
+        }
+        if (t.hasAttribute('data-re-mark')) {
+          var status = prompt('跟进状态（contacted 已联系 / sent 已寄样 / success 成功 / fail 未成功）', 'contacted');
+          if (!status) return;
+          var note = prompt('备注（可选）', '');
+          if (note === null) return;
+          Store.reinvestMark(rid, status, note, Store.todayStr());
+          renderReinvestAll();
+          return;
+        }
+        if (t.hasAttribute('data-re-more')) {
+          reinvestPage += 1;
+          renderReinvestAll();
+          return;
+        }
+      });
+    }
+    var search = document.getElementById('reinvest-search');
+    if (search) search.addEventListener('input', function () { reinvestPage = 1; renderReinvestAll(); });
+    var filter = document.getElementById('reinvest-filter');
+    if (filter) filter.addEventListener('change', function () { reinvestPage = 1; renderReinvestAll(); });
   }
 
   function bindTabs() {
@@ -1727,6 +2003,11 @@
 
     // 模块三：指定达人名单
     bindDesEvents();
+
+    // 模块一 / 二：Excel 导入名单
+    bindAutoEvents();
+    renderAutoAll();
+    bindReinvestEvents();
 
     var ta = document.getElementById('roster-input');
     if (ta) ta.addEventListener('input', updateCount);
@@ -1790,6 +2071,9 @@
     // 模块二：建联名单
     renderOutreach: function () { renderObAll(); },
     openBatch: function (id) { obState.open = id; renderObBatches(); },
+    // 模块一 / 二：Excel 导入名单
+    renderAuto: function () { renderAutoAll(); },
+    renderReinvest: function () { renderReinvestAll(); },
     // 模块三：指定达人名单
     renderDesignated: function () { renderDesAll(); },
     openDesignatedCard: function (id) { openDesCard(id); },
