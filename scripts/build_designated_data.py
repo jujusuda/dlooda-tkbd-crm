@@ -22,7 +22,7 @@ SHEETS = [
     ('pants', '裤子-指定达人定向名单', 'drawing4.xml'),
 ]
 
-HANDLE_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._]{1,40}$')
+HANDLE_RE = re.compile(r'^[A-Za-z0-9_.][A-Za-z0-9._]{1,40}$')
 
 
 def cell_str(ws, r, c):
