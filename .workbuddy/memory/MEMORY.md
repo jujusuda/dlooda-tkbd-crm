@@ -20,18 +20,17 @@
 - `node server/sync.js` 不会同步；用 `_run_sync_once.js` 或线上 POST /api/sync。
 - 改前端必递增 sw.js CACHE_VERSION。
 
-## CRM 名单库 roster.html（2026-10-24 版，铁律）
-- **三模块**（页面不用"模块1/2/3"字样）：①「自动达人名单」(tab-sample) ②「竞品达人+爆单达人复投名单」(tab-outreach，建联批次：老达人出单/爆单/竞品，TK/邮件/官号，touches 状态跟踪) ③「指定达人名单」(tab-designated)。
-- **纯本地**：不同步/不回写飞书；比对源=飞书每日寄样表（REAL_DATA.creators+samples）。
-- **三道规则**：黑名单→低效→合作SKU≥3锁定；已合作该款默认不导入可放行；同达人可进多组；组内对该 SKU 重判，失效进「需复核」。
+## CRM 名单库 roster.html（2026-10-25 重构版，铁律）
+- **跨设备云同步（Cloudflare KV）**：所有名单库数据（roster/auto/outreach/designated/reinvest/rules/tracking/settings + 达人池）经 KV 同步。`functions/api/roster.js`（GET 读 `roster-v1` / POST 覆盖带 `_updatedAt`）+ `js/store.js` 云端引擎（persist 后防抖 2s 上推；打开页面 `cloudPull` 按 `_updatedAt` 大者覆盖本地）。断网/无 Functions 静默降级纯本地。改前端必递增 sw.js CACHE_VERSION（已 v33）。
+- **三模块**（页面不用"模块1/2/3"字样）：①「自动达人名单」(tab-sample) ②「竞品达人+爆单达人复投名单」(tab-outreach) ③「指定达人名单」(tab-designated)。
+- **模块1 达人池（不按 SKU 存）**：所有达人放一个大「达人池」`auto.pool=[handle]`；选中某 SKU 时 `poolCompute()` 动态拆分 可发送/已发送/被剔除。剔除规则：黑名单→低效→合作3款以上未出单(skuLimit, **仅当无出单才锁**；已出单老达人允许复投)→已合作该款(进「已发送/飞书已寄样」)。**导入弹窗**逐条列出被剔除达人+原因，点「确认导入达人池」才入池（dedup 去重）。已发送 = `sent[handle][sku]={date,note}`；标记后从可发送移到已发送（飞书已寄样的按 cooperated 自动进已发送）。分组增删查改（静态组改名走 `groupNames` 覆盖、删除走 `groupDeleted` 名单）+ 达人增删。
+- **模块2 建联名单（图片分组 + 下钻）**：`outreach.batches`(图片分组卡片) + `outreach.members`；点击分组→已建联/未建联计数→下钻具体达人+建联记录 `touches=[{date,channel,result,script,note}]`（渠道 TK私信/邮件/官号/抖音私信/WhatsApp/其他；无邮箱填"无"）。批次/成员 CRUD + 记录增删 + 图片上传(canvas 压 360px dataURL)。
+- **模块3 指定达人名单**：同 10-24 版（静态 designated-data.js + 本机改动）。
 - **自动邀约 = 复制名单用户自己发**；复制格式 line/comma/at（settings.rosterCopyFormat）。
-- **标记已发送**：`sent={sku:date}` 按 SKU 独立；只能用 `Store.markSent/unmarkSent`（updateRosterItem 整体赋值会抹掉其他 SKU 记录，踩过）；复制只取待发。
-- **指定达人名单（模块3）**：静态数据 `js/designated-data.js`（`DloodaDesignated.cats`，来源 每日工作.xlsx 裙子/裤子-指定达人定向名单，生成脚本 `scripts/build_designated_data.py`，图片 `images/designated/`）；同店铺内去重、跨店铺允许重复；本机只存改动：`designated={marks(已发记录{date,product}),overrides,deleted,added,handleAdds,handleRems}`；卡片=图+店铺+产品，点击弹 handle 名单一键复制+已发标注+增删改；编辑弹窗支持传图（canvas 压 360px dataURL）。
-- ⚠️ 提取坑：Excel 最左「序号+handle」标签列会混成假卡（store='店铺'，4208人），脚本已过滤；这批无店铺 handle 存档在 `scripts/_designated_phantom_handles.txt`，用户未定是否要用。
-- 接口 `window.DloodaRoster`：refresh/renderGroups/copyGroup/markGroupSent/resetGroupSent/renderOutreach/renderDesignated/openDesignatedCard/switchTab 等。
+- 接口 `window.DloodaRoster`：refresh/renderGroups/copyGroup/markGroupSent/resetGroupSent/renderOutreach/renderDesignated/openDesignatedCard/switchTab/renderAuto/renderReinvest 等；池/模块2 相关逻辑在 `js/roster.js` 内部（poolCompute/renderPool/poolImportFlow/openObDrill 等，store API 全导出）。
 
 ## 功能：日程提醒 & 履约追踪
-- 提醒（todo.html）：弹窗+邮件（POST ./api/notify → Resend，无 RESEND_API_KEY 降级）；每 2 天重复；内置 2 条不可删；固定任务 9 条可编辑。
+- 提醒（todo.html）：弹窗+邮件（POST ./api/notify → Resend，无 RESEND_API_KEY 降级）；每 2 天重复；**规则完全自助增删查改——内置规则(rule_stats/rule_urge)现在也可删**（`Store.deleteRule` 已去掉 builtin 守卫，renderRules 也去掉删除按钮守卫）；用户可自定默认任务+提醒范围，到点弹窗。⚠️ 曾因严格模式下 `editingId` 未声明导致编辑弹窗打不开，已补 `var editingId=null`（js/todo.js）。
 - 履约（tracking.html）：未履约=updateTime 空 且 fulfillMethod 空；窗口每月 25-30 工作日；目标寄样窗=上月15~本月15；回飞书 `App.pushToFeishu`。
 
 ## 话术
