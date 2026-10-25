@@ -303,6 +303,8 @@
 
   /* ---------- 提醒规则管理 ---------- */
 
+  var editingId = null;   // 当前编辑的规则 id（⚠️ 必须声明：严格模式下未声明的赋值会抛错，导致编辑弹窗打不开）
+
   function ruleTriggerText(rule) {
     if (rule.type === 'once') return '一次性 · ' + (rule.date || '未设置');
     return '每月 ' + rule.day + ' 号';
@@ -335,8 +337,8 @@
         +   '</div>'
         +   '<button class="btn btn--ghost btn--sm" data-rule-edit="' + App.escapeHtml(r.id) + '"'
         +     ' style="font-size:11px;padding:3px 8px;">编辑</button>'
-        +   (r.builtin ? '' : '<button class="btn btn--ghost btn--sm" data-rule-del="' + App.escapeHtml(r.id) + '"'
-        +     ' style="font-size:11px;padding:3px 8px;color:var(--c-danger);">删除</button>')
+        +   '<button class="btn btn--ghost btn--sm" data-rule-del="' + App.escapeHtml(r.id) + '"'
+        +     ' style="font-size:11px;padding:3px 8px;color:var(--c-danger);">删除</button>'
         + '</div>';
     }).join('');
 
@@ -353,7 +355,7 @@
           renderRules(); renderAutoTasks();
           App.showToast('规则已删除');
         } else {
-          App.showToast('内置规则不可删除');
+          App.showToast('删除失败，请重试');
         }
       });
     });

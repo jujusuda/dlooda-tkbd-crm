@@ -83,7 +83,11 @@
       // removed:  { groupId: [handle] }  组内移除的达人
       // added:    { groupId: [handle] }  组内追加的达人
       // custom:   [{ id, name, handles: [] }]  手动新增分组
-      auto: { marks: {}, removed: {}, added: {}, custom: [] },
+      // groupNames: { groupId: 新名称 }  静态分组改名覆盖
+      // groupDeleted: [groupId]  删除的静态分组
+      // pool:     [handle]  达人池（不按 SKU 存，发某 SKU 时动态算可发/已发）
+      // sent:     { handle: { sku: {date, note} } }  按 SKU 的本机已发标记
+      auto: { marks: {}, removed: {}, added: {}, custom: [], groupNames: {}, groupDeleted: [], pool: [], sent: {} },
       // 复投名单（模块二 Excel 导入）：只存本机标记，静态数据在 js/reinvest-data.js
       // marks: { id: { status, note, date } }  id = handle
       reinvest: { marks: {} },
@@ -105,7 +109,12 @@
     var data = null;
     try { data = JSON.parse(raw); } catch (e) { data = null; }
     if (!data || typeof data !== 'object') { cache = defaults(); persist(); return cache; }
-    // 补齐缺失字段（向后兼容）
+    cache = normalize(data);
+    return cache;
+  }
+
+  // 补齐缺失字段（向后兼容）——本地读取与云端拉取共用
+  function normalize(data) {
     var base = defaults();
     ['roster', 'groups', 'outreach', 'designated', 'auto', 'reinvest', 'rules', 'tracking', 'settings'].forEach(function (k) {
       if (data[k] === undefined || data[k] === null) data[k] = base[k];
@@ -118,10 +127,12 @@
       if (!Array.isArray(data.designated[k])) data.designated[k] = [];
     });
     if (!data.auto || typeof data.auto !== 'object') data.auto = base.auto;
-    ['marks', 'removed', 'added'].forEach(function (k) {
+    ['marks', 'removed', 'added', 'groupNames', 'sent'].forEach(function (k) {
       if (!data.auto[k] || typeof data.auto[k] !== 'object') data.auto[k] = {};
     });
     if (!Array.isArray(data.auto.custom)) data.auto.custom = [];
+    if (!Array.isArray(data.auto.pool)) data.auto.pool = [];
+    if (!Array.isArray(data.auto.groupDeleted)) data.auto.groupDeleted = [];
     if (!data.reinvest || typeof data.reinvest !== 'object') data.reinvest = base.reinvest;
     if (!data.reinvest.marks || typeof data.reinvest.marks !== 'object') data.reinvest.marks = {};
     if (!data.outreach || !Array.isArray(data.outreach.batches)) data.outreach = base.outreach;
@@ -130,16 +141,16 @@
       if (data.settings[k] === undefined) data.settings[k] = base.settings[k];
     });
     if (!Array.isArray(data.rules) || !data.rules.length) data.rules = base.rules;
-    cache = data;
-    return cache;
+    return data;
   }
 
-  function persist() {
+  function persist(skipCloud) {
     try {
       global.localStorage.setItem(KEY, JSON.stringify(cache));
     } catch (e) {
       if (App && App.showToast) App.showToast('本地存储写入失败（数据可能过大）');
     }
+    if (!skipCloud) scheduleCloudPush();
   }
 
   function uid(prefix) {
@@ -366,6 +377,32 @@
     return m;
   }
 
+  // 添加一条建联记录（含结果/话术）：rec = {date, channel, result, script, note}
+  function addMemberRecord(id, rec) {
+    var m = getMember(id);
+    if (!m) return null;
+    m.touches = m.touches || [];
+    m.touches.push({
+      date: rec.date || todayStr(),
+      channel: rec.channel || '其他',
+      result: rec.result || '',
+      script: rec.script || '',
+      note: rec.note || '',
+    });
+    if (m.status === 'pending') m.status = 'contacted';
+    m.updatedAt = todayStr();
+    persist();
+    return m;
+  }
+
+  function deleteMemberRecord(id, idx) {
+    var m = getMember(id);
+    if (!m || !m.touches || !m.touches[idx]) return false;
+    m.touches.splice(idx, 1);
+    persist();
+    return true;
+  }
+
   /* ---------- 提醒规则 rules ---------- */
 
   function getRules() { return load().rules; }
@@ -389,12 +426,12 @@
   }
 
   function deleteRule(id) {
+    // 全部规则（含内置）都可删——用户要求完全自助增删查改
     var db = load();
-    var r = db.rules.filter(function (x) { return x.id === id; })[0];
-    if (r && r.builtin) return false;   // 内置规则不允许删除
+    var before = db.rules.length;
     db.rules = db.rules.filter(function (x) { return x.id !== id; });
     persist();
-    return true;
+    return db.rules.length < before;
   }
 
   // 标记某条规则在指定日期完成（YYYY-MM-DD），传 null 表示今天
@@ -622,6 +659,73 @@
     return '';
   }
 
+  /* ---------- 达人池（模块一，不按 SKU 存） ---------- */
+
+  function poolList() { return load().auto.pool || []; }
+
+  function poolAdd(handles) {
+    var db = load();
+    var p = db.auto.pool || [];
+    var set = {};
+    p.forEach(function (h) { set[h] = true; });
+    var n = 0;
+    (handles || []).forEach(function (h) {
+      h = String(h || '').trim().toLowerCase();
+      if (h && !set[h]) { p.push(h); set[h] = true; n++; }
+    });
+    db.auto.pool = p;
+    persist();
+    return n;
+  }
+
+  function poolRemove(handle) {
+    var db = load();
+    db.auto.pool = (db.auto.pool || []).filter(function (h) { return h !== handle; });
+    persist();
+  }
+
+  function poolClear() {
+    var db = load();
+    db.auto.pool = [];
+    persist();
+  }
+
+  // 按 SKU 标记已发：sent[handle][sku] = {date, note}
+  function poolSentMark(handle, sku, date, note) {
+    var db = load();
+    if (!db.auto.sent[handle]) db.auto.sent[handle] = {};
+    db.auto.sent[handle][sku] = { date: date || todayStr(), note: note || '' };
+    persist();
+  }
+
+  function poolSentUnmark(handle, sku) {
+    var db = load();
+    if (db.auto.sent[handle]) {
+      delete db.auto.sent[handle][sku];
+      if (!Object.keys(db.auto.sent[handle]).length) delete db.auto.sent[handle];
+    }
+    persist();
+  }
+
+  // 分组改名（静态分组存覆盖，自建分组直接改）
+  function autoRenameGroup(id, name) {
+    var db = load();
+    var g = (db.auto.custom || []).filter(function (x) { return x.id === id; })[0];
+    if (g) { g.name = name; } else { db.auto.groupNames[id] = name; }
+    persist();
+  }
+
+  // 删除任意分组（含静态）：静态走 groupDeleted 名单
+  function autoDeleteGroupAny(id) {
+    var db = load();
+    db.auto.custom = (db.auto.custom || []).filter(function (x) { return x.id !== id; });
+    if (db.auto.groupDeleted.indexOf(id) === -1) db.auto.groupDeleted.push(id);
+    delete db.auto.marks[id];
+    delete db.auto.removed[id];
+    delete db.auto.added[id];
+    persist();
+  }
+
   /* ---------- 复投名单（模块二 Excel 导入） ---------- */
   function getReinvest() { return load().reinvest; }
 
@@ -636,6 +740,85 @@
     var db = load();
     delete db.reinvest.marks[id];
     persist();
+  }
+
+  /* ---------- 云同步（Cloudflare KV · /api/roster） ----------
+   * 所有改动 persist 后自动防抖上云；打开页面时拉取云端，
+   * 云端更新（_updatedAt 更大）则覆盖本地，否则把本地推上去。
+   * 断网 / 本地预览（无 Functions）时静默降级为纯本地。
+   * ------------------------------------------------------------- */
+  var cloudTimer = null;
+  var cloudBusy = false;   // 拉取覆盖写盘时不再触发推送
+  var cloudState = 'init'; // init | offline | syncing | synced | error
+
+  function scheduleCloudPush() {
+    if (cloudTimer) clearTimeout(cloudTimer);
+    cloudTimer = setTimeout(cloudPush, 2000);
+  }
+
+  function cloudPush() {
+    if (!global.fetch || cloudBusy) return;
+    var payload;
+    try { cache._updatedAt = Date.now(); payload = JSON.stringify(load()); } catch (e) { return; }
+    cloudState = 'syncing';
+    notifyCloud();
+    global.fetch('./api/roster', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      cloudState = 'synced';
+      notifyCloud();
+    }).catch(function () {
+      cloudState = 'offline';
+      notifyCloud();
+    });
+  }
+
+  function cloudPull(cb) {
+    if (!global.fetch) { if (cb) cb('nofetch'); return; }
+    cloudState = 'syncing';
+    notifyCloud();
+    global.fetch('./api/roster?_=' + Date.now(), { method: 'GET' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (cloud) {
+        if (!cloud || typeof cloud !== 'object' || !cloud.settings) {
+          // 云端为空 → 把本地推上去
+          scheduleCloudPush();
+          if (cb) cb('pushed');
+          return;
+        }
+        var local = load();
+        var cu = cloud._updatedAt || 0;
+        var lu = local._updatedAt || 0;
+        if (cu > lu) {
+          cloudBusy = true;
+          cache = normalize(cloud);
+          persist(true);
+          cloudBusy = false;
+          cloudState = 'synced';
+          notifyCloud();
+          if (cb) cb('applied');
+        } else {
+          scheduleCloudPush();
+          if (cb) cb('local-newer');
+        }
+      })
+      .catch(function () {
+        cloudState = 'offline';
+        notifyCloud();
+        if (cb) cb('offline');
+      });
+  }
+
+  // 通知各页面同步状态（可选监听）
+  var cloudListeners = [];
+  function onCloudChange(fn) { cloudListeners.push(fn); }
+  function notifyCloud() {
+    cloudListeners.forEach(function (fn) {
+      try { fn(cloudState); } catch (e) {}
+    });
   }
 
   /* ---------- 导入导出 ---------- */
@@ -656,7 +839,7 @@
     if (!base.outreach || !Array.isArray(base.outreach.batches)) base.outreach = defaults().outreach;
     if (!base.auto || typeof base.auto !== 'object') base.auto = defaults().auto;
     if (!base.reinvest || typeof base.reinvest !== 'object') base.reinvest = defaults().reinvest;
-    cache = base;
+    cache = normalize(base);
     persist();
     return true;
   }
@@ -723,6 +906,8 @@
     deleteMember: deleteMember,
     addTouch: addTouch,
     setMemberStatus: setMemberStatus,
+    addMemberRecord: addMemberRecord,
+    deleteMemberRecord: deleteMemberRecord,
     // designated（指定达人名单）
     getDesignated: getDesignated,
     desMarks: desMarks,
@@ -744,6 +929,20 @@
     autoAddGroup: autoAddGroup,
     autoDeleteGroup: autoDeleteGroup,
     autoGroupName: autoGroupName,
+    autoRenameGroup: autoRenameGroup,
+    autoDeleteGroupAny: autoDeleteGroupAny,
+    // pool（达人池）
+    poolList: poolList,
+    poolAdd: poolAdd,
+    poolRemove: poolRemove,
+    poolClear: poolClear,
+    poolSentMark: poolSentMark,
+    poolSentUnmark: poolSentUnmark,
+    // 云同步
+    cloudPull: cloudPull,
+    cloudPush: cloudPush,
+    onCloudChange: onCloudChange,
+    getCloudState: function () { return cloudState; },
     // reinvest（复投名单）
     getReinvest: getReinvest,
     reinvestMark: reinvestMark,

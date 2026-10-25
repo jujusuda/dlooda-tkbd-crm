@@ -766,7 +766,7 @@
   };
   var CHANNELS = ['TK私信', '邮件', '官号', '抖音私信', 'WhatsApp', '其他'];
 
-  var obState = { open: '', filterType: '', filterStatus: '', preview: [] };
+  var obState = { open: '', filterType: '', filterStatus: '', preview: [], drill: { id: '', tab: 'all', open: '' } };
 
   function typeLabel(t) { return (TYPES[t] || TYPES.other).label; }
   function typeBadge(t) {
@@ -912,7 +912,11 @@
       + statCard(s.withEmail, '有邮箱', 'var(--c-warning)');
   }
 
-  /* ---------- 批次卡片 ---------- */
+  /* ---------- 建联分组卡片（图片 + 下钻） ---------- */
+  function obBatchName(b) {
+    return b.source || (b.note ? String(b.note).slice(0, 14) : typeLabel(b.type) + ' ' + (b.date || ''));
+  }
+
   function renderObBatches() {
     var box = document.getElementById('ob-batches');
     if (!box) return;
@@ -920,52 +924,205 @@
     if (obState.filterType) batches = batches.filter(function (b) { return b.type === obState.filterType; });
     if (!batches.length) {
       box.innerHTML = '<div class="card card--padding-lg" style="text-align:center;color:var(--text-3);font-size:13px;">'
-        + '还没有批次，先在上面「＋ 新建批次」，再把名单导进来</div>';
+        + '还没有分组，先在上面「＋ 新建批次」，再把名单导进来</div>';
       return;
     }
-    box.innerHTML = batches.map(function (b) {
-      var all = Store.getMembers(b.id);
-      var ms = all.filter(function (m) {
-        return !obState.filterStatus || (m.status || 'pending') === obState.filterStatus;
-      });
-      var c = { pending: 0, contacted: 0, replied: 0, success: 0, fail: 0, invalid: 0 };
-      ms.forEach(function (m) { c[m.status || 'pending']++; });
-      var emails = ms.filter(function (m) { return m.email; }).map(function (m) { return m.email; });
-      var open = obState.open === b.id;
-      return ''
-        + '<div class="card card--padding-lg" style="margin-bottom:10px;">'
-        +   '<div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">'
-        +     '<div style="flex:1;min-width:0;">'
-        +       '<div style="font-size:14px;font-weight:700;color:var(--text-1);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
-        +         typeBadge(b.type)
-        +         App.escapeHtml(b.date || '')
-        +         (b.sku ? '<span class="badge badge--gray">SKU ' + App.escapeHtml(b.sku) + '</span>' : '')
-        +       '</div>'
-        +       '<div style="font-size:12px;color:var(--text-3);margin-top:3px;">'
-        +         App.escapeHtml(b.note || '（无说明）')
-        +         (b.source ? ' · 来源 ' + App.escapeHtml(b.source) : '')
-        +       '</div>'
-        +     '</div>'
-        +     '<div style="font-size:12px;color:var(--text-2);text-align:right;">'
-        +       '共 ' + ms.length + ' 位 · 待联系 ' + c.pending + ' · 成功 ' + c.success + ' · 未成功 ' + c.fail
-        +     '</div>'
-        +   '</div>'
-        +   '<div style="display:flex;gap:6px;margin:10px 0;flex-wrap:wrap;">'
-        +     '<button class="btn btn--primary btn--sm" data-ob-copy-h="' + App.escapeHtml(b.id) + '"'
-        +       (ms.length ? '' : ' disabled style="opacity:.5;cursor:not-allowed;"') + '>'
-        +       '复制 handle ' + ms.length + '</button>'
-        +     '<button class="btn btn--secondary btn--sm" data-ob-copy-e="' + App.escapeHtml(b.id) + '"'
-        +       (emails.length ? '' : ' disabled style="opacity:.5;cursor:not-allowed;"') + '>'
-        +       '复制邮箱 ' + emails.length + '</button>'
-        +     '<button class="btn btn--ghost btn--sm" data-ob-toggle="' + App.escapeHtml(b.id) + '">'
-        +       (open ? '收起成员' : '展开成员') + '</button>'
-        +     '<button class="btn btn--ghost btn--sm" data-ob-export="' + App.escapeHtml(b.id) + '">导出</button>'
-        +     '<button class="btn btn--ghost btn--sm" data-ob-del-batch="' + App.escapeHtml(b.id) + '" '
-        +       'style="color:var(--c-danger);">删批次</button>'
-        +   '</div>'
-        +   (open ? obMembersHtml(b.id, ms) : '')
+    box.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;">'
+      + batches.map(obCardHtml).join('') + '</div>';
+  }
+
+  function obCardHtml(b) {
+    var all = Store.getMembers(b.id);
+    var touched = all.filter(function (m) { return (m.status || 'pending') !== 'pending'; }).length;
+    var pending = all.length - touched;
+    var img = b.img
+      ? '<img src="' + App.escapeHtml(b.img) + '" alt="" style="width:100%;height:110px;object-fit:cover;display:block;">'
+      : '<div style="width:100%;height:110px;display:flex;align-items:center;justify-content:center;background:var(--bg-pink-soft);color:var(--pink-600);font-size:26px;font-weight:700;">' + App.escapeHtml(obBatchName(b).slice(0, 2)) + '</div>';
+    return ''
+      + '<div class="ob-card" data-ob-open="' + App.escapeHtml(b.id) + '" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;background:var(--bg-surface);">'
+      + img
+      + '<div style="padding:8px 10px;">'
+      + '<div style="font-size:13px;font-weight:700;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + App.escapeHtml(obBatchName(b)) + '</div>'
+      + '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">' + typeLabel(b.type) + (b.sku ? ' · SKU ' + App.escapeHtml(b.sku) : '') + '</div>'
+      + '<div style="font-size:11.5px;color:var(--text-2);margin-top:4px;">共 ' + all.length + ' · 已建联 ' + touched + ' · 未建联 ' + pending + '</div>'
+      + '</div>'
+      + '<div style="display:flex;border-top:1px solid var(--border-1);">'
+      + '<button class="link-btn" data-ob-edit-b="' + App.escapeHtml(b.id) + '" style="flex:1;padding:6px 0;text-align:center;font-size:11.5px;border-right:1px solid var(--border-1);">编辑</button>'
+      + '<button class="link-btn" data-ob-del-batch="' + App.escapeHtml(b.id) + '" style="flex:1;padding:6px 0;text-align:center;font-size:11.5px;color:var(--c-danger);">删除</button>'
+      + '</div></div>';
+  }
+
+  /* ---------- 分组下钻弹窗：已建联 / 未建联 → 达人 + 记录 ---------- */
+  function obDrillRow(m) {
+    var open = obState.drill.open === m.id;
+    var recs = (m.touches || []).map(function (t, i) {
+      return '<div style="padding:6px 0;border-bottom:1px dashed var(--border-1);font-size:12px;">'
+        + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'
+        + '<span class="badge" style="font-size:10.5px;">' + App.escapeHtml(t.date || '') + '</span>'
+        + '<span class="badge badge--blue" style="font-size:10.5px;">' + App.escapeHtml(t.channel || '') + '</span>'
+        + (t.result ? '<span style="color:var(--text-2);">' + App.escapeHtml(t.result) + '</span>' : '')
+        + '<button class="link-btn" data-ob-rec-del="' + App.escapeHtml(m.id) + '" data-idx="' + i + '" style="margin-left:auto;color:var(--c-danger);font-size:11px;">删除记录</button>'
+        + '</div>'
+        + (t.script ? '<div style="color:var(--text-3);white-space:pre-wrap;margin-top:3px;">' + App.escapeHtml(t.script) + '</div>' : '')
         + '</div>';
-    }).join('');
+    }).join('') || '<div style="font-size:12px;color:var(--text-3);padding:4px 0;">还没有联系记录</div>';
+    var idAttr = App.escapeHtml(m.id);
+    var form = ''
+      + '<div style="margin-top:8px;border-top:1px solid var(--border-1);padding-top:8px;">'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">'
+      + '<input type="date" class="input" id="ob-rec-date-' + idAttr + '" value="' + Store.todayStr() + '" style="width:132px;padding:4px 6px;font-size:12px;">'
+      + '<select class="select" id="ob-rec-ch-' + idAttr + '" style="width:112px;padding:4px 6px;font-size:12px;">'
+      +   CHANNELS.map(function (c) { return '<option>' + App.escapeHtml(c) + '</option>'; }).join('')
+      + '</select>'
+      + '<input type="text" class="input" id="ob-rec-result-' + idAttr + '" placeholder="结果（如已发送 / 已回复 / 拒绝）" style="flex:1;min-width:150px;padding:4px 6px;font-size:12px;">'
+      + '</div>'
+      + '<textarea class="textarea" id="ob-rec-script-' + idAttr + '" rows="2" placeholder="话术（粘贴这次用的邀约话术）" style="font-size:12px;"></textarea>'
+      + '<button class="btn btn--primary btn--sm" data-ob-rec-save="' + idAttr + '" style="margin-top:6px;">保存这条记录</button>'
+      + '</div>';
+    return ''
+      + '<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;">'
+      + '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;flex-wrap:wrap;">'
+      + '<button class="link-btn" data-ob-copy-one="' + App.escapeHtml(m.handle) + '" style="font-weight:600;font-size:13px;">' + App.escapeHtml(m.raw || m.handle) + '</button>'
+      + (m.email
+        ? '<button class="link-btn" data-ob-copy-mail="' + App.escapeHtml(m.email) + '" style="font-size:11.5px;">✉ ' + App.escapeHtml(m.email) + '</button>'
+        : '<span style="font-size:11.5px;color:var(--text-3);">✉ 无</span>')
+      + statusBadge2(m.status || 'pending')
+      + '<div style="margin-left:auto;display:flex;gap:6px;">'
+      + '<select class="select" data-ob-status="' + idAttr + '" style="min-width:92px;padding:3px 6px;font-size:11.5px;">'
+      +   Object.keys(OB_STATUS).map(function (k) {
+          return '<option value="' + k + '"' + ((m.status || 'pending') === k ? ' selected' : '') + '>' + OB_STATUS[k].label + '</option>';
+        }).join('')
+      + '</select>'
+      + '<button class="btn btn--ghost btn--sm" data-ob-toggle-m="' + idAttr + '" style="padding:2px 8px;font-size:11px;">记录(' + ((m.touches || []).length) + ')</button>'
+      + '<button class="btn btn--ghost btn--sm" data-ob-del="' + idAttr + '" style="padding:2px 8px;font-size:11px;color:var(--c-danger);">×</button>'
+      + '</div></div>'
+      + (open ? '<div style="padding:0 10px 10px;">' + recs + form + '</div>' : '')
+      + '</div>';
+  }
+
+  function openObDrill(batchId, keepState) {
+    var b = Store.getBatch(batchId);
+    if (!b) return;
+    if (!keepState) obState.drill = { id: batchId, tab: 'all', open: '', add: '' };
+    var d = obState.drill;
+    var all = Store.getMembers(batchId);
+    var touched = all.filter(function (m) { return (m.status || 'pending') !== 'pending'; });
+    var pending = all.filter(function (m) { return (m.status || 'pending') === 'pending'; });
+    var list = d.tab === 'touched' ? touched : (d.tab === 'pending' ? pending : all);
+
+    var tabBtn = function (key, label, n) {
+      var on = d.tab === key;
+      return '<button class="btn btn--sm ' + (on ? 'btn--primary' : 'btn--ghost') + '" data-ob-tab="' + key + '">'
+        + label + ' ' + n + '</button>';
+    };
+    var rows = list.map(obDrillRow).join('')
+      || '<div style="font-size:12.5px;color:var(--text-3);padding:10px 0;">这一类还没有达人</div>';
+    var addBox = ''
+      + '<div style="margin-top:12px;border-top:1px solid var(--border-1);padding-top:10px;">'
+      + '<textarea class="textarea" id="ob-drill-input" rows="2" placeholder="追加达人到这个分组（每行一个，或 handle,邮箱）" style="font-size:12px;"></textarea>'
+      + '<button class="btn btn--secondary btn--sm" data-ob-drill-add="' + App.escapeHtml(batchId) + '" style="margin-top:6px;">追加达人</button>'
+      + '</div>';
+
+    var old = document.getElementById('ob-drill-mask');
+    if (old) old.remove();
+    var mask = document.createElement('div');
+    mask.id = 'ob-drill-mask';
+    mask.style.cssText = 'position:fixed;inset:0;background:rgba(92,74,74,.34);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    mask.innerHTML = ''
+      + '<div style="background:var(--bg-surface);border-radius:var(--r-xl);max-width:640px;width:100%;padding:20px;box-shadow:0 12px 40px rgba(120,90,100,.22);max-height:86vh;display:flex;flex-direction:column;">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+      + (b.img ? '<img src="' + App.escapeHtml(b.img) + '" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;">' : '')
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-size:15px;font-weight:700;color:var(--text-1);">' + App.escapeHtml(obBatchName(b)) + '</div>'
+      + '<div style="font-size:11.5px;color:var(--text-3);">' + typeLabel(b.type) + (b.sku ? ' · SKU ' + App.escapeHtml(b.sku) : '') + (b.date ? ' · ' + App.escapeHtml(b.date) : '') + '</div>'
+      + '</div>'
+      + '<button class="btn btn--ghost btn--sm" data-ob-copy-h="' + App.escapeHtml(b.id) + '">复制handle</button>'
+      + '<button class="btn btn--ghost btn--sm" data-ob-export="' + App.escapeHtml(b.id) + '">导出</button>'
+      + '<button id="ob-drill-close" style="border:none;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text-3);">&times;</button>'
+      + '</div>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">'
+      + tabBtn('all', '全部', all.length)
+      + tabBtn('touched', '已建联', touched.length)
+      + tabBtn('pending', '未建联', pending.length)
+      + '</div>'
+      + '<div style="overflow-y:auto;flex:1;min-height:0;">' + rows + addBox + '</div>'
+      + '</div>';
+    document.body.appendChild(mask);
+
+    mask.querySelector('#ob-drill-close').addEventListener('click', function () { mask.remove(); });
+    mask.addEventListener('click', function (e) { if (e.target === mask) mask.remove(); });
+  }
+
+  /* ---------- 分组编辑弹窗（含图片） ---------- */
+  function openObEdit(batchId) {
+    var b = Store.getBatch(batchId);
+    if (!b) return;
+    var old = document.getElementById('ob-edit-mask');
+    if (old) old.remove();
+    var mask = document.createElement('div');
+    mask.id = 'ob-edit-mask';
+    mask.style.cssText = 'position:fixed;inset:0;background:rgba(92,74,74,.34);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    mask.innerHTML = ''
+      + '<div style="background:var(--bg-surface);border-radius:var(--r-xl);max-width:440px;width:100%;padding:22px;box-shadow:0 12px 40px rgba(120,90,100,.22);max-height:86vh;overflow-y:auto;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+      + '<h3 style="margin:0;font-size:16px;font-weight:600;color:var(--text-1);">编辑分组</h3>'
+      + '<button id="ob-edit-close" style="border:none;background:none;font-size:22px;cursor:pointer;color:var(--text-3);">&times;</button>'
+      + '</div>'
+      + '<div class="form-group"><label class="form-label">分组名称（竞品店铺 / 来源）</label>'
+      + '<input type="text" class="input" id="ob-edit-source" value="' + App.escapeHtml(b.source || '') + '" style="width:100%;"></div>'
+      + '<div class="form-row">'
+      + '<div class="form-group"><label class="form-label">类型</label>'
+      + '<select class="select" id="ob-edit-type" style="width:100%;">'
+      + Object.keys(TYPES).map(function (k) {
+          return '<option value="' + k + '"' + ((b.type || 'other') === k ? ' selected' : '') + '>' + TYPES[k].label + '</option>';
+        }).join('')
+      + '</select></div>'
+      + '<div class="form-group"><label class="form-label">日期</label>'
+      + '<input type="date" class="input" id="ob-edit-date" value="' + App.escapeHtml(b.date || '') + '" style="width:100%;"></div>'
+      + '</div>'
+      + '<div class="form-group"><label class="form-label">目标 SKU</label>'
+      + '<input type="text" class="input" id="ob-edit-sku" value="' + App.escapeHtml(b.sku || '') + '" style="width:100%;"></div>'
+      + '<div class="form-group"><label class="form-label">说明</label>'
+      + '<input type="text" class="input" id="ob-edit-note" value="' + App.escapeHtml(b.note || '') + '" style="width:100%;"></div>'
+      + '<div class="form-group"><label class="form-label">分组图片</label>'
+      + '<div style="display:flex;align-items:center;gap:10px;">'
+      + '<img id="ob-edit-img-preview" src="' + App.escapeHtml(b.img || '') + '" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:8px;' + (b.img ? '' : 'display:none;') + '">'
+      + '<input type="file" id="ob-edit-img" accept="image/*" style="font-size:12px;">'
+      + '</div></div>'
+      + '<div style="display:flex;gap:8px;margin-top:12px;">'
+      + '<button class="btn btn--ghost btn--sm" id="ob-edit-cancel" style="flex:1;justify-content:center;">取消</button>'
+      + '<button class="btn btn--primary btn--sm" id="ob-edit-save" style="flex:2;justify-content:center;">保存</button>'
+      + '</div></div>';
+    document.body.appendChild(mask);
+    var newImg = b.img || '';
+
+    var close = function () { mask.remove(); };
+    mask.querySelector('#ob-edit-close').addEventListener('click', close);
+    mask.querySelector('#ob-edit-cancel').addEventListener('click', close);
+    mask.addEventListener('click', function (e) { if (e.target === mask) close(); });
+    mask.querySelector('#ob-edit-img').addEventListener('change', function () {
+      var f = this.files && this.files[0];
+      if (!f) return;
+      desFileToDataURL(f, function (dataUrl) {
+        newImg = dataUrl;
+        var pv = mask.querySelector('#ob-edit-img-preview');
+        pv.src = dataUrl;
+        pv.style.display = '';
+      });
+    });
+    mask.querySelector('#ob-edit-save').addEventListener('click', function () {
+      Store.updateBatch(batchId, {
+        source: mask.querySelector('#ob-edit-source').value.trim(),
+        type: mask.querySelector('#ob-edit-type').value,
+        date: mask.querySelector('#ob-edit-date').value,
+        sku: mask.querySelector('#ob-edit-sku').value.trim(),
+        note: mask.querySelector('#ob-edit-note').value.trim(),
+        img: newImg,
+      });
+      close();
+      renderObAll();
+      App.showToast('分组已保存');
+    });
   }
 
   function obMembersHtml(batchId, ms) {
@@ -1100,24 +1257,79 @@
     var box = document.getElementById('ob-batches');
     if (!box) return;
 
-    box.addEventListener('click', function (e) {
-      var t = e.target.closest('[data-ob-toggle],[data-ob-del-batch],[data-ob-export],'
+    // 弹窗（下钻 / 编辑）挂在 body 上，统一用 document 级事件代理
+    document.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-ob-open],[data-ob-edit-b],[data-ob-del-batch],[data-ob-export],'
         + '[data-ob-copy-h],[data-ob-copy-e],[data-ob-copy-one],[data-ob-copy-mail],'
-        + '[data-ob-touch],[data-ob-del]');
+        + '[data-ob-touch],[data-ob-del],[data-ob-tab],[data-ob-toggle-m],'
+        + '[data-ob-rec-del],[data-ob-rec-save],[data-ob-drill-add]');
       if (!t) return;
 
-      if (t.hasAttribute('data-ob-toggle')) {
-        var bid = t.getAttribute('data-ob-toggle');
-        obState.open = (obState.open === bid) ? '' : bid;
-        renderObBatches();
+      if (t.hasAttribute('data-ob-open')) {
+        openObDrill(t.getAttribute('data-ob-open'));
+        return;
+      }
+      if (t.hasAttribute('data-ob-edit-b')) {
+        openObEdit(t.getAttribute('data-ob-edit-b'));
+        return;
+      }
+      if (t.hasAttribute('data-ob-tab')) {
+        obState.drill.tab = t.getAttribute('data-ob-tab');
+        obState.drill.open = '';
+        openObDrill(obState.drill.id, true);
+        return;
+      }
+      if (t.hasAttribute('data-ob-toggle-m')) {
+        var midT = t.getAttribute('data-ob-toggle-m');
+        obState.drill.open = (obState.drill.open === midT) ? '' : midT;
+        openObDrill(obState.drill.id, true);
+        return;
+      }
+      if (t.hasAttribute('data-ob-rec-del')) {
+        var midD = t.getAttribute('data-ob-rec-del');
+        var idx = parseInt(t.getAttribute('data-idx'), 10);
+        if (confirm('删除这条联系记录？')) {
+          Store.deleteMemberRecord(midD, idx);
+          openObDrill(obState.drill.id, true);
+        }
+        return;
+      }
+      if (t.hasAttribute('data-ob-rec-save')) {
+        var midS = t.getAttribute('data-ob-rec-save');
+        var g = function (suffix) { var el = document.getElementById(suffix + '-' + midS); return el ? el.value : ''; };
+        Store.addMemberRecord(midS, {
+          date: g('ob-rec-date'),
+          channel: g('ob-rec-ch'),
+          result: g('ob-rec-result'),
+          script: g('ob-rec-script'),
+        });
+        obState.drill.open = midS;
+        openObDrill(obState.drill.id, true);
+        App.showToast('已保存记录');
+        return;
+      }
+      if (t.hasAttribute('data-ob-drill-add')) {
+        var bidA = t.getAttribute('data-ob-drill-add');
+        var ta2 = document.getElementById('ob-drill-input');
+        if (!ta2 || !ta2.value.trim()) { App.showToast('先粘贴 handle'); return; }
+        var list2 = obParse(ta2.value);
+        if (!list2.length) { App.showToast('没识别到达人'); return; }
+        var n2 = Store.addMembers(bidA, list2.map(function (x) {
+          var b2 = Store.getBatch(bidA);
+          return { handle: x.handle, raw: x.raw, email: x.email, sku: x.sku || (b2 && b2.sku) || '', level: x.level, note: x.note, type: (b2 && b2.type) || 'other', status: 'pending', touches: [] };
+        }));
+        ta2.value = '';
+        App.showToast('已追加 ' + n2 + ' 位');
+        renderObAll();
+        openObDrill(bidA, true);
         return;
       }
       if (t.hasAttribute('data-ob-del-batch')) {
         var dbid = t.getAttribute('data-ob-del-batch');
-        if (global.confirm('删除这个批次？批次下的达人记录也会一起删除')) {
+        if (global.confirm('删除这个分组？分组下的达人记录也会一起删除')) {
           Store.deleteBatch(dbid);
           renderObAll();
-          App.showToast('批次已删除');
+          App.showToast('分组已删除');
         }
         return;
       }
@@ -1129,13 +1341,6 @@
         var hid = t.getAttribute('data-ob-copy-h');
         var hs = Store.getMembers(hid).map(function (m) { return m.handle; });
         App.copyToClipboard(formatHandles(hs), 'handle');
-        return;
-      }
-      if (t.hasAttribute('data-ob-copy-e')) {
-        var eid = t.getAttribute('data-ob-copy-e');
-        var es = Store.getMembers(eid).filter(function (m) { return m.email; })
-          .map(function (m) { return m.email; });
-        App.copyToClipboard(es.join('\n'), '邮箱');
         return;
       }
       if (t.hasAttribute('data-ob-copy-one')) {
@@ -1158,12 +1363,13 @@
         var did = t.getAttribute('data-ob-del');
         Store.deleteMember(did);
         renderObAll();
+        if (obState.drill.id) openObDrill(obState.drill.id, true);
         App.showToast('已移除');
         return;
       }
     });
 
-    box.addEventListener('change', function (e) {
+    document.addEventListener('change', function (e) {
       var t = e.target;
       if (!t || !t.hasAttribute || !t.hasAttribute('data-ob-status')) return;
       var id = t.getAttribute('data-ob-status');
@@ -1175,6 +1381,7 @@
         Store.setMemberStatus(id, val, '');
       }
       renderObAll();
+      if (obState.drill.id) openObDrill(obState.drill.id, true);
       App.showToast('状态已更新');
     });
   }
@@ -1669,12 +1876,13 @@
 
   function autoAllGroups() {
     var groups = [];
+    var auto = Store.getAuto();
     if (global.DloodaAuto && DloodaAuto.groups) {
       DloodaAuto.groups.forEach(function (g) {
-        groups.push({ id: g.id, name: g.name, handles: g.handles.slice(), custom: false });
+        if ((auto.groupDeleted || []).indexOf(g.id) !== -1) return;
+        groups.push({ id: g.id, name: (auto.groupNames || {})[g.id] || g.name, handles: g.handles.slice(), custom: false });
       });
     }
-    var auto = Store.getAuto();
     (auto.custom || []).forEach(function (g) {
       groups.push({ id: g.id, name: g.name, handles: g.handles.slice(), custom: true });
     });
@@ -1723,7 +1931,9 @@
       html.push('    </div>');
       html.push('    <div style="display:flex;align-items:center;gap:6px;">');
       html.push('      <button class="btn btn--ghost btn--sm" data-auto-copy="' + App.escapeHtml(g.id) + '">复制</button>');
-      if (g.custom) html.push('<button class="btn btn--ghost btn--sm" data-auto-del-group="' + App.escapeHtml(g.id) + '">删组</button>');
+      html.push('      <button class="btn btn--ghost btn--sm" data-auto-pool="' + App.escapeHtml(g.id) + '">入池</button>');
+      html.push('      <button class="btn btn--ghost btn--sm" data-auto-ren="' + App.escapeHtml(g.id) + '">改名</button>');
+      html.push('      <button class="btn btn--ghost btn--sm" data-auto-del-group="' + App.escapeHtml(g.id) + '" style="color:var(--c-danger);">删组</button>');
       html.push('      <span style="font-size:12px;color:var(--text-3);">' + (open ? '▴' : '▾') + '</span>');
       html.push('    </div>');
       html.push('  </div>');
@@ -1757,22 +1967,45 @@
       grid.addEventListener('click', function (e) {
         var t = e.target;
         var head = t.closest('.auto-group__head');
-        if (head && !t.hasAttribute('data-auto-copy') && !t.hasAttribute('data-auto-del-group')) {
+        if (head && !t.hasAttribute('data-auto-copy') && !t.hasAttribute('data-auto-del-group')
+          && !t.hasAttribute('data-auto-ren') && !t.hasAttribute('data-auto-pool')) {
           var gid = head.getAttribute('data-gid');
           autoOpen[gid] = !autoOpen[gid];
           renderAutoAll();
           return;
         }
         var gid2 = t.getAttribute('data-auto-copy') || t.getAttribute('data-auto-del-group') ||
-          t.getAttribute('data-auto-add') || t.getAttribute('data-auto-mark') || t.getAttribute('data-auto-remove');
+          t.getAttribute('data-auto-add') || t.getAttribute('data-auto-mark') || t.getAttribute('data-auto-remove') ||
+          t.getAttribute('data-auto-ren') || t.getAttribute('data-auto-pool');
         if (!gid2) return;
         if (t.hasAttribute('data-auto-copy')) {
           var g = autoAllGroups().filter(function (x) { return x.id === gid2; })[0];
           if (g) App.copyToClipboard(autoFinalHandles(g).join('\n'), g.name + ' 的 ' + autoFinalHandles(g).length + ' 个');
           return;
         }
+        if (t.hasAttribute('data-auto-ren')) {
+          var g3 = autoAllGroups().filter(function (x) { return x.id === gid2; })[0];
+          var nm = prompt('分组名称', g3 ? g3.name : '');
+          if (nm === null || !nm.trim()) return;
+          Store.autoRenameGroup(gid2, nm.trim());
+          renderAutoAll();
+          return;
+        }
+        if (t.hasAttribute('data-auto-pool')) {
+          var g4 = autoAllGroups().filter(function (x) { return x.id === gid2; })[0];
+          if (!g4) return;
+          var hs4 = autoFinalHandles(g4);
+          var n4 = Store.poolAdd(hs4);
+          App.showToast('已把「' + g4.name + '」的 ' + n4 + ' 个新达人加入达人池');
+          renderPool();
+          return;
+        }
         if (t.hasAttribute('data-auto-del-group')) {
-          if (confirm('确认删除自建分组「' + Store.autoGroupName(gid2) + '」？')) { Store.autoDeleteGroup(gid2); renderAutoAll(); }
+          var g5 = autoAllGroups().filter(function (x) { return x.id === gid2; })[0];
+          if (confirm('确认删除分组「' + (g5 ? g5.name : '') + '」？组内标记也会删除')) {
+            Store.autoDeleteGroupAny(gid2);
+            renderAutoAll();
+          }
           return;
         }
         if (t.hasAttribute('data-auto-remove')) {
@@ -1822,6 +2055,260 @@
     });
   }
 
+  /* ================================================================
+     模块一：达人池 + 按 SKU 视图
+     达人池不按 SKU 存；选中 SKU 时动态计算 可发送 / 已发送 / 被剔除
+     剔除规则：黑名单 → 低效 → 已合作该款（进「已发送」区） → 合作3款以上未出单
+     ================================================================ */
+  var poolState = { sku: '', q: '', page: { can: 1, sent: 1, ex: 1 } };
+  var POOL_PAGE = 80;
+
+  function poolSkuList() {
+    var skus = [];
+    try { skus = (Data && Data.getAvailableSKUs()) || []; } catch (e) { skus = []; }
+    return skus;
+  }
+
+  function poolCompute() {
+    var sku = poolState.sku;
+    var q = poolState.q;
+    var auto = Store.getAuto();
+    var pool = auto.pool || [];
+    var sentMap = auto.sent || {};
+    var res = { sent: [], can: [], ex: [] };
+    pool.forEach(function (h) {
+      if (q && h.indexOf(q) === -1) return;
+      var m = sentMap[h] && sentMap[h][sku];
+      var c = sku ? Matcher.check(h, sku) : null;
+      if (m) { res.sent.push({ h: h, m: m, c: c }); return; }
+      if (c && c.status === 'cooperated') { res.sent.push({ h: h, c: c, feishu: true }); return; }
+      if (c && (c.status === 'blacklist' || c.status === 'inefficient' || c.status === 'skuLimit')) {
+        res.ex.push({ h: h, c: c }); return;
+      }
+      res.can.push({ h: h, c: c });
+    });
+    return res;
+  }
+
+  function poolChipCan(x) {
+    return ''
+      + '<span class="chip" data-handle="' + App.escapeHtml(x.h) + '" title="点击复制" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:var(--bg-2);font-size:12px;cursor:pointer;">'
+      + App.escapeHtml(x.h)
+      + '<button class="link-btn" data-pool-mark="' + App.escapeHtml(x.h) + '" style="color:var(--pink-600);font-size:11px;">已发✓</button>'
+      + '<button class="link-btn" data-pool-remove="' + App.escapeHtml(x.h) + '" style="color:var(--text-3);font-size:11px;">×</button>'
+      + '</span>';
+  }
+
+  function poolChipSent(x) {
+    var tag = x.feishu
+      ? '<span style="color:var(--c-info);font-size:10px;">飞书已寄样</span>'
+      : '<span style="color:var(--c-success);font-size:10px;">✓' + App.escapeHtml(((x.m && x.m.date) || '').slice(5)) + '</span>';
+    var unmark = x.feishu ? '' : '<button class="link-btn" data-pool-unmark="' + App.escapeHtml(x.h) + '" style="color:var(--text-3);font-size:11px;">取消</button>';
+    return ''
+      + '<span class="chip" data-handle="' + App.escapeHtml(x.h) + '" title="点击复制" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:var(--bg-pink-soft);font-size:12px;cursor:pointer;">'
+      + App.escapeHtml(x.h) + tag + unmark
+      + '</span>';
+  }
+
+  function renderPool() {
+    var top = document.getElementById('pool-top');
+    if (!top) return;
+    var skus = poolSkuList();
+    if (!poolState.sku && skus.length) poolState.sku = skus[0];
+    var tabs = document.getElementById('pool-sku-tabs');
+    if (tabs) {
+      tabs.innerHTML = skus.map(function (s) {
+        var on = s === poolState.sku;
+        return '<button class="btn btn--sm ' + (on ? 'btn--primary' : 'btn--ghost') + '" data-pool-sku="' + App.escapeHtml(s) + '">' + App.escapeHtml(s) + '</button>';
+      }).join('');
+    }
+
+    var res = poolCompute();
+    var total = (Store.getAuto().pool || []).length;
+    var totalEl = document.getElementById('pool-total');
+    if (totalEl) totalEl.textContent = '池内 ' + total + ' 人';
+    var manEl = document.getElementById('pool-manage-count');
+    if (manEl) manEl.textContent = '池内共 ' + total + ' 个达人（不按 SKU 存，发哪个 SKU 时自动算）';
+
+    // 可发送
+    var canCount = document.getElementById('pool-can-count');
+    if (canCount) canCount.textContent = res.can.length;
+    var canShow = res.can.slice(0, poolState.page.can * POOL_PAGE);
+    var canBox = document.getElementById('pool-can');
+    if (canBox) {
+      canBox.innerHTML = canShow.map(poolChipCan).join('')
+        || '<span style="font-size:12.5px;color:var(--text-3);">（空）达人池还没有人，或都被剔除了</span>';
+    }
+    var canMore = document.getElementById('pool-can-more');
+    if (canMore) {
+      canMore.innerHTML = res.can.length > canShow.length
+        ? '<button class="btn btn--ghost btn--sm" data-pool-more="can">显示更多（剩 ' + (res.can.length - canShow.length) + '）</button>' : '';
+    }
+
+    // 已发送
+    var sentCount = document.getElementById('pool-sent-count');
+    if (sentCount) sentCount.textContent = res.sent.length;
+    var sentShow = res.sent.slice(0, poolState.page.sent * POOL_PAGE);
+    var sentBox = document.getElementById('pool-sent');
+    if (sentBox) {
+      sentBox.innerHTML = sentShow.map(poolChipSent).join('')
+        || '<span style="font-size:12.5px;color:var(--text-3);">（空）还没标记过发送，飞书已寄样的达人会自动出现在这里</span>';
+    }
+    var sentMore = document.getElementById('pool-sent-more');
+    if (sentMore) {
+      sentMore.innerHTML = res.sent.length > sentShow.length
+        ? '<button class="btn btn--ghost btn--sm" data-pool-more="sent">显示更多（剩 ' + (res.sent.length - sentShow.length) + '）</button>' : '';
+    }
+
+    // 被剔除
+    var exCount = document.getElementById('pool-ex-count');
+    if (exCount) exCount.textContent = res.ex.length;
+    var exShow = res.ex.slice(0, poolState.page.ex * POOL_PAGE);
+    var exBox = document.getElementById('pool-ex');
+    if (exBox) {
+      exBox.innerHTML = exShow.map(function (x) {
+        return '<div style="display:flex;gap:8px;padding:4px 0;font-size:12px;border-bottom:1px dashed var(--border-1);align-items:flex-start;">'
+          + '<strong style="min-width:120px;">' + App.escapeHtml(x.h) + '</strong>'
+          + '<span class="badge badge--gray" style="font-size:10.5px;">' + App.escapeHtml(x.c.label || x.c.status) + '</span>'
+          + '<span style="color:var(--text-3);flex:1;">' + App.escapeHtml(x.c.reason || '') + '</span>'
+          + '</div>';
+      }).join('') || '<div style="font-size:12.5px;color:var(--text-3);">没有人被剔除</div>';
+      if (res.ex.length > exShow.length) {
+        exBox.innerHTML += '<div style="text-align:center;padding:8px;"><button class="btn btn--ghost btn--sm" data-pool-more="ex">显示更多（剩 ' + (res.ex.length - exShow.length) + '）</button></div>';
+      }
+    }
+  }
+
+  // 导入达人池：校验 → 弹窗列出剔除原因 → 确认导入
+  function poolImportFlow() {
+    var ta = document.getElementById('pool-input');
+    if (!ta) return;
+    var raw = Matcher.parseHandles(ta.value);
+    if (!raw.length) { App.showToast('没识别到达人'); return; }
+    var poolSet = {};
+    Store.poolList().forEach(function (h) { poolSet[h] = true; });
+    var seen = {};
+    var acc = [], dups = [], invalids = [], blocked = [];
+    raw.forEach(function (r) {
+      var h = Matcher.normalize(r);
+      if (!h) { invalids.push(r); return; }
+      if (seen[h] || poolSet[h]) { dups.push(h); return; }
+      seen[h] = true;
+      var c = Matcher.check(h, '');
+      if (c.status === 'blacklist' || c.status === 'inefficient' || c.status === 'skuLimit') {
+        blocked.push({ raw: r, c: c }); return;
+      }
+      acc.push(h);
+    });
+    poolState.preview = acc;
+
+    var mask = document.createElement('div');
+    mask.id = 'pool-preview-mask';
+    mask.style.cssText = 'position:fixed;inset:0;background:rgba(92,74,74,.34);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    var rows = blocked.map(function (b) {
+      return '<div style="display:flex;gap:8px;padding:5px 0;font-size:12px;border-bottom:1px dashed var(--border-1);align-items:flex-start;">'
+        + '<strong style="min-width:110px;">' + App.escapeHtml(String(b.raw)) + '</strong>'
+        + '<span class="badge badge--gray" style="font-size:10.5px;">' + App.escapeHtml(b.c.label) + '</span>'
+        + '<span style="color:var(--text-3);flex:1;">' + App.escapeHtml(b.c.reason) + '</span>'
+        + '</div>';
+    }).join('');
+    mask.innerHTML = ''
+      + '<div style="background:var(--bg-surface);border-radius:var(--r-xl);max-width:520px;width:100%;padding:22px;box-shadow:0 12px 40px rgba(120,90,100,.22);max-height:82vh;display:flex;flex-direction:column;">'
+      + '<h3 style="margin:0 0 6px;font-size:16px;color:var(--text-1);font-weight:600;">导入预览</h3>'
+      + '<div style="font-size:12.5px;color:var(--text-2);line-height:1.8;margin-bottom:8px;">'
+      + '共识别 <strong>' + raw.length + '</strong> 个 · 可导入 <strong style="color:var(--c-success);">' + acc.length + '</strong> 个'
+      + ' · 重复（池内/本批）' + dups.length + ' 个 · 无效 ' + invalids.length + ' 个 · 剔除 ' + blocked.length + ' 个'
+      + '</div>'
+      + '<div style="overflow-y:auto;flex:1;min-height:0;border-top:1px solid var(--border-1);padding-top:6px;">'
+      + (rows || '<div style="font-size:12.5px;color:var(--text-3);padding:6px 0;">没有需要剔除的达人，全部符合条件 ✓</div>')
+      + '</div>'
+      + '<div style="display:flex;gap:8px;margin-top:14px;">'
+      + '<button class="btn btn--ghost btn--sm" id="pool-preview-cancel" style="flex:1;justify-content:center;">取消</button>'
+      + '<button class="btn btn--primary btn--sm" id="pool-preview-ok" style="flex:2;justify-content:center;"' + (acc.length ? '' : ' disabled style="opacity:.5;"') + '>确认导入 ' + acc.length + ' 个达人</button>'
+      + '</div></div>';
+    document.body.appendChild(mask);
+    mask.querySelector('#pool-preview-cancel').addEventListener('click', function () { mask.remove(); });
+    mask.addEventListener('click', function (e) { if (e.target === mask) mask.remove(); });
+    mask.querySelector('#pool-preview-ok').addEventListener('click', function () {
+      if (!poolState.preview || !poolState.preview.length) return;
+      var n = Store.poolAdd(poolState.preview);
+      poolState.preview = null;
+      ta.value = '';
+      mask.remove();
+      poolState.page = { can: 1, sent: 1, ex: 1 };
+      renderPool();
+      App.showToast('已导入 ' + n + ' 个达人进池');
+    });
+  }
+
+  function bindPoolEvents() {
+    var top = document.getElementById('pool-top');
+    if (!top) return;
+    top.addEventListener('click', function (e) {
+      var t = e.target;
+      var skuBtn = t.closest('[data-pool-sku]');
+      if (skuBtn) {
+        poolState.sku = skuBtn.getAttribute('data-pool-sku');
+        poolState.page = { can: 1, sent: 1, ex: 1 };
+        renderPool();
+        return;
+      }
+      if (t.hasAttribute('data-pool-more')) {
+        var bk = t.getAttribute('data-pool-more');
+        poolState.page[bk] = (poolState.page[bk] || 1) + 1;
+        renderPool();
+        return;
+      }
+      if (t.hasAttribute('data-pool-copy')) {
+        var which = t.getAttribute('data-pool-copy');
+        var res = poolCompute();
+        var list = which === 'can' ? res.can.map(function (x) { return x.h; }) : res.sent.map(function (x) { return x.h; });
+        if (!list.length) { App.showToast('没有可复制的达人'); return; }
+        copyHandles(list, (which === 'can' ? '可发送' : '已发送') + ' ' + list.length + ' 个');
+        return;
+      }
+      if (t.hasAttribute('data-pool-mark')) {
+        var h1 = t.getAttribute('data-pool-mark');
+        var d = prompt('标记「SKU ' + poolState.sku + '」已发日期（默认今天）', Store.todayStr());
+        if (d === null) return;
+        Store.poolSentMark(h1, poolState.sku, d, '');
+        renderPool();
+        return;
+      }
+      if (t.hasAttribute('data-pool-unmark')) {
+        var h2 = t.getAttribute('data-pool-unmark');
+        Store.poolSentUnmark(h2, poolState.sku);
+        renderPool();
+        return;
+      }
+      if (t.hasAttribute('data-pool-remove')) {
+        var h3 = t.getAttribute('data-pool-remove');
+        if (confirm('把 ' + h3 + ' 移出达人池？')) { Store.poolRemove(h3); renderPool(); }
+        return;
+      }
+      if (t.hasAttribute('data-pool-clear')) {
+        if (confirm('确认清空整个达人池（' + Store.poolList().length + ' 人）？不可恢复')) {
+          Store.poolClear();
+          renderPool();
+        }
+        return;
+      }
+      var chip = t.closest('.chip');
+      if (chip && !t.hasAttribute('data-pool-mark') && !t.hasAttribute('data-pool-remove') && !t.hasAttribute('data-pool-unmark')) {
+        var h4 = chip.getAttribute('data-handle');
+        if (h4) App.copyToClipboard(h4, '已复制 ' + h4);
+      }
+    });
+    var search = document.getElementById('pool-search');
+    if (search) search.addEventListener('input', function () {
+      poolState.q = search.value.trim().toLowerCase();
+      poolState.page = { can: 1, sent: 1, ex: 1 };
+      renderPool();
+    });
+    var btn = document.getElementById('btn-pool-import');
+    if (btn) btn.addEventListener('click', poolImportFlow);
+  }
+
   function switchTab(name) {
     var t1 = document.getElementById('tab-sample');
     var t2 = document.getElementById('tab-outreach');
@@ -1836,7 +2323,7 @@
     });
     if (name === 'outreach') { renderReinvestAll(); }
     if (name === 'designated') renderDesAll();
-    if (name === 'sample') renderAutoAll();
+    if (name === 'sample') { renderPool(); renderAutoAll(); }
   }
 
   /* ================= 模块二：复投名单（Excel 导入） ================= */
@@ -2004,10 +2491,28 @@
     // 模块三：指定达人名单
     bindDesEvents();
 
+    // 模块一：达人池 + 按 SKU 视图
+    bindPoolEvents();
+    renderPool();
+
     // 模块一 / 二：Excel 导入名单
     bindAutoEvents();
     renderAutoAll();
     bindReinvestEvents();
+
+    // 云端同步：拉取后如有更新则重渲染本页
+    if (Store.cloudPull) {
+      Store.cloudPull(function (res) {
+        if (res === 'applied') {
+          renderAll();
+          renderPool();
+          renderAutoAll();
+          renderObAll();
+          renderReinvestAll();
+          renderDesAll();
+        }
+      });
+    }
 
     var ta = document.getElementById('roster-input');
     if (ta) ta.addEventListener('input', updateCount);

@@ -32,10 +32,79 @@
         <button class="btn btn--ghost btn--sm" data-roster-tab="designated">指定达人名单</button>
       </div>
 
-      <!-- ============ 自动达人名单（原有） ============ -->
+      <!-- ============ 自动达人名单 ============ -->
       <div id="tab-sample">
 
-      <!-- ===== Excel 自动达人名单（主区块） ===== -->
+      <!-- ===== 达人池 + 按 SKU 视图（主区块） ===== -->
+      <div id="pool-top">
+        <div class="card card--padding-lg" style="margin-bottom:10px;background:var(--bg-pink-soft);">
+          <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
+            <strong style="color:var(--pink-600);">按 SKU 发名单</strong>：达人池是一个大池（不按 SKU 存）。
+            选一个 SKU，自动算出<strong>可发送</strong>（剔除黑名单 / 低效 / 已合作该款 / 合作 3 款以上未出单）和<strong>已发送</strong>（本机标记 + 飞书已寄样），切换 SKU 实时重算。
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">选择 SKU</h2>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <input type="search" class="input" id="pool-search" placeholder="搜 handle" style="width:150px;padding:5px 10px;font-size:12.5px;">
+              <span class="section__hint" id="pool-total"></span>
+            </div>
+          </div>
+          <div id="pool-sku-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
+
+          <!-- 可发送 -->
+          <div class="card card--padding-lg" style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+              <div style="font-size:13.5px;font-weight:700;color:var(--c-success);">✓ 可发送 <span id="pool-can-count" class="badge badge--green" style="font-size:11px;">0</span></div>
+              <button class="btn btn--primary btn--sm" data-pool-copy="can">一键复制可发送名单</button>
+            </div>
+            <div id="pool-can" class="auto-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+            <div id="pool-can-more" style="margin-top:6px;text-align:center;"></div>
+          </div>
+
+          <!-- 已发送 -->
+          <div class="card card--padding-lg" style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+              <div style="font-size:13.5px;font-weight:700;color:var(--pink-600);">已发送 <span id="pool-sent-count" class="badge" style="font-size:11px;">0</span></div>
+              <button class="btn btn--ghost btn--sm" data-pool-copy="sent">复制已发送名单</button>
+            </div>
+            <div id="pool-sent" class="auto-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+            <div id="pool-sent-more" style="margin-top:6px;text-align:center;"></div>
+          </div>
+
+          <!-- 被剔除 -->
+          <details class="card card--padding-lg">
+            <summary style="cursor:pointer;font-size:13.5px;font-weight:700;color:var(--text-2);">被剔除（不符合条件）<span id="pool-ex-count" class="badge badge--gray" style="font-size:11px;">0</span></summary>
+            <div id="pool-ex" style="margin-top:10px;"></div>
+          </details>
+        </div>
+
+        <!-- 达人池导入 -->
+        <div class="section">
+          <div class="section__header">
+            <h2 class="section__title">达人池</h2>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <span class="section__hint" id="pool-manage-count"></span>
+              <button class="btn btn--ghost btn--sm" data-pool-clear>清空达人池</button>
+            </div>
+          </div>
+          <div class="card card--padding-lg">
+            <div class="form-group">
+              <label class="form-label">粘贴达人 handle（逗号 / 换行 / URL 均可）</label>
+              <textarea class="textarea" id="pool-input" rows="6"
+                placeholder="@sarah.kramer&#10;briannametzger1&#10;https://www.tiktok.com/@justineefloress"></textarea>
+              <div class="form-hint">导入时自动去重，并剔除黑名单 / 低效 / 合作 3 款以上未出单的达人，剔除原因会逐个列出来给你确认</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn--primary btn--sm" id="btn-pool-import">校验并导入达人池</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Excel 自动达人名单（分组与达人） ===== -->
       <div id="auto-top">
         <div class="card card--padding-lg" style="margin-bottom:10px;background:var(--bg-pink-soft);">
           <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
@@ -58,8 +127,8 @@
       <!-- 存储说明 -->
       <div class="card card--padding-lg" style="margin-bottom:4px;background:var(--bg-pink-soft);">
         <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
-          <strong style="color:var(--pink-600);">名单只存在这台设备上</strong>：不写回飞书、不上传服务器，换手机/电脑不跟随。
-          校验用的黑名单、低效、历史合作 SKU，全部来自飞书<strong>每日寄样表</strong>，每次打开自动读取最新数据重新判定。
+          <strong style="color:var(--pink-600);">云端同步已开启</strong>：名单改动自动保存到 Cloudflare KV，换手机/电脑打开同一网址自动跟随。
+          校验用的黑名单、低效、历史合作 SKU、出单记录，全部来自飞书<strong>每日寄样表</strong>，每次打开自动读取最新数据重新判定。
         </div>
       </div>
 
@@ -182,9 +251,9 @@
 
         <div class="card card--padding-lg" style="margin-bottom:4px;background:var(--bg-pink-soft);">
           <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
-            <strong style="color:var(--pink-600);">建联名单 = 你要主动去联系的那批人</strong>：老达人出单 / 爆单达人 / 竞品达人，
-            通过 <strong>TK 私信、邮件、官号</strong> 建联，跟进状态与每次联系记录。
-            同样<strong>只存本机</strong>，不写回飞书。
+            <strong style="color:var(--pink-600);">建联名单 = 你要主动去联系的那批人</strong>：按竞品 / 爆单分组，
+            通过 <strong>TK 私信、邮件、官号、抖音私信</strong> 建联，记录每次发送日期、结果、话术和邮箱。
+            改动<strong>自动云同步</strong>（Cloudflare KV），不写回飞书。
           </div>
         </div>
 

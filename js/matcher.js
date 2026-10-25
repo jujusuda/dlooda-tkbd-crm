@@ -69,6 +69,7 @@
     (d.creators || []).forEach(function (c) {
       var h = normalize(c.name);
       if (!h) return;
+      var ocC = parseInt(c.orderCount, 10);
       index[h] = {
         rid: c._rid || null,
         name: c.name,
@@ -76,6 +77,7 @@
         skus: (c.skus || []).slice(),
         sampleCount: c.sampleCount || 0,
         videoCount: c.videoCount || 0,
+        hasOrder: !isNaN(ocC) && ocC > 0,
         official: c.official || '',
         stars: c.stars || '',
         bodyType: c.bodyType || '',
@@ -99,6 +101,7 @@
           skus: [],
           sampleCount: 0,
           videoCount: 0,
+          hasOrder: false,
           official: s.official || '',
           stars: s.stars || '',
           bodyType: s.bodyType || '',
@@ -114,6 +117,9 @@
         if (c.creatorType.indexOf(t) === -1) c.creatorType.push(t);
       });
       if (s.sku && c.skus.indexOf(s.sku) === -1) c.skus.push(s.sku);
+      // 出单判定：寄样记录 orderCount > 0（字段是字符串，先归一化）
+      var oc = parseInt(s.orderCount, 10);
+      if (!isNaN(oc) && oc > 0) c.hasOrder = true;
       if (s.sampleTime && (!c.lastSampleTime || s.sampleTime > c.lastSampleTime)) {
         c.lastSampleTime = s.sampleTime;
       }
@@ -154,6 +160,7 @@
       creator: c,
       cooperatedSkus: c ? (c.skus || []) : [],
       skuCount: c ? (c.skus || []).length : 0,
+      hasOrder: c ? !!c.hasOrder : false,
       targetSku: targetSku || '',
       status: 'ok',
       label: '可发送',
@@ -184,10 +191,11 @@
         out.reason = '飞书标记「低效达人」，拒绝录入';
         return out;
       }
-      if (out.skuCount >= SKU_LIMIT) {
+      // 达到 3 款上限：仅当「合作了 3 款以上且都未出单」才锁定；已出单的老达人允许复投
+      if (out.skuCount >= SKU_LIMIT && !c.hasOrder) {
         out.status = 'skuLimit';
         out.label = '已达 ' + SKU_LIMIT + ' 款上限';
-        out.reason = '历史累计合作 ' + out.skuCount + ' 款（' + out.cooperatedSkus.join('、') + '），不再发新 SKU 自动邀约';
+        out.reason = '历史累计合作 ' + out.skuCount + ' 款（' + out.cooperatedSkus.join('、') + '）且均未出单，不再发新 SKU 自动邀约';
         return out;
       }
       if (targetSku && out.cooperatedSkus.indexOf(targetSku) !== -1) {
