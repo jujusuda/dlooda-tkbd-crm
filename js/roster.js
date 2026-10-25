@@ -2692,8 +2692,9 @@
     if (Store.cloudPull) {
       Store.cloudPull(function (res) {
         if (res === 'applied') {
-          // 云端数据可能没有灌过池（老设备数据），拉取后再补灌一次
+          // 云端数据可能没有灌过池/迁移过（老设备数据），拉取后再补灌一次
           poolSeedFromAuto();
+          obSeedFromReinvest();  // 防止云端旧快照把刚迁移好的建联分组覆盖回空
           renderAll();
           renderPool();
           renderAutoAll();
