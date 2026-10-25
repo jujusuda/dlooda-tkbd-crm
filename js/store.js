@@ -403,6 +403,21 @@
     return true;
   }
 
+  // 修改一条已有建联记录（复投方式/日期/结果/话术都可改）：rec 同 addMemberRecord
+  function updateMemberRecord(id, idx, rec) {
+    var m = getMember(id);
+    if (!m || !m.touches || !m.touches[idx]) return false;
+    var t = m.touches[idx];
+    t.date = rec.date || t.date;
+    t.channel = rec.channel || t.channel;
+    t.result = rec.result !== undefined ? rec.result : t.result;
+    t.script = rec.script !== undefined ? rec.script : t.script;
+    if (rec.note !== undefined) t.note = rec.note;
+    m.updatedAt = todayStr();
+    persist();
+    return true;
+  }
+
   /* ---------- 提醒规则 rules ---------- */
 
   function getRules() { return load().rules; }
@@ -907,6 +922,7 @@
     addTouch: addTouch,
     setMemberStatus: setMemberStatus,
     addMemberRecord: addMemberRecord,
+    updateMemberRecord: updateMemberRecord,
     deleteMemberRecord: deleteMemberRecord,
     // designated（指定达人名单）
     getDesignated: getDesignated,

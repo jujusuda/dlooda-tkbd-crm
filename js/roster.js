@@ -1090,18 +1090,25 @@
   /* ---------- 分组下钻弹窗：已建联 / 未建联 → 达人 + 记录 ---------- */
   function obDrillRow(m) {
     var open = obState.drill.open === m.id;
-    var recs = (m.touches || []).map(function (t, i) {
-      return '<div style="padding:6px 0;border-bottom:1px dashed var(--border-1);font-size:12px;">'
-        + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'
-        + '<span class="badge" style="font-size:10.5px;">' + App.escapeHtml(t.date || '') + '</span>'
-        + '<span class="badge badge--blue" style="font-size:10.5px;">' + App.escapeHtml(t.channel || '') + '</span>'
-        + (t.result ? '<span style="color:var(--text-2);">' + App.escapeHtml(t.result) + '</span>' : '')
-        + '<button class="link-btn" data-ob-rec-del="' + App.escapeHtml(m.id) + '" data-idx="' + i + '" style="margin-left:auto;color:var(--c-danger);font-size:11px;">删除记录</button>'
-        + '</div>'
-        + (t.script ? '<div style="color:var(--text-3);white-space:pre-wrap;margin-top:3px;">' + App.escapeHtml(t.script) + '</div>' : '')
-        + '</div>';
-    }).join('') || '<div style="font-size:12px;color:var(--text-3);padding:4px 0;">还没有联系记录</div>';
     var idAttr = App.escapeHtml(m.id);
+    var recs = (m.touches || []).map(function (t, i) {
+      var rid = idAttr + '-' + i;
+      var chOpts = CHANNELS.slice();
+      if (t.channel && chOpts.indexOf(t.channel) === -1) chOpts.push(t.channel);
+      return '<div style="padding:6px 0;border-bottom:1px dashed var(--border-1);font-size:12px;">'
+        + '<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:4px;">'
+        + '<input type="date" class="input" value="' + App.escapeHtml(t.date || '') + '" data-recf="date" data-recid="' + rid + '" style="width:128px;padding:3px 6px;font-size:11.5px;">'
+        + '<select class="select" data-recf="channel" data-recid="' + rid + '" style="width:104px;padding:3px 6px;font-size:11.5px;">'
+        + chOpts.map(function (c) { return '<option' + (t.channel === c ? ' selected' : '') + '>' + App.escapeHtml(c) + '</option>'; }).join('')
+        + '</select>'
+        + '<input type="text" class="input" value="' + App.escapeHtml(t.result || '') + '" placeholder="结果" data-recf="result" data-recid="' + rid + '" style="flex:1;min-width:120px;padding:3px 6px;font-size:11.5px;">'
+        + '</div>'
+        + '<textarea class="textarea" rows="2" placeholder="话术" data-recf="script" data-recid="' + rid + '" style="font-size:11.5px;">' + App.escapeHtml(t.script || '') + '</textarea>'
+        + '<div style="display:flex;gap:6px;margin-top:4px;">'
+        + '<button class="btn btn--primary btn--sm" data-ob-rec-upd="' + App.escapeHtml(m.id) + '" data-idx="' + i + '" style="padding:2px 10px;font-size:11px;">保存</button>'
+        + '<button class="link-btn" data-ob-rec-del="' + App.escapeHtml(m.id) + '" data-idx="' + i + '" style="color:var(--c-danger);font-size:11px;">删除记录</button>'
+        + '</div></div>';
+    }).join('') || '<div style="font-size:12px;color:var(--text-3);padding:4px 0;">还没有联系记录</div>';
     var form = ''
       + '<div style="margin-top:8px;border-top:1px solid var(--border-1);padding-top:8px;">'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">'
@@ -1443,6 +1450,25 @@
         App.showToast('已保存记录');
         return;
       }
+      if (t.hasAttribute('data-ob-rec-upd')) {
+        var midU = t.getAttribute('data-ob-rec-upd');
+        var idxU = parseInt(t.getAttribute('data-idx'), 10) || 0;
+        var idAttr2 = App.escapeHtml(midU) + '-' + idxU;
+        var f = function (name) {
+          var el = document.querySelector('[data-recf="' + name + '"][data-recid="' + idAttr2 + '"]');
+          return el ? el.value : undefined;
+        };
+        Store.updateMemberRecord(midU, idxU, {
+          date: f('date'),
+          channel: f('channel'),
+          result: f('result'),
+          script: f('script'),
+        });
+        obState.drill.open = midU;
+        openObDrill(obState.drill.id, true);
+        App.showToast('记录已更新');
+        return;
+      }
       if (t.hasAttribute('data-ob-drill-add')) {
         var bidA = t.getAttribute('data-ob-drill-add');
         var ta2 = document.getElementById('ob-drill-input');
@@ -1508,13 +1534,7 @@
       var t = e.target;
       if (!t || !t.hasAttribute || !t.hasAttribute('data-ob-status')) return;
       var id = t.getAttribute('data-ob-status');
-      var val = t.value;
-      if (val === 'fail') {
-        var why = global.prompt('未成功原因？（可留空）', '') || '';
-        Store.setMemberStatus(id, val, why);
-      } else {
-        Store.setMemberStatus(id, val, '');
-      }
+      Store.setMemberStatus(id, t.value, '');
       renderObAll();
       if (obState.drill.id) openObDrill(obState.drill.id, true);
       App.showToast('状态已更新');
@@ -2376,6 +2396,38 @@
     });
   }
 
+  // 首次打开：把静态名单库（DloodaAuto 各分组 + 自建分组）的达人自动灌进达人池
+  // 与手动导入一致：去重、剔除黑名单/低效/合作3款以上未出单；已合作过的不剔除（SKU 视图会归到已发送）
+  function poolSeedFromAuto() {
+    var s = Store.getSettings();
+    if (s.poolSeeded) return 0;
+    var auto = Store.getAuto();
+    var poolSet = {};
+    (auto.pool || []).forEach(function (h) { poolSet[h] = true; });
+    var seen = {}, acc = [], skipped = 0;
+    var src = [];
+    if (global.DloodaAuto && DloodaAuto.groups) {
+      DloodaAuto.groups.forEach(function (g) { src = src.concat(g.handles || []); });
+    }
+    (auto.custom || []).forEach(function (g) { src = src.concat(g.handles || []); });
+    src.forEach(function (r) {
+      var h = Matcher.normalize(String(r || '').trim());
+      if (!h) return;
+      if (seen[h] || poolSet[h]) return;
+      seen[h] = true;
+      var c = Matcher.check(h, '');
+      if (c.status === 'blacklist' || c.status === 'inefficient' || c.status === 'skuLimit') { skipped++; return; }
+      acc.push(h);
+    });
+    if (!acc.length) { s.poolSeeded = true; Store.persist(); return 0; }
+    Store.poolAdd(acc);
+    s = Store.getSettings();
+    s.poolSeeded = true;
+    Store.persist();
+    App.showToast('已把名单库 ' + acc.length + ' 位达人自动灌进达人池' + (skipped ? '（剔除 ' + skipped + ' 位不符合条件的）' : ''));
+    return acc.length;
+  }
+
   function bindPoolEvents() {
     var top = document.getElementById('pool-top');
     if (!top) return;
@@ -2629,6 +2681,7 @@
 
     // 模块一：达人池 + 按 SKU 视图
     bindPoolEvents();
+    poolSeedFromAuto();
     renderPool();
 
     // 模块一 / 二：Excel 导入名单
@@ -2639,6 +2692,8 @@
     if (Store.cloudPull) {
       Store.cloudPull(function (res) {
         if (res === 'applied') {
+          // 云端数据可能没有灌过池（老设备数据），拉取后再补灌一次
+          poolSeedFromAuto();
           renderAll();
           renderPool();
           renderAutoAll();
