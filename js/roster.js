@@ -883,6 +883,141 @@
     renderObAll();
   }
 
+  /* ---------- 一次性迁移：把「每日工作.xlsx · 复投」按原分组灌进建联批次 ----------
+     触发条件：settings.obSeeded 为空 且 DloodaReinvest 有数据。
+     分组 = Excel「类型」列的原始标签（清洗换行/空格 + 同义合并）；
+     每条记录 → 成员（邮箱/SKU/等级/备注）+ 首条建联记录（日期/渠道/结果/话术）。
+  ---------------------------------------------------------------------------- */
+  var OB_NAME_MAP = {
+    'Fire Swan 2178出单50+': '竞品 Fire Swan',
+    'Fireswan出单': '竞品 Fire Swan',
+    'halara us': '竞品 halara us',
+    'halara 2178 出单50+': '竞品 halara 2178出单50+',
+    'baleaf': '竞品 baleaf',
+    '爆单达人': '爆单达人',
+    '50+ 爆单达人 不包含2178、2190 2189、2875': '爆单达人50+（不含2178/2190/2189/2875）',
+    '优质老达人复投': '优质老达人复投',
+    '优质老达人复投 明天': '优质老达人复投',
+    '老达人': '优质老达人复投',
+    '视频复投': '视频复投',
+    '出单复投': '出单复投',
+    '2178、2190 2189、28173 50+以上达人': '2178/2190/2189/28173 出单50+达人',
+    '2875 出单1-50的L1达人': '2875 出单1-50达人',
+    '2875 出单1-50的L2达人': '2875 出单1-50达人',
+    '2875 出单1-50的L3达人': '2875 出单1-50达人',
+    '2189 出单50+': '2189 出单50+达人',
+    '2189 出单1-50': '2189 出单1-50达人',
+  };
+
+  function obCleanName(rawType) {
+    var n = String(rawType || '').replace(/\s+/g, ' ').trim() || '其他';
+    return OB_NAME_MAP[n] || n;
+  }
+
+  function obClassify(name) {
+    if (name.indexOf('竞品') === 0 || /^G4\b/.test(name)) return 'competitor';
+    if (name.indexOf('爆单') !== -1) return 'hot';
+    if (name.indexOf('老达人') !== -1 || name.indexOf('复投') !== -1) return 'old';
+    return 'other';
+  }
+
+  function obPickSku(name) {
+    var m = /^2[0-9A-Z]{3,4}/.exec(name);
+    return m ? m[0] : '';
+  }
+
+  function obParseChannel(m) {
+    var s = String(m || '');
+    if (s.indexOf('抖音') !== -1) return '抖音私信';
+    if (s.indexOf('邮件') !== -1 || /mail/i.test(s)) return '邮件';
+    if (/whatsapp/i.test(s)) return 'WhatsApp';
+    if (s.indexOf('官网') !== -1 || s.indexOf('官号') !== -1) return '官号';
+    if (s.indexOf('私信') !== -1 || s.indexOf('TK') !== -1) return 'TK私信';
+    return '其他';
+  }
+
+  function obSeedFromReinvest() {
+    var data = global.DloodaReinvest;
+    if (!data || !data.records || !data.records.length) return false;
+    var s = Store.getSettings();
+    if (s.obSeeded) return false;
+    var db = Store.load();
+    // 合并式迁移：保留本机已有批次/成员，只补缺的分组和达人（幂等）
+    if (!db.outreach || !Array.isArray(db.outreach.batches)) db.outreach = { batches: [], members: [] };
+    if (!Array.isArray(db.outreach.members)) db.outreach.members = [];
+    var batches = db.outreach.batches;
+    var members = db.outreach.members;
+    var byName = {};   // 分组名 -> batchId
+    var have = {};     // batchId + '|' + handle 去重
+    batches.forEach(function (b) { if (b && b.source) byName[b.source] = b.id; });
+    members.forEach(function (m) { if (m && m.batchId) have[m.batchId + '|' + m.handle] = true; });
+    var stamp = Date.now().toString(36);
+    var newBatches = 0, newMembers = 0;
+    data.records.forEach(function (r, i) {
+      var rawType = String(r.type || '').trim() || '其他';
+      var name = obCleanName(rawType);
+      var bid = byName[name];
+      if (!bid) {
+        var b = {
+          id: 'obs_' + stamp + '_' + batches.length,
+          date: String(r.date || '').slice(0, 10) || Store.todayStr(),
+          type: obClassify(name),
+          source: name,
+          sku: obPickSku(name),
+          note: '来自「每日工作.xlsx · 复投」原分组：' + rawType.replace(/\s+/g, ' '),
+          createdAt: Date.now(),
+        };
+        batches.push(b);
+        byName[name] = b.id;
+        bid = b.id;
+        newBatches++;
+      }
+      var succ = String(r.success || '');
+      var status = succ.indexOf('✅') !== -1 ? 'success'
+        : succ.indexOf('❌') !== -1 ? 'fail'
+        : succ.indexOf('回复') !== -1 ? 'replied'
+        : (succ || r.method) ? 'contacted' : 'pending';
+      var touch = {
+        date: String(r.date || '').slice(0, 10) || '',
+        channel: obParseChannel(r.method),
+        result: succ || (r.method || ''),
+        script: r.script || '',
+        note: r.note || '',
+      };
+      if (have[bid + '|' + r.handle]) {
+        // 同组重复达人（多次复投尝试）：不重复建人，把这次尝试追加为一条建联记录
+        for (var k = 0; k < members.length; k++) {
+          if (members[k].batchId === bid && members[k].handle === r.handle) {
+            members[k].touches.push(touch);
+            if (status === 'success' && members[k].status !== 'success') members[k].status = 'success';
+            break;
+          }
+        }
+        return;
+      }
+      have[bid + '|' + r.handle] = true;
+      members.push({
+        id: 'osm_' + stamp + '_' + i,
+        batchId: bid,
+        handle: r.handle,
+        raw: r.handle,
+        email: r.email || '',
+        sku: r.sku || '',
+        level: r.level || '',
+        note: r.note || '',
+        type: 'other',
+        status: status,
+        touches: [touch],
+        updatedAt: String(r.date || '').slice(0, 10) || '',
+      });
+      newMembers++;
+    });
+    s.obSeeded = true;
+    Store.persist();
+    if (newMembers) App.showToast('已按原分组导入 ' + newBatches + ' 个分组 / ' + newMembers + ' 位达人');
+    return { batches: newBatches, members: newMembers };
+  }
+
   /* ---------- 统计 ---------- */
   function obStats() {
     var ms = Store.getMembers();
@@ -2321,7 +2456,7 @@
       var on = b.getAttribute('data-roster-tab') === name;
       b.className = 'btn btn--sm ' + (on ? 'btn--primary' : 'btn--ghost');
     });
-    if (name === 'outreach') { renderReinvestAll(); }
+    if (name === 'outreach') { renderObAll(); }
     if (name === 'designated') renderDesAll();
     if (name === 'sample') { renderPool(); renderAutoAll(); }
   }
@@ -2486,6 +2621,7 @@
     bindTabs();
     bindObEvents();
     obUpdateCount();
+    obSeedFromReinvest();
     renderObAll();
 
     // 模块三：指定达人名单
@@ -2498,7 +2634,6 @@
     // 模块一 / 二：Excel 导入名单
     bindAutoEvents();
     renderAutoAll();
-    bindReinvestEvents();
 
     // 云端同步：拉取后如有更新则重渲染本页
     if (Store.cloudPull) {
@@ -2508,7 +2643,6 @@
           renderPool();
           renderAutoAll();
           renderObAll();
-          renderReinvestAll();
           renderDesAll();
         }
       });

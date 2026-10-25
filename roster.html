@@ -223,39 +223,43 @@
       <!-- ============ 竞品达人+爆单达人复投名单 ============ -->
       <div id="tab-outreach" style="display:none;">
 
-      <!-- ===== Excel 复投名单（主区块） ===== -->
-      <div id="reinvest-top">
-        <div class="card card--padding-lg" style="margin-bottom:10px;background:var(--bg-pink-soft);">
-          <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
-            <strong style="color:var(--pink-600);">竞品达人 + 爆单达人复投名单</strong>（来自「每日工作.xlsx · 复投」）：
-            <span id="reinvest-total">—</span>。可搜索、按结果筛选、复制达人 ID、标记跟进状态。
-          </div>
-        </div>
-        <div class="section">
-          <div class="section__header">
-            <h2 class="section__title">复投记录</h2>
-            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-              <input type="search" class="input" id="reinvest-search" placeholder="搜达人 / sku / 方式" style="width:170px;padding:5px 10px;font-size:12.5px;">
-              <select class="select" id="reinvest-filter" style="min-width:120px;font-size:12.5px;">
-                <option value="">全部结果</option>
-                <option value="success">已成功 ✅</option>
-                <option value="fail">未成功 ❌</option>
-                <option value="pending">待跟进</option>
-                <option value="marked">本机已标记</option>
-              </select>
-            </div>
-          </div>
-          <div id="reinvest-list"></div>
+      <!-- ===== 建联分组（图片分组卡片 + 下钻，主区块） ===== -->
+      <div class="card card--padding-lg" style="margin-bottom:10px;background:var(--bg-pink-soft);">
+        <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
+          <strong style="color:var(--pink-600);">竞品达人 + 爆单达人复投名单</strong>：已按「每日工作.xlsx · 复投」的分组自动归类成下面的图片分组卡片。
+          点击卡片 → 看 <strong>已建联 / 未建联</strong> → 下钻具体达人和每条建联记录（日期 / 渠道 / 结果 / 话术 / 邮箱，无邮箱显示「无」）。
+          分组和达人均可增删查改，卡片图片在「编辑」里上传。改动<strong>自动云同步</strong>（Cloudflare KV），不写回飞书。
         </div>
       </div>
 
-        <div class="card card--padding-lg" style="margin-bottom:4px;background:var(--bg-pink-soft);">
-          <div style="font-size:12.5px;color:var(--text-2);line-height:1.75;">
-            <strong style="color:var(--pink-600);">建联名单 = 你要主动去联系的那批人</strong>：按竞品 / 爆单分组，
-            通过 <strong>TK 私信、邮件、官号、抖音私信</strong> 建联，记录每次发送日期、结果、话术和邮箱。
-            改动<strong>自动云同步</strong>（Cloudflare KV），不写回飞书。
+      <!-- 统计 -->
+      <div class="stat-grid" id="ob-stats" style="margin-bottom:4px;"></div>
+
+      <!-- 批次分组（图片卡片） -->
+      <div class="section">
+        <div class="section__header">
+          <h2 class="section__title">建联分组</h2>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <select class="select" id="ob-filter-type" style="min-width:120px;">
+              <option value="">全部类型</option>
+              <option value="old">老达人出单</option>
+              <option value="hot">爆单达人</option>
+              <option value="competitor">竞品达人</option>
+              <option value="other">其他</option>
+            </select>
+            <select class="select" id="ob-filter-status" style="min-width:120px;">
+              <option value="">全部状态</option>
+              <option value="pending">待联系</option>
+              <option value="contacted">已联系</option>
+              <option value="replied">已回复</option>
+              <option value="success">成功</option>
+              <option value="fail">未成功</option>
+              <option value="invalid">无效/注销</option>
+            </select>
           </div>
         </div>
+        <div id="ob-batches"></div>
+      </div>
 
         <!-- 新建批次 -->
         <div class="section">
@@ -336,35 +340,6 @@
             </div>
             <div id="ob-preview" style="margin-top:10px;"></div>
           </div>
-        </div>
-
-        <!-- 统计 -->
-        <div class="stat-grid" id="ob-stats" style="margin-bottom:4px;"></div>
-
-        <!-- 批次列表 -->
-        <div class="section">
-          <div class="section__header">
-            <h2 class="section__title">批次跟进</h2>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <select class="select" id="ob-filter-type" style="min-width:120px;">
-                <option value="">全部类型</option>
-                <option value="old">老达人出单</option>
-                <option value="hot">爆单达人</option>
-                <option value="competitor">竞品达人</option>
-                <option value="other">其他</option>
-              </select>
-              <select class="select" id="ob-filter-status" style="min-width:120px;">
-                <option value="">全部状态</option>
-                <option value="pending">待联系</option>
-                <option value="contacted">已联系</option>
-                <option value="replied">已回复</option>
-                <option value="success">成功</option>
-                <option value="fail">未成功</option>
-                <option value="invalid">无效/注销</option>
-              </select>
-            </div>
-          </div>
-          <div id="ob-batches"></div>
         </div>
       </div><!-- /tab-outreach -->
 
