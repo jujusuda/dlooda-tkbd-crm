@@ -15,6 +15,38 @@
 (function (global) {
   'use strict';
 
+  /* ---------- KV 优先加载 ----------
+     飞书同步后的最新数据存在 Cloudflare KV（key=real-data.js）。
+     页面加载时同步拉取并「间接 eval」覆盖静态兜底文件 window.REAL_DATA，
+     保证「点同步飞书 → 刷新即见最新」，不再需要重新部署。
+     · 本地开发（localhost / 127.0.0.1）跳过，直接用仓库静态文件，避免阻塞与 SW 交互问题。
+     · 拉取失败 / KV 为空 → 静默回退到仓库静态 real-data.js（旧行为）。
+     · 同时计算数据指纹存到 global.__DATA_HASH，供结尾轮询做「变化检测」。 ---------- */
+  (function loadRealtimeData() {
+    try {
+      var _host = global.location && global.location.hostname;
+      if (_host && _host !== 'localhost' && _host !== '127.0.0.1') {
+        var _xhr = new XMLHttpRequest();
+        _xhr.open('GET', '/api/data', false); // 同步：确保首屏即是 KV 最新数据
+        _xhr.timeout = 4000;
+        _xhr.send();
+        if (_xhr.status === 200 && _xhr.responseText && _xhr.responseText.indexOf('REAL_DATA') !== -1) {
+          (0, eval)(_xhr.responseText); // 间接 eval → 全局作用域，覆盖 window.REAL_DATA / REAL_DATA_STATS
+          global.__DATA_SRC = 'kv';
+          var _h = 0;
+          for (var _i = 0; _i < _xhr.responseText.length; _i++) {
+            _h = (_h * 31 + _xhr.responseText.charCodeAt(_i)) | 0;
+          }
+          global.__DATA_HASH = _h;
+        } else {
+          global.__DATA_SRC = 'static';
+        }
+      }
+    } catch (e) {
+      global.__DATA_SRC = 'static';
+    }
+  })();
+
   // 优先使用「从飞书 Excel 上传」的数据（localStorage 持久化，刷新后仍在）
   var D = (global.REAL_DATA) || { creators: [], samples: [], pending: [], invites: [], tasks: [], skus: [] };
   try {
@@ -2764,5 +2796,34 @@
     getConversations: function () { return []; },
     getConversationByCreator: function () { return null; },
   };
+
+  /* ---------- 自动软刷新：飞书同步后无需手动刷新 ----------
+     每 150s 异步比对 KV 数据指纹，若变化且当前没有在输入框里打字，则刷新页面。
+     这样「点同步飞书」后，最多 2~3 分钟页面自动更新（也可手动刷新立即生效）。 ---------- */
+  (function autoRefreshOnDataChange() {
+    try {
+      if (global.__DATA_SRC !== 'kv') return; // 仅 KV 模式下轮询
+      var _host = global.location && global.location.hostname;
+      if (_host === 'localhost' || _host === '127.0.0.1' || !_host) return;
+      var _lastHash = global.__DATA_HASH || 0;
+      setInterval(function () {
+        try {
+          fetch('/api/data', { cache: 'no-store' }).then(function (r) {
+            return r && r.ok ? r.text() : null;
+          }).then(function (txt) {
+            if (!txt) return;
+            var _h = 0;
+            for (var _j = 0; _j < txt.length; _j++) { _h = (_h * 31 + txt.charCodeAt(_j)) | 0; }
+            if (_lastHash && _h !== _lastHash) {
+              var _ae = document && document.activeElement;
+              if (_ae && (_ae.tagName === 'INPUT' || _ae.tagName === 'TEXTAREA' || _ae.isContentEditable)) return; // 正在输入，等下次
+              global.location.reload();
+            }
+            _lastHash = _h;
+          }).catch(function () {});
+        } catch (e) {}
+      }, 150000);
+    } catch (e) {}
+  })();
 
 })(window);

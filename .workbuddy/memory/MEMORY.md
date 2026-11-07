@@ -15,7 +15,8 @@
 
 ## 部署 & 数据坑（高频）
 - **git**：大批量 add 会 mmap failed → 分 2-3 批提交；命令行 push 不可用（GCM 无凭据）→ **用户在 GitHub Desktop 点 Push origin**。gitignore 含 *.pptx/_preview*/docx_media/nul/work/。
-- **线上更新唯一路径**：本地 `server/_run_sync_once.js` 生成 js/real-data.js → commit+push → CF Pages 构建 → 递增 sw.js CACHE_VERSION。`/js/real-data.js` 仓库静态优先，KV 兜底；「同步飞书」按钮写 KV 不影响线上。
+- **主数据(REAL_DATA)加载 = KV 优先 + 静态兜底（2026-11-08 落地，v37）**：`js/data.js` 在读取 `window.REAL_DATA` 之前，用**同步 XHR** 从 `functions/api/data.js`(GET，env.DATA 读 `real-data.js`) 拉最新数据并间接 eval 覆盖（本地 localhost 跳过，避免阻塞）；SW 已网络优先，`/api/data` 每次取最新不被缓存。→ **「同步飞书」按钮(POST /api/sync 写 KV) 现在真的能让网页更新**：按钮成功后 `location.reload()`，重载时 data.js 拉 KV 最新。另加 150s 轮询：检测 KV 数据指纹变化且无输入框聚焦时自动 `location.reload()`（飞书同步后最多 2~3 分钟自动刷新）。旧「本地生成 real-data.js→commit+push→构建」路径仍可作为兜底。
+- ⚠️ 旧路径误区（已修正）：之前以为 `/js/real-data.js` 仓库静态优先、KV 兜底、「同步飞书」按钮不影响线上——错。现在 KV 优先覆盖静态。若用户曾用页面「上传 Excel」(localStorage `dlooda_uploaded_data`) 该数据仍优先于 KV/静态，可能掩盖飞书更新，需清 localStorage 才能还原。
 - 飞书时间戳按 UTC+8 解析；orderCount 是字符串、fulfillMethod/category/creatorType 是数组，判断前先归一化。
 - `node server/sync.js` 不会同步；用 `_run_sync_once.js` 或线上 POST /api/sync。
 - 改前端必递增 sw.js CACHE_VERSION。
