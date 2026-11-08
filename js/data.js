@@ -1083,10 +1083,12 @@
     var levelOf = {};
     D.creators.forEach(function (c) { levelOf[c.name] = c.official || '未填'; });
     var by = {};
-    samples.forEach(function (s) {
-      var lv = levelOf[s.creator] || '未填';
+    function bucket(lv) {
       if (!by[lv]) by[lv] = { level: lv, rows: 0, fulfilled: 0, video: 0, ordered: 0, orders: 0, materials: 0, creators: {}, orderedCreators: {} };
-      var a = by[lv];
+      return by[lv];
+    }
+    samples.forEach(function (s) {
+      var a = bucket(levelOf[s.creator] || '未填');
       a.rows++;
       a.creators[s.creator] = true;
       var m = s.fulfillMethod || '';
@@ -1094,8 +1096,20 @@
       if (m === '视频') a.video++;
       var oc = parseInt(s.orderCount, 10) || 0;
       if (oc > 0) { a.ordered++; a.orders += oc; a.orderedCreators[s.creator] = true; }
-      if (s.videos) a.materials += s.videos.length;
     });
+
+    // 素材量：与「视频管理 · 素材看板」同源同口径 —— 取视频记录按【发布时间】落在区间内、
+    // SKU 匹配的条数（不去重），而不是寄样行内嵌视频数。否则两处永远对不上（64 vs 41）。
+    var skuKey = skuFilter ? normSku(skuFilter) : '';
+    getVideos().forEach(function (v) {
+      var day = normVideoDate(v.postTime).slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
+      if (skuKey && normSku(v.sku) !== skuKey) return;
+      if (startDate && day < startDate) return;
+      if (endDate && !withinEnd(day, endDate)) return;
+      bucket(levelOf[v.creator] || '未填').materials++;
+    });
+
     return Object.keys(by).map(function (k) {
       var a = by[k];
       return {
@@ -1638,7 +1652,8 @@
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
       if (skuKey && v.sku !== skuKey) return;
       if (startDate && day < startDate) return;
-      if (endDate && day > endDate) return;
+      // 与全站一致：结束日选 15 号时当天归下月（见 withinEnd）
+      if (endDate && !withinEnd(day, endDate)) return;
       total++;
       if (!byDay[day]) byDay[day] = { date: day, count: 0, creators: {} };
       byDay[day].count++;

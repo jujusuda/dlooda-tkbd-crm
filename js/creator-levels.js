@@ -9,9 +9,9 @@
   'use strict';
 
   var Data = global.DloodaData;
-  var App = global.App;
+  var App = global.DloodaApp || global.App;   // ⚠️ app.js 导出的是 window.DloodaApp，不是 App
   var host = document.getElementById('creator-levels');
-  if (!Data || !host) return;
+  if (!Data || !App || !host) return;
 
   var LEVELS = ['L0-1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7'];
   var ORD = { 'L0-1': 0, 'L2': 1, 'L3': 2, 'L4': 3, 'L5': 4, 'L6': 5, 'L7': 6 };
@@ -50,7 +50,17 @@
       if (m === '视频' || m.indexOf('直播') >= 0) a.fulfilled++;
       if (m === '视频') a.video++;
       if (orders(s) > 0) { a.orderedRows++; a.orders += orders(s); }
-      if (s.videos) a.materials += s.videos.length;
+    });
+
+    // 素材量：与「视频管理 · 素材看板」同源——按【发布时间】统计视频记录条数（不去重），
+    // 而不是寄样行内嵌视频数（否则两处对不上：素材看板 64 vs 层级表 41）。
+    Data.getVideos().forEach(function (v) {
+      var a = map[v.creator];
+      if (!a) return;
+      var day = String(v.postTime || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
+      if (state.sku && normSku(v.sku) !== state.sku) return;
+      a.materials++;
     });
 
     return Object.keys(map).map(function (k) {
