@@ -34,13 +34,13 @@
       <div class="page-header">
         <div class="page-header__left">
           <h1 class="page-header__title">数据复盘</h1>
-          <p class="page-header__subtitle">SKU 出单率趋势 · 升降归因 · 通过率</p>
+          <p class="page-header__subtitle">SKU 履约率趋势 · 升降归因 · 通过率（出单率见顶部区间卡片）</p>
         </div>
       </div>
 
       <!-- 视图切换 -->
       <div class="view-tabs" id="report-view-tabs">
-        <button class="view-tab active" data-view="trend">SKU 出单率趋势</button>
+        <button class="view-tab active" data-view="trend">SKU 履约率趋势</button>
         <button class="view-tab" data-view="attribution">升降归因</button>
         <button class="view-tab" data-view="passrate">通过率</button>
       </div>
@@ -48,15 +48,15 @@
       <!-- 筛选栏 -->
       <div id="report-filter-bar"></div>
 
-      <!-- ========== 视图1: SKU 出单率趋势 ========== -->
+      <!-- ========== 视图1: SKU 履约率趋势（出单÷履约达人；出单率见顶部区间卡片） ========== -->
       <div id="view-trend" class="view-panel">
         <div class="stat-grid" id="trend-metrics"></div>
         <div class="section">
-          <div class="section__header"><h2 class="section__title">SKU 月度出单率趋势</h2></div>
+          <div class="section__header"><h2 class="section__title">SKU 月度履约率趋势</h2></div>
           <div class="card"><div id="sku-trend-chart"></div></div>
         </div>
         <div class="section">
-          <div class="section__header"><h2 class="section__title">出单率升降榜</h2></div>
+          <div class="section__header"><h2 class="section__title">履约率升降榜</h2></div>
           <div class="card"><div id="sku-change-ranking"></div></div>
         </div>
       </div>

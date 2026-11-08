@@ -603,10 +603,32 @@
     return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) + m[4];
   }
 
+  // 「全量视频」表完整性守卫：该表是用户新建的，可能尚未导全。
+  // 实测 2026-11-08 授权后首查只有 26 条 / 1 个达人 / 全在 3~6 月，9/15~10/15 窗口 0 条。
+  // 若此时直接用它当「有视频达人」分母，十月份分母会塌成 0，出单率全部变 0%（页面看似正常实则全废）。
+  // 因此：当表的记录数远少于寄样内嵌视频数（<20%）时，判定为「未导全」，回退到内嵌视频，
+  // 保证线上数字不因半张表而退化。表导全后自动启用，无需再改代码。
+  var VIDEO_TABLE_MIN_RATIO = 0.2;   // 至少要达到寄样内嵌视频数的 20%
+  var VIDEO_TABLE_MIN_ROWS = 100;    // 且绝对条数不少于 100（全量表不可能只有几十条）
+  function fullVideoTableReady(all) {
+    if (!all || !all.length) return false;
+    var embedded = 0;
+    D.samples.forEach(function (s) { embedded += (s.videos || []).length; });
+    var threshold = Math.max(VIDEO_TABLE_MIN_ROWS, (embedded || 0) * VIDEO_TABLE_MIN_RATIO);
+    return all.length >= threshold;
+  }
+
+  // 当前实际使用的视频数据源，供页面/排查显示（'全量视频表' 或 '寄样内嵌视频'）
+  function getVideoSource() {
+    var all = (D.videos && D.videos.length) ? D.videos : null;
+    return all && fullVideoTableReady(all) ? '全量视频表' : '寄样内嵌视频';
+  }
+
   // 视频数据：优先使用飞书「全量视频」表（REAL_DATA.videos，含所有达人的视频记录）；
-  // 该表未同步（旧数据/本地预览）时回退到寄样记录内嵌的视频，保证不中断。
+  // 该表未同步、未导全（旧数据/本地预览）时回退到寄样记录内嵌的视频，保证不中断。
   function getVideos() {
     var all = (D.videos && D.videos.length) ? D.videos : null;
+    if (all && !fullVideoTableReady(all)) all = null;
     if (all) {
       return all.map(function (v) {
         return {
@@ -2775,6 +2797,7 @@
     getTaskStats: getTaskStats,
     // 视频
     getVideos: getVideos,
+    getVideoSource: getVideoSource,
     getVideosByStatus: function () { return getVideos(); },  // 兼容
     getVideosByCreator: getVideosByCreator,
     getVideosBySKU: getVideosBySKU,
