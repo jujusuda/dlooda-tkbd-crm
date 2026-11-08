@@ -285,10 +285,12 @@
     if (!f) return '';
     var v = f.video, c = f.creator, m = f.multi;
 
-    function row(label, a, b) {
+    // 支持任意数量的单元格（label 之后的所有参数按顺序拼进同一行）
+    function row(label) {
+      var cells = Array.prototype.slice.call(arguments, 1).join('');
       return '<tr style="border-bottom:1px solid var(--border-1);">'
         + '<td style="padding:7px 4px;font-weight:600;color:var(--text-1);">' + label + '</td>'
-        + a + b + '</tr>';
+        + cells + '</tr>';
     }
     function td(val, color, bold) {
       return '<td style="padding:7px 4px;text-align:center;color:' + (color || 'var(--text-2)') + ';' + (bold ? 'font-weight:700;' : '') + '">' + val + '</td>';
@@ -315,7 +317,6 @@
     } else {
       html += '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
         + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
-        + '<th style="padding:7px 4px;text-align:left;color:var(--text-3);font-weight:600;">类型</th>'
         + '<th style="padding:7px 4px;text-align:left;color:var(--text-3);font-weight:600;">类型</th>'
         + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">视频条数</th>'
         + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">条数占比</th>'
