@@ -219,10 +219,14 @@ export async function syncFromFeishu(env) {
   const keys = ['daily', 'pending', 'invites', 'tasks', 'offline', 'products', 'videos'];
   const tables = {};
   for (const k of keys) {
-    const tid = f.tables[k] && f.tables[k].tableId;
+    const tcfg = f.tables[k] || {};
+    const tid = tcfg.tableId;
     // 占位 tableId（含 REPLACE）说明该表尚未在 config.json 配置，跳过以免破坏整次同步
     if (!tid || String(tid).indexOf('REPLACE') >= 0) { tables[k] = []; continue; }
-    tables[k] = await listRecords(token, f.baseAppToken, tid);
+    // 允许单表指定独立 appToken：新增的「全量视频」表可能位于另一个多维表格；
+    // 未配置（或含 REPLACE）时回退到主 base 的 token，完全向后兼容现有 6 张表。
+    const perTable = tcfg.appToken && String(tcfg.appToken).indexOf('REPLACE') < 0 ? tcfg.appToken : null;
+    tables[k] = await listRecords(token, perTable || f.baseAppToken, tid);
   }
   const built = buildFromTables(tables, { feishu: f });
   const js = generateRealDataJs(built.data, built.stats);

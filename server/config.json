@@ -57,7 +57,9 @@
       },
       "videos": {
         "_tableName": "全量视频",
+        "_note": "tableId 从飞书表链接 /base/{appToken}?table={tableId} 里取。若此表不在主多维表格（FEISHU_BASE_TOKEN 指向的 base），把链接里的 {appToken} 填到下面的 appToken；同一 base 则留空即可。",
         "tableId": "REPLACE_WITH_全量视频_TABLE_ID",
+        "appToken": "",
         "fields": {
           "creator": "达人名称",
           "sku": "SKU",
