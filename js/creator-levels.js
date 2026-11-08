@@ -37,8 +37,22 @@
     var meta = {};
     Data.getCreators().forEach(function (c) { meta[c.name] = c; });
 
+    // 等级取值（2026-11-08 用户定）：同一达人多条寄样的官方等级可能不同，
+    // 一律以【最新寄样记录】的官方等级为准，其余寄样行也按这个等级计。
+    var allSamples = Data.getSamples();
+    var latest = {};
+    allSamples.forEach(function (s) {
+      if (!s.creator) return;
+      var t = String(s.sampleTime || '');
+      if (!/^\d{4}-\d{2}-\d{2}/.test(t)) return;
+      var cur = latest[s.creator];
+      if (!cur) { latest[s.creator] = { t: t, level: s.official || '' }; return; }
+      if (t > cur.t) latest[s.creator] = { t: t, level: s.official || cur.level };
+      else if (!cur.level && s.official) cur.level = s.official;
+    });
+
     var map = {};
-    Data.getSamples().forEach(function (s) {
+    allSamples.forEach(function (s) {
       if (!s.creator) return;
       if (state.sku && normSku(s.sku) !== state.sku) return;
       var a = map[s.creator] || (map[s.creator] = {
@@ -65,7 +79,7 @@
 
     return Object.keys(map).map(function (k) {
       var a = map[k], c = meta[k] || {};
-      a.level = c.official || '';
+      a.level = (latest[k] && latest[k].level) || c.official || '';
       a.stars = c.stars || '';
       a.fulfillRate = a.rows > 0 ? Math.round(a.fulfilled / a.rows * 1000) / 10 : 0;
       a.orderRate = a.video > 0 ? Math.round(a.orderedRows / a.video * 1000) / 10 : 0;

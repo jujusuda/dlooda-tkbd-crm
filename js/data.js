@@ -1080,15 +1080,30 @@
 
   function getLevelAnalysis(startDate, endDate, skuFilter) {
     var samples = filterSamples(D.samples, startDate, endDate, skuFilter);
-    var levelOf = {};
-    D.creators.forEach(function (c) { levelOf[c.name] = c.official || '未填'; });
+    // 等级取值（2026-11-08 用户定）：同一达人多条寄样的官方等级可能不同，
+    // 一律以【最新寄样记录】的官方等级为准，其余寄样行也按这个等级计。
+    var latest = {};
+    D.samples.forEach(function (s) {
+      if (!s.creator) return;
+      var t = String(s.sampleTime || '');
+      if (!/^\d{4}-\d{2}-\d{2}/.test(t)) return;
+      var cur = latest[s.creator];
+      if (!cur) { latest[s.creator] = { t: t, level: s.official || '' }; return; }
+      if (t > cur.t) latest[s.creator] = { t: t, level: s.official || cur.level };
+      else if (!cur.level && s.official) cur.level = s.official;
+    });
+    var regLevel = {};
+    D.creators.forEach(function (c) { regLevel[c.name] = c.official || ''; });
+    function levelOf(name) {
+      return (latest[name] && latest[name].level) || regLevel[name] || '未填';
+    }
     var by = {};
     function bucket(lv) {
       if (!by[lv]) by[lv] = { level: lv, rows: 0, fulfilled: 0, video: 0, ordered: 0, orders: 0, materials: 0, creators: {}, orderedCreators: {} };
       return by[lv];
     }
     samples.forEach(function (s) {
-      var a = bucket(levelOf[s.creator] || '未填');
+      var a = bucket(levelOf(s.creator));
       a.rows++;
       a.creators[s.creator] = true;
       var m = s.fulfillMethod || '';
@@ -1107,7 +1122,7 @@
       if (skuKey && normSku(v.sku) !== skuKey) return;
       if (startDate && day < startDate) return;
       if (endDate && !withinEnd(day, endDate)) return;
-      bucket(levelOf[v.creator] || '未填').materials++;
+      bucket(levelOf(v.creator)).materials++;
     });
 
     return Object.keys(by).map(function (k) {
