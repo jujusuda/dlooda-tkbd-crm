@@ -3,7 +3,7 @@
    PWA 离线缓存 · 应用外壳预缓存
    ================================================================ */
 
-var CACHE_VERSION = 'dlooda-tkbd-v37';
+var CACHE_VERSION = 'dlooda-tkbd-v38';
 
 /* 需要预缓存的应用外壳文件 */
 var APP_SHELL = [
@@ -105,6 +105,26 @@ self.addEventListener('fetch', function (event) {
         });
         return response;
       })
+    );
+    return;
+  }
+
+  // ===== 实时数据：js/real-data.js 由 KV（/api/data）提供，而非部署时的静态文件 =====
+  // 历史坑：data.js 曾用「同步 XHR」拉 /api/data，但受 SW 控制的页面无法用同步 XHR
+  // （SW 的异步 respondWith 无法满足同步请求）→ 请求被丢弃 → 静默回退到静态旧文件（停在10月）。
+  // 改为在此用「异步 fetch」拦截 real-data.js 请求并改取 /api/data：<script> 标签加载即
+  // 同步拿到最新 KV 数据（异步 fetch 在 SW 下正常工作）。本地开发直连静态文件，不走 /api/data。
+  if ((url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') &&
+      /\/js\/real-data\.js(\?|$)/.test(url.pathname)) {
+    event.respondWith(
+      fetch('/api/data', { cache: 'no-store' }).then(function (resp) {
+        if (resp && resp.ok) {
+          var copy = resp.clone();
+          caches.open(CACHE_VERSION).then(function (c) { c.put(request, copy).catch(function () {}); });
+          return resp;
+        }
+        return fetch(request); // KV 为空/失败 → 回退部署的静态 real-data.js
+      }).catch(function () { return fetch(request); })
     );
     return;
   }
