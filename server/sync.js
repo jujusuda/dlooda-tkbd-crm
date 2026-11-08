@@ -69,6 +69,26 @@ function getField(rec, fmap, key) {
   return val === undefined ? null : val;
 }
 
+// 「全量视频」表列名尚未经 API 核实（高级权限未开）：从截图看日期列叫「发布时间」，
+// 而 config 写的是「视频时间」。用候选列名依次探测（与 functions/lib/sync.mjs 保持一致）。
+const VID_FIELD_CANDIDATES = {
+  creator: ['达人名称', '达人', 'AI 达人名称', 'creator', 'Creator'],
+  sku: ['SKU', 'sku', '款号', '产品SKU'],
+  url: ['视频链接', '链接', '视频地址', 'url'],
+  date: ['发布时间', '视频时间', '视频发布时间', '日期', 'date'],
+};
+function getVidField(rec, fmap, key) {
+  const names = [];
+  const configured = fmap && fmap[key];
+  if (configured) names.push(configured);
+  (VID_FIELD_CANDIDATES[key] || []).forEach((n) => { if (names.indexOf(n) < 0) names.push(n); });
+  for (const n of names) {
+    const val = rec.fields ? rec.fields[n] : undefined;
+    if (val !== undefined && val !== null && val !== '') return val;
+  }
+  return null;
+}
+
 function num(v) {
   if (v === null || v === undefined || v === '') return null;
   const n = Number(v);
@@ -232,13 +252,13 @@ function buildFromTables(tables, cfg) {
   const vidF = F.videos && F.videos.fields;
   const videos = vidF
     ? vidRaw.map((rec) => {
-        const creator = getField(rec, vidF, 'creator');
+        const creator = getVidField(rec, vidF, 'creator');
         if (!creator) return null;
         return {
           creator: String(creator).trim(),
-          sku: normSku(getField(rec, vidF, 'sku')),
-          url: extractUrl(getField(rec, vidF, 'url')),
-          date: parseDate(getField(rec, vidF, 'date')),
+          sku: normSku(getVidField(rec, vidF, 'sku')),
+          url: extractUrl(getVidField(rec, vidF, 'url')),
+          date: parseDate(getVidField(rec, vidF, 'date')),
         };
       }).filter(Boolean)
     : [];
