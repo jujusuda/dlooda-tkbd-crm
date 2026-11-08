@@ -408,7 +408,7 @@
     html += '<div class="card" style="margin-bottom:16px;">'
       + '<div class="card__header"><h3 class="card__title">每日素材量' + (m.daily.length > 30 ? '（最近 30 天有素材日）' : '') + '</h3></div>'
       + '<div style="padding:8px 4px;">' + renderMaterialLineChart(dailySlice, 'date', 'count', 'var(--c-info)', ' 条素材')
-      + '<div style="font-size:11px;color:var(--text-3);margin-top:6px;">按视频发布时间统计；达人数（寄样行数）口径与日报一致</div></div>'
+      + '<div style="font-size:11px;color:var(--text-3);margin-top:6px;">按视频发布时间统计；达人数=发布该日视频的去重达人（数据源：飞书「全量视频」表）</div></div>'
       + '</div>';
 
     // SKU 素材量排行

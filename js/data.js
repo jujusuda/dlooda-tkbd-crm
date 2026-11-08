@@ -580,15 +580,44 @@
 
   /* ========== 视频数据（从寄样记录提取） ========== */
 
+  // SKU 归一化：飞书 SKU 可能是数字、文本、单选/多选（数组或 {text}）对象。
+  // 下游 getVideoCreators / getMaterialDashboard 用严格 !== 比较 sku，类型不一致会静默
+  // 把该 SKU 的视频全部过滤掉。统一成去空格字符串，作为前端统一口径（防御 KV 旧快照）。
+  function normSku(v) {
+    if (v === null || v === undefined) return '';
+    if (Array.isArray(v)) return v.length ? normSku(v[0]) : '';
+    if (typeof v === 'object') return normSku(v.text != null ? v.text : (v.value != null ? v.value : v.name));
+    return String(v).trim();
+  }
+
+  // 视频数据：优先使用飞书「全量视频」表（REAL_DATA.videos，含所有达人的视频记录）；
+  // 该表未同步（旧数据/本地预览）时回退到寄样记录内嵌的视频，保证不中断。
   function getVideos() {
+    var all = (D.videos && D.videos.length) ? D.videos : null;
+    if (all) {
+      return all.map(function (v) {
+        return {
+          creator: v.creator,
+          official: null,
+          stars: null,
+          sku: normSku(v.sku),
+          color: null,
+          url: v.url,
+          postTime: v.date,
+          sampleTime: null,
+          fulfillMethod: null,
+          category: null,
+        };
+      });
+    }
     var videos = [];
     D.samples.forEach(function (s) {
-      s.videos.forEach(function (v, idx) {
+      s.videos.forEach(function (v) {
         videos.push({
           creator: s.creator,
           official: s.official,
           stars: s.stars,
-          sku: s.sku,
+          sku: normSku(s.sku),
           color: s.color,
           url: v.url,
           postTime: v.time,
@@ -599,6 +628,22 @@
       });
     });
     return videos;
+  }
+
+  // 有视频链接达人集合：在 [start,end] 窗口内、匹配 sku（可空）的达人中，存在视频记录者。
+  // 数据源为「全量视频」表（getVideos），空时回退寄样内嵌视频。无日期记录（含回退口径）一律计入。
+  function getVideoCreators(sku, start, end) {
+    var set = {};
+    var skuKey = sku ? normSku(sku) : '';
+    getVideos().forEach(function (v) {
+      if (skuKey && v.sku !== skuKey) return;
+      var day = (v.postTime || '').slice(0, 10);
+      if (!day) { set[v.creator] = true; return; }
+      if (start && day < start) return;
+      if (end && day > end) return;
+      set[v.creator] = true;
+    });
+    return set;
   }
 
   function getVideosByCreator(name) {
@@ -1062,22 +1107,16 @@
   // 视频深度分析（支持筛选）
   function getVideoAnalytics(startDate, endDate, sku) {
     var filteredSamples = filterSamples(D.samples, startDate, endDate, sku);
-    var videos = [];
-    filteredSamples.forEach(function (s) {
-      s.videos.forEach(function (v, idx) {
-        videos.push({
-          creator: s.creator,
-          official: s.official,
-          stars: s.stars,
-          sku: s.sku,
-          color: s.color,
-          url: v.url,
-          postTime: v.time,
-          sampleTime: s.sampleTime,
-          fulfillMethod: s.fulfillMethod,
-          category: s.category,
-        });
-      });
+    // 视频计数改从「全量视频」表取（getVideos 优先），窗口/sku 过滤保持一致
+    var skuKey = sku ? normSku(sku) : '';
+    var videos = getVideos().filter(function (v) {
+      if (skuKey && v.sku !== skuKey) return false;
+      var day = (v.postTime || '').slice(0, 10);
+      if (day) {
+        if (startDate && day < startDate) return false;
+        if (endDate && day > endDate) return false;
+      }
+      return true;
     });
     var bySKU = {};
     var byColor = {};
@@ -1115,13 +1154,12 @@
         var d = getSKUDetail(entry[0]);
         // 该SKU的样品
         var skuSamples = filteredSamples.filter(function (s) { return s.sku === entry[0]; });
-        var videoCreators = {};      // 有视频达人（实际发了视频的达人，分母用这个）
-        var orderedCreators = {};    // 出单达人（有视频且出单）
+        // 有视频达人：来自「全量视频」表（分母用这个）
+        var videoCreators = getVideoCreators(entry[0], startDate, endDate);
+        // 出单达人：有视频且出单，与分母取交集，保证出单率 ≤ 100%
+        var orderedCreators = {};
         skuSamples.forEach(function (s) {
-          if (s.videos && s.videos.some(function (v) { return v && v.url && String(v.url).trim(); })) {
-            videoCreators[s.creator] = true;
-          }
-          if (s.orderCount && s.orderCount > 0) orderedCreators[s.creator] = true;
+          if (s.orderCount && s.orderCount > 0 && videoCreators[s.creator]) orderedCreators[s.creator] = true;
         });
         var fCount = Object.keys(videoCreators).length;
         var oCount = Object.keys(orderedCreators).length;
@@ -1177,13 +1215,10 @@
       .slice(0, 10);
 
     // 整体出单率（达人维度：出单达人数 / 有视频达人数）
-    var allVideoCreators = {};
+    var allVideoCreators = getVideoCreators(sku, startDate, endDate);
     var allOrderedCreators = {};
     filteredSamples.forEach(function (s) {
-      if (s.videos && s.videos.some(function (v) { return v && v.url && String(v.url).trim(); })) {
-        allVideoCreators[s.creator] = true;
-      }
-      if (s.orderCount && s.orderCount > 0) allOrderedCreators[s.creator] = true;
+      if (s.orderCount && s.orderCount > 0 && allVideoCreators[s.creator]) allOrderedCreators[s.creator] = true;
     });
     var totalFulfilledCreators = Object.keys(allVideoCreators).length;
     var totalOrderedCreators = Object.keys(allOrderedCreators).length;
@@ -1433,6 +1468,13 @@
       var d = getSKUDetail(entry[0]);
       var fulfilledCreatorsCount = Object.keys(entry[1].fulfilledCreators || {}).length;
       var orderedCreatorsCount = Object.keys(entry[1].orderedCreators || {}).length;
+      // 视频出单率 = 出单达人 ÷ 有视频链接达人（分母来自「全量视频」表，与复盘页口径一致）
+      // 必须在 delete entry[1].orderedCreators 之前取原始出单达人集合，否则恒为 0
+      var vidC = getVideoCreators(entry[0], startDate, endDate);
+      var videoCreatorsCount = Object.keys(vidC).length;
+      var videoOrderedCount = 0;
+      Object.keys(entry[1].orderedCreators || {}).forEach(function (c) { if (vidC[c]) videoOrderedCount++; });
+      var videoOrderRate = videoCreatorsCount > 0 ? Math.round(videoOrderedCount / videoCreatorsCount * 1000) / 10 : 0;
       delete entry[1].fulfilledCreators;
       delete entry[1].orderedCreators;
       return Object.assign({
@@ -1445,6 +1487,8 @@
         fulfilledCreators: fulfilledCreatorsCount,
         orderedCreators: orderedCreatorsCount,
         orderRate: fulfilledCreatorsCount > 0 ? Math.round(orderedCreatorsCount / fulfilledCreatorsCount * 1000) / 10 : 0,
+        videoCreators: videoCreatorsCount,
+        videoOrderRate: videoOrderRate,
       }, entry[1]);
     }).sort(function (a, b) {
       // 先按定位档位（爆品→销售→测品），同档按寄样量降序
@@ -1507,63 +1551,48 @@
      口径与日报「今日登记视频」一致：素材量 = 视频条数，达人数 = 含当日视频的寄样行数
      ================================================================ */
   function getMaterialDashboard(startDate, endDate, sku) {
-    var byDay = {};   // date -> { count, rows, creators }
-    var byMonth = {}; // month -> { count, rows }
-    var bySKU = {};   // sku -> { count, rows }
+    var byDay = {};    // date -> { count, creators }
+    var byMonth = {};  // month -> { count, creators }
+    var bySKU = {};    // sku -> { count, creators }
     var total = 0;
+    var skuKey = sku ? normSku(sku) : '';
 
-    D.samples.forEach(function (s) {
-      if (!s.videos || !s.videos.length) return;
-      if (sku && s.sku !== sku) return;
-      var dayHit = {}; // 当日命中标记（每行每日只计 1）
-      s.videos.forEach(function (v) {
-        var t = v.time || '';
-        if (!t) return;
-        var day = t.slice(0, 10);
-        if (startDate && day < startDate) return;
-        if (endDate && day > endDate) return;
-        total++;
-        if (!byDay[day]) byDay[day] = { date: day, count: 0, rows: 0, creators: {} };
-        byDay[day].count++;
-        byDay[day].creators[s.creator] = true;
-        if (!dayHit[day]) { dayHit[day] = true; byDay[day].rows++; }
-        var month = day.slice(0, 7);
-        if (!byMonth[month]) byMonth[month] = { month: month, count: 0, rows: 0 };
-        byMonth[month].count++;
-        if (bySKU[s.sku || '未知']) {
-          bySKU[s.sku || '未知'].count++;
-        } else {
-          bySKU[s.sku || '未知'] = { sku: s.sku || '未知', count: 1, rows: 0 };
-        }
-      });
-      // 按行聚合：该寄样行在每个月/每个SKU上各计 1 行
-      var monthHit = {}, skuHit = {};
-      s.videos.forEach(function (v) {
-        var t = v.time || '';
-        if (!t) return;
-        var day = t.slice(0, 10);
-        if (startDate && day < startDate) return;
-        if (endDate && day > endDate) return;
-        var month = day.slice(0, 7);
-        if (!monthHit[month]) { monthHit[month] = true; byMonth[month].rows++; }
-        var k = s.sku || '未知';
-        if (!skuHit[k]) { skuHit[k] = true; bySKU[k].rows++; }
-      });
+    // 数据源：飞书「全量视频」表（getVideos 优先），未同步时回退寄样内嵌视频
+    getVideos().forEach(function (v) {
+      var t = v.postTime || '';
+      var day = t.slice(0, 10);
+      if (!day) return;
+      if (skuKey && v.sku !== skuKey) return;
+      if (startDate && day < startDate) return;
+      if (endDate && day > endDate) return;
+      total++;
+      if (!byDay[day]) byDay[day] = { date: day, count: 0, creators: {} };
+      byDay[day].count++;
+      byDay[day].creators[v.creator] = true;
+      var month = day.slice(0, 7);
+      if (!byMonth[month]) byMonth[month] = { month: month, count: 0, creators: {} };
+      byMonth[month].count++;
+      byMonth[month].creators[v.creator] = true;
+      var k = v.sku || '未知';
+      if (!bySKU[k]) bySKU[k] = { sku: k, count: 0, creators: {} };
+      bySKU[k].count++;
+      bySKU[k].creators[v.creator] = true;
     });
 
     var daily = Object.keys(byDay).sort().map(function (d) {
       return {
         date: d,
         count: byDay[d].count,
-        rows: byDay[d].rows,
+        rows: Object.keys(byDay[d].creators).length,
         creatorCount: Object.keys(byDay[d].creators).length,
       };
     });
     var monthly = Object.keys(byMonth).sort().map(function (m) {
-      return { month: m, count: byMonth[m].count, rows: byMonth[m].rows };
+      return { month: m, count: byMonth[m].count, rows: Object.keys(byMonth[m].creators).length };
     });
     var skuRanking = Object.keys(bySKU).map(function (k) {
-      return bySKU[k];
+      var o = bySKU[k];
+      return { sku: o.sku, count: o.count, rows: Object.keys(o.creators).length };
     }).sort(function (a, b) { return b.count - a.count; });
 
     // 汇总指标
@@ -2315,15 +2344,15 @@
     var samples = D.samples;
     if (sku) samples = samples.filter(function (s) { return s.sku === sku; });
     if (startDate || endDate) samples = samples.filter(function (s) { return s.sampleTime && attrInRange(s.sampleTime, { start: startDate, end: endDate }); });
-    // 出单率 = 出单达人 ÷ 有视频链接达人（实际发了视频链接的达人）
-    var videoCreators = {}, ordered = {};
-    samples.forEach(function (s) {
-      if (s.videos && s.videos.some(function (v) { return v && v.url && String(v.url).trim(); })) {
-        videoCreators[s.creator] = true;
-      }
-      if (s.orderCount && s.orderCount > 0) ordered[s.creator] = true;
-    });
-    var f = Object.keys(videoCreators).length, o = Object.keys(ordered).length;
+    // 出单达人（样本维度：orderCount > 0）
+    var ordered = {};
+    samples.forEach(function (s) { if (s.orderCount && s.orderCount > 0) ordered[s.creator] = true; });
+    // 有视频链接达人：来自「全量视频」表（getVideoCreators），分母真实
+    var videoCreators = getVideoCreators(sku, startDate, endDate);
+    // 出单达人限制在有视频达人内，保证出单率 ≤ 100%
+    var o = 0;
+    Object.keys(ordered).forEach(function (c) { if (videoCreators[c]) o++; });
+    var f = Object.keys(videoCreators).length;
     return { sampleCount: samples.length, fulfilledCreators: f, orderedCreators: o, orderRate: f > 0 ? Math.round(o / f * 1000) / 10 : 0 };
   }
 

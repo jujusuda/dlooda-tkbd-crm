@@ -9,7 +9,8 @@
 - **佣金**（data.js SKU_DETAILS）：2178=15+10、2190=16+10、2722=11+8、2757=15+8、2789=12+8、2189=13+8、28173=15+10。
 - **SKU 排序**：爆品→销售→测品→撤退。
 - **复投口径（8-09 定）**：声明=「已推XXXX」；成功=声明后同SKU再寄样且「通过」非空；观察期30天；双口径（按SKU默认/按达人）dashboard 顶部切换。
-- **出单率口径（9-10 定）**：出单达人÷有视频达人；有视频 = videos 里 `url` 非空（非 videos.length>0）；出单=orderCount>0。三端必须一致。
+- **两个率口径（11-08 重定，勿混）**：**履约率 = 出单达人 ÷ 履约达人**（履约方式=视频/直播，fulfillMethod 判断）；**出单率 = 出单达人 ÷ 有视频链接达人**。出单=orderCount>0，达人去重。产品分析表两列并存（`orderRate`=履约率、`videoOrderRate`=出单率）；出单达人须与分母取交集，保证 ≤100%。
+- **「有视频达人」分母 & 素材量 = 飞书「全量视频」表（11-08 新增第7张表）**：`REAL_DATA.videos=[{creator,sku,url,date}]`，`getVideos()` 优先用它、无则回退 samples 内嵌 videos。素材看板按 `date` 统计、达人去重。旧口径（videos url 非空）因寄样表内嵌视频几乎为空导致出单率 >100%，已废弃。⚠️ `server/config.json` 的 `videos.tableId` 仍是占位符 `REPLACE_WITH_全量视频_TABLE_ID`，**必须填真实 id 才生效**；占位时 sync 会跳过该表（含 REPLACE 即跳过）不破坏整次同步。
 - **PPT 权威数据源（9-13 定）**：`scripts/_authoritative_data.json`（用户文字表）；绝不用 real-data.js/_correct_sku_data.json 填 PPT；看不到图片数字，必须用户贴文字。
 - **PPT 月度窗口非自然月**：如「8月」= 7/15-8/15。
 
@@ -17,7 +18,7 @@
 - **git**：大批量 add 会 mmap failed → 分 2-3 批提交；命令行 push 不可用（GCM 无凭据）→ **用户在 GitHub Desktop 点 Push origin**。gitignore 含 *.pptx/_preview*/docx_media/nul/work/。
 - **主数据(REAL_DATA)加载 = KV 优先 + 静态兜底（2026-11-08 落地，v37）**：`js/data.js` 在读取 `window.REAL_DATA` 之前，用**同步 XHR** 从 `functions/api/data.js`(GET，env.DATA 读 `real-data.js`) 拉最新数据并间接 eval 覆盖（本地 localhost 跳过，避免阻塞）；SW 已网络优先，`/api/data` 每次取最新不被缓存。→ **「同步飞书」按钮(POST /api/sync 写 KV) 现在真的能让网页更新**：按钮成功后 `location.reload()`，重载时 data.js 拉 KV 最新。另加 150s 轮询：检测 KV 数据指纹变化且无输入框聚焦时自动 `location.reload()`（飞书同步后最多 2~3 分钟自动刷新）。旧「本地生成 real-data.js→commit+push→构建」路径仍可作为兜底。
 - ⚠️ 旧路径误区（已修正）：之前以为 `/js/real-data.js` 仓库静态优先、KV 兜底、「同步飞书」按钮不影响线上——错。现在 KV 优先覆盖静态。若用户曾用页面「上传 Excel」(localStorage `dlooda_uploaded_data`) 该数据仍优先于 KV/静态，可能掩盖飞书更新，需清 localStorage 才能还原。
-- 飞书时间戳按 UTC+8 解析；orderCount 是字符串、fulfillMethod/category/creatorType 是数组，判断前先归一化。
+- 飞书时间戳按 UTC+8 解析；orderCount 是字符串、fulfillMethod/category/creatorType 是数组，判断前先归一化。**SKU 也可能是数字/文本/单选/多选（数组或 {text}）**：`sync.mjs` 与 `data.js` 各有 `normSku()` 统一成去空格字符串；下游用严格 `!==` 比 sku，两侧都要归一化，否则该 SKU 的视频被静默全过滤（出单率恒 0）。实测仓库 real-data.js 的 sku 是字符串，混数字(2178)与字母数字(2F08)。
 - `node server/sync.js` 不会同步；用 `_run_sync_once.js` 或线上 POST /api/sync。
 - 改前端必递增 sw.js CACHE_VERSION。
 

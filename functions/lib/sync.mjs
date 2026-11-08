@@ -46,6 +46,16 @@ function num(v) {
   return isNaN(n) ? null : n;
 }
 
+// SKU 在飞书里可能是文本、数字、单选/多选（数组或 {text}）对象。
+// 前端 getVideoCreators/getMaterialDashboard 用严格 !== 比较 sku，类型不一致会
+// 把该 SKU 的视频全部过滤掉（出单率恒 0、素材看板 SKU 排行错乱）。此处统一成去空格字符串。
+function normSku(v) {
+  if (v === null || v === undefined) return '';
+  if (Array.isArray(v)) return v.length ? normSku(v[0]) : '';
+  if (typeof v === 'object') return normSku(v.text != null ? v.text : (v.value != null ? v.value : v.name));
+  return String(v).trim();
+}
+
 function buildFromTables(tables, cfgObj) {
   const F = cfgObj.feishu.tables;
   const dailyF = F.daily.fields;
@@ -160,11 +170,28 @@ function buildFromTables(tables, cfgObj) {
       })).filter((o) => o.creator || o.sku)
     : [];
 
-  const data = { creators, samples, pending, invites, tasks, skus, offline };
+  // 全量视频表：所有达人的视频记录（达人 / SKU / 视频链接 / 视频时间）。
+  // 用于「素材量（按日期）」与「有视频链接达人」分母，替代寄样表里几乎为空的内嵌视频。
+  const vidF = F.videos && F.videos.fields;
+  const videos = vidF
+    ? (tables.videos || []).map((rec) => {
+        const creator = getField(rec, vidF, 'creator');
+        if (!creator) return null;
+        return {
+          creator: String(creator).trim(),
+          sku: normSku(getField(rec, vidF, 'sku')),
+          url: extractUrl(getField(rec, vidF, 'url')),
+          date: parseDate(getField(rec, vidF, 'date')),
+        };
+      }).filter(Boolean)
+    : [];
+
+  const data = { creators, samples, pending, invites, tasks, skus, offline, videos };
   const stats = {
     creatorCount: creators.length, sampleCount: samples.length, pendingCount: pending.length,
     inviteCount: invites.length, taskCount: tasks.length, skuCount: skus.length,
     offlineCount: offline.length, videoCount: samples.reduce((s, x) => s + x.videos.length, 0),
+    videoRecordCount: videos.length,
   };
   return { data, stats };
 }
@@ -189,11 +216,13 @@ export async function syncFromFeishu(env) {
   };
   if (!f.appId || !f.appSecret || !f.baseAppToken) throw new Error('飞书凭据未配置（FEISHU_APP_ID/SECRET/BASE_TOKEN）');
   const token = await getTenantToken(f.appId, f.appSecret);
-  const keys = ['daily', 'pending', 'invites', 'tasks', 'offline', 'products'];
+  const keys = ['daily', 'pending', 'invites', 'tasks', 'offline', 'products', 'videos'];
   const tables = {};
   for (const k of keys) {
     const tid = f.tables[k] && f.tables[k].tableId;
-    tables[k] = tid ? await listRecords(token, f.baseAppToken, tid) : [];
+    // 占位 tableId（含 REPLACE）说明该表尚未在 config.json 配置，跳过以免破坏整次同步
+    if (!tid || String(tid).indexOf('REPLACE') >= 0) { tables[k] = []; continue; }
+    tables[k] = await listRecords(token, f.baseAppToken, tid);
   }
   const built = buildFromTables(tables, { feishu: f });
   const js = generateRealDataJs(built.data, built.stats);

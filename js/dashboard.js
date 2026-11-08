@@ -139,11 +139,11 @@
       return;
     }
 
-    // 按产品定位档位排序，同档按出单率降序
+    // 按产品定位档位排序，同档按出单率（出单÷有视频达人）降序
     products.sort(function (a, b) {
       var ta = Data.getSKUPositionTier(a.sku), tb = Data.getSKUPositionTier(b.sku);
       if (ta !== tb) return ta - tb;
-      return b.orderRate - a.orderRate;
+      return (b.videoOrderRate != null ? b.videoOrderRate : 0) - (a.videoOrderRate != null ? a.videoOrderRate : 0);
     });
 
     var html = '<div class="card" style="overflow-x:auto;"><table style="width:100%;font-size:12px;border-collapse:collapse;">'
@@ -152,22 +152,25 @@
       + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-2);">寄样</th>'
       + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--c-info);">有视频达人</th>'
       + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--pink-500);">出单达人</th>'
-      + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-3);">出单率</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">履约率<br><span style="font-weight:400;font-size:10px;">(出单÷履约)</span></th>'
+      + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-3);">出单率<br><span style="font-weight:400;font-size:10px;">(出单÷有视频)</span></th>'
       + '</tr></thead><tbody>';
 
     products.slice(0, 20).forEach(function (p) {
-      var barColor = p.orderRate >= 50 ? 'var(--c-success)' : p.orderRate >= 25 ? 'var(--c-warning)' : 'var(--pink-400)';
+      var rate = (p.videoOrderRate != null ? p.videoOrderRate : (p.orderRate || 0));
+      var barColor = rate >= 50 ? 'var(--c-success)' : rate >= 25 ? 'var(--c-warning)' : 'var(--pink-400)';
       html += '<tr style="border-bottom:1px solid var(--border-1);">'
         + '<td style="padding:6px 4px;font-weight:600;color:var(--text-1);">SKU ' + App.escapeHtml(p.sku) + '</td>'
         + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + p.approved + '</td>'
         + '<td style="padding:6px 4px;text-align:center;color:var(--c-info);">' + (p.videoCreators != null ? p.videoCreators : p.fulfilledCreators) + '</td>'
         + '<td style="padding:6px 4px;text-align:center;color:var(--pink-500);font-weight:700;">' + p.orderedCreators + '</td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + (p.orderRate != null ? p.orderRate : 0) + '%</td>'
         + '<td style="padding:6px 4px;">'
         + '<div style="display:flex;align-items:center;gap:6px;">'
         + '<div style="flex:1;min-width:60px;height:12px;background:var(--bg-pink-soft);border-radius:6px;overflow:hidden;">'
-        + '<div style="height:100%;width:' + Math.min(p.orderRate, 100) + '%;background:' + barColor + ';border-radius:6px;"></div>'
+        + '<div style="height:100%;width:' + Math.min(rate, 100) + '%;background:' + barColor + ';border-radius:6px;"></div>'
         + '</div>'
-        + '<span style="font-size:11px;font-weight:700;color:' + barColor + ';min-width:34px;">' + p.orderRate + '%</span>'
+        + '<span style="font-size:11px;font-weight:700;color:' + barColor + ';min-width:34px;">' + rate + '%</span>'
         + '</div>'
         + '</td>'
         + '</tr>';

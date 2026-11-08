@@ -54,6 +54,16 @@
         "fields": {
           "sku": "产品定位", "positioning": "定位", "productId": "商品ID"
         }
+      },
+      "videos": {
+        "_tableName": "全量视频",
+        "tableId": "REPLACE_WITH_全量视频_TABLE_ID",
+        "fields": {
+          "creator": "达人名称",
+          "sku": "SKU",
+          "url": "视频链接",
+          "date": "视频时间"
+        }
       }
     }
   }
