@@ -1188,34 +1188,30 @@
       }
     });
 
-    // SKU排名（达人维度：出单率 = 出单达人去重 ÷ 履约达人去重，与 PPT 产品分析表一致）
+    // SKU排名（2026-11-08 用户定稿：出单率 = 出单达人去重 ÷ 视频发布达人去重，与 PPT 产品分析表一致）
     var skuRanking = Object.entries(bySKU)
       .map(function (entry) {
         var d = getSKUDetail(entry[0]);
         // 该SKU的样品
         var skuSamples = filteredSamples.filter(function (s) { return s.sku === entry[0]; });
-        // 分母：履约达人（履约方式=视频/直播）去重；不是全量视频表里有视频记录的人
-        var fulfilledCreators = {}, orderedCreators = {};
-        var orderedRows = 0;
+        // 分母：视频发布达人（履约方式=「视频」，不含直播）去重；不是全量视频表里有视频记录的人
+        var videoCreators = {}, orderedCreators = {};
         skuSamples.forEach(function (s) {
           var m = s.fulfillMethod || '';
-          if (m === '视频' || (m && String(m).indexOf('直播') >= 0)) fulfilledCreators[s.creator] = true;
-          if (s.orderCount && s.orderCount > 0) {
-            orderedRows++;
-            if (fulfilledCreators[s.creator]) orderedCreators[s.creator] = true;
-          }
+          if (m === '视频') videoCreators[s.creator] = true;
+          if (s.orderCount && s.orderCount > 0) orderedCreators[s.creator] = true;
         });
-        var fCount = Object.keys(fulfilledCreators).length;
-        var oCount = orderedRows;
+        var vCount = Object.keys(videoCreators).length;
+        var oCount = Object.keys(orderedCreators).length;
         return {
           sku: entry[0],
           productName: d.productName || '',
           positioning: d.positioning || '',
           videoCount: entry[1].total,
           orderedCount: entry[1].ordered,
-          fulfilledCreators: fCount,
+          videoCreators: vCount,
           orderedCreators: oCount,
-          orderRate: fCount > 0 ? Math.round(oCount / fCount * 1000) / 10 : 0,
+          orderRate: vCount > 0 ? Math.round(oCount / vCount * 1000) / 10 : 0,
         };
       })
       .sort(function (a, b) {
@@ -1257,22 +1253,22 @@
       .sort(function (a, b) { return b.count - a.count; })
       .slice(0, 10);
 
-    // 整体出单率（达人维度：出单达人去重 ÷ 履约达人去重，与 PPT 产品分析表一致）
-    var allFulfilledCreators = {};
-    var allOrderedRows = 0;
+    // 整体出单率（2026-11-08 用户定稿：出单达人去重 ÷ 视频发布达人去重，与 PPT 产品分析表一致）
+    var allVideoCreators = {};
+    var allOrderedCreators = {};
     filteredSamples.forEach(function (s) {
       var m = s.fulfillMethod || '';
-      if (m === '视频' || (m && String(m).indexOf('直播') >= 0)) allFulfilledCreators[s.creator] = true;
-      if (s.orderCount && s.orderCount > 0) allOrderedRows++;
+      if (m === '视频') allVideoCreators[s.creator] = true;
+      if (s.orderCount && s.orderCount > 0) allOrderedCreators[s.creator] = true;
     });
-    var totalFulfilledCreators = Object.keys(allFulfilledCreators).length;
-    var totalOrderedCreators = allOrderedRows;
+    var totalVideoCreators = Object.keys(allVideoCreators).length;
+    var totalOrderedCreators = Object.keys(allOrderedCreators).length;
 
     return {
       total: videos.length,
       orderedVideos: orderedVideos,
-      orderRate: totalFulfilledCreators > 0 ? Math.round(totalOrderedCreators / totalFulfilledCreators * 1000) / 10 : 0,
-      fulfilledCreators: totalFulfilledCreators,
+      orderRate: totalVideoCreators > 0 ? Math.round(totalOrderedCreators / totalVideoCreators * 1000) / 10 : 0,
+      fulfilledCreators: totalVideoCreators,
       orderedCreators: totalOrderedCreators,
       uniqueCreators: Object.keys(byCreator).length,
       bySKU: bySKU,
@@ -1485,13 +1481,17 @@
     var stats = {};
     samples.forEach(function (s) {
       if (!s.sku) return;
-      if (!stats[s.sku]) stats[s.sku] = { invited: 0, approved: 0, fulfilled: 0, ordered: 0, videos: 0, reinvest: 0, fulfilledCreators: {}, orderedCreators: {} };
+      if (!stats[s.sku]) stats[s.sku] = { invited: 0, approved: 0, fulfilled: 0, ordered: 0, videos: 0, reinvest: 0, fulfilledCreators: {}, orderedCreators: {}, videoCreators: {}, sampleCreators: {} };
       stats[s.sku].approved++;
+      stats[s.sku].sampleCreators[s.creator] = true;
       var isFulfilled = s.fulfillMethod === '视频' || (s.fulfillMethod && s.fulfillMethod.indexOf('直播') >= 0);
       if (isFulfilled) {
         stats[s.sku].fulfilled++;
         stats[s.sku].fulfilledCreators[s.creator] = true;
       }
+      // 视频发布达人：履约方式标「视频」的达人（不含直播）。2026-11-08 用户定稿：
+      // 出单率分母 = 视频发布达人。例 2178: 视频 17 + 直播 3 = 履约达人 20，分母只取 17。
+      if (s.fulfillMethod === '视频') stats[s.sku].videoCreators[s.creator] = true;
       if (s.orderCount && s.orderCount > 0) {
         stats[s.sku].ordered++;
         stats[s.sku].orderedCreators[s.creator] = true;
@@ -1505,7 +1505,7 @@
     if (endDate) filteredInvites = filteredInvites.filter(function (i) { return i.date && i.date <= endDate + ' 23:59'; });
     filteredInvites.forEach(function (i) {
       if (!i.sku) return;
-      if (!stats[i.sku]) stats[i.sku] = { invited: 0, approved: 0, fulfilled: 0, ordered: 0, videos: 0, reinvest: 0, fulfilledCreators: {}, orderedCreators: {} };
+      if (!stats[i.sku]) stats[i.sku] = { invited: 0, approved: 0, fulfilled: 0, ordered: 0, videos: 0, reinvest: 0, fulfilledCreators: {}, orderedCreators: {}, videoCreators: {}, sampleCreators: {} };
       stats[i.sku].invited += (i.achieved || 0);
     });
 
@@ -1513,25 +1513,31 @@
       var d = getSKUDetail(entry[0]);
       var fulfilledCreatorsCount = Object.keys(entry[1].fulfilledCreators || {}).length;
       var orderedCreatorsCount = Object.keys(entry[1].orderedCreators || {}).length;
+      var videoCreatorsCount = Object.keys(entry[1].videoCreators || {}).length;
+      var sampleCreatorsCount = Object.keys(entry[1].sampleCreators || {}).length;
       delete entry[1].fulfilledCreators;
       delete entry[1].orderedCreators;
-      // 口径（PPT 产品分析表，2026-11-08 用户确认）：
-      //   履约率 = 履约行数 ÷ 寄样行数        例 2178: 20/26 = 76.9%
-      //   出单率 = 出单达人去重 ÷ 履约达人去重  例 2178: 7/17 = 41.2%
-      // ⚠️ 分母是「履约达人」(fulfillMethod 视频/直播)，不是「全量视频表里有视频记录的人」，
-      //    后者是另一批人，会算出 33/42 之类与 PPT 完全不符的分母。
+      delete entry[1].videoCreators;
+      delete entry[1].sampleCreators;
+      // 口径（PPT 产品分析表，2026-11-08 用户二次定稿，以此为准）：
+      //   履约率 = 履约达人去重(视频/直播) ÷ 寄样达人去重   例 2178: 20/26 = 76.9%
+      //   出单率 = 出单达人去重 ÷ 视频发布达人去重          例 2178: 7/17 = 41.2%
+      // ⚠️ 出单率分母是「视频发布达人」= 履约方式标「视频」的达人（不含直播），
+      //    不是视频/直播合计的履约达人(20)，更不是全量视频表里有视频记录的人。
+      //    出单达人不限履约方式（直播约的达人出单也计入分子）。
       return Object.assign({
         sku: entry[0],
         productName: d.productName || '',
         positioning: d.positioning || '',
         commission: d.defaultCommission || '',
         approveRate: entry[1].invited > 0 ? Math.round(entry[1].approved / entry[1].invited * 100) : 0,
-        fulfillRate: entry[1].approved > 0 ? Math.round(entry[1].fulfilled / entry[1].approved * 1000) / 10 : 0,
+        fulfillRate: sampleCreatorsCount > 0 ? Math.round(fulfilledCreatorsCount / sampleCreatorsCount * 1000) / 10 : 0,
         fulfilledCreators: fulfilledCreatorsCount,
         orderedCreators: orderedCreatorsCount,
-        // 出单率分子 = 出单「行数」(entry[1].ordered)，与 PPT 表「出单达人」列一致
-        // （例 2189 PPT 显示 8 = 出单 8 行，去重达人只有 6）。分母 = 履约达人去重。
-        orderRate: fulfilledCreatorsCount > 0 ? Math.round(entry[1].ordered / fulfilledCreatorsCount * 1000) / 10 : 0,
+        videoCreators: videoCreatorsCount,
+        sampleCreators: sampleCreatorsCount,
+        // 出单率 = 出单达人去重 ÷ 视频发布达人去重。例 2178: 7/17 = 41.2%
+        orderRate: videoCreatorsCount > 0 ? Math.round(orderedCreatorsCount / videoCreatorsCount * 1000) / 10 : 0,
       }, entry[1]);
     }).sort(function (a, b) {
       // 先按定位档位（爆品→销售→测品），同档按寄样量降序
@@ -2130,22 +2136,26 @@
 
   function getFulfillmentRate(startDate, endDate, sku) {
     var samples = filterSamples(D.samples, startDate, endDate, sku);
-    var fulfilledCreators = {};
+    var fulfilledCreators = {}, sampleCreators = {};
     var byMethod = {};
     var total = samples.length;
     samples.forEach(function (s) {
       var m = s.fulfillMethod || '未填';
       byMethod[m] = (byMethod[m] || 0) + 1;
+      // 2026-11-08 定稿：履约率 = 履约达人去重(视频/直播) ÷ 寄样达人去重
+      sampleCreators[s.creator] = true;
       if (m === '视频' || (m && m.indexOf('直播') >= 0)) {
         fulfilledCreators[s.creator] = true;
       }
     });
     var fulfilledCount = Object.keys(fulfilledCreators).length;
+    var sampleCreatorCount = Object.keys(sampleCreators).length;
     var order = ['视频', '直播', '已催', '已取消', '未履约', '未填'];
     return {
       total: total,
+      sampleCreators: sampleCreatorCount,
       fulfilled: fulfilledCount,
-      fulfillmentRate: total > 0 ? Math.round(fulfilledCount / total * 1000) / 10 : 0,
+      fulfillmentRate: sampleCreatorCount > 0 ? Math.round(fulfilledCount / sampleCreatorCount * 1000) / 10 : 0,
       byMethod: Object.keys(byMethod).map(function (k) {
         return { method: k, count: byMethod[k] };
       }).sort(function (a, b) {
@@ -2209,23 +2219,24 @@
       if (!s.sku || !s.sampleTime) return;
       var month = midMonthBucket(s.sampleTime);
       var key = month + '|' + s.sku;
-      if (!byMonth[key]) byMonth[key] = { month: month, sku: s.sku, sampleCount: 0, fulfilledCreators: {}, orderedRows: 0 };
+      if (!byMonth[key]) byMonth[key] = { month: month, sku: s.sku, sampleCount: 0, videoCreators: {}, orderedCreators: {} };
       byMonth[key].sampleCount++;
       var m = s.fulfillMethod || '';
-      if (m === '视频' || m.indexOf('直播') >= 0) byMonth[key].fulfilledCreators[s.creator] = true;
-      // 分子 = 出单行数（与 PPT 产品分析表一致）；分母 = 履约达人去重
-      if (s.orderCount && s.orderCount > 0) byMonth[key].orderedRows++;
+      // 2026-11-08 定稿：分母 = 视频发布达人（履约方式=「视频」，不含直播）去重
+      if (m === '视频') byMonth[key].videoCreators[s.creator] = true;
+      // 分子 = 出单达人去重（不限履约方式）
+      if (s.orderCount && s.orderCount > 0) byMonth[key].orderedCreators[s.creator] = true;
     });
     var rows = Object.values(byMonth).map(function (r) {
-      var f = Object.keys(r.fulfilledCreators).length;
-      var o = r.orderedRows;
+      var v = Object.keys(r.videoCreators).length;
+      var o = Object.keys(r.orderedCreators).length;
       return {
         month: r.month,
         sku: r.sku,
         sampleCount: r.sampleCount,
-        fulfilledCreators: f,
+        videoCreators: v,
         orderedCreators: o,
-        orderRate: f > 0 ? Math.round(o / f * 1000) / 10 : 0,
+        orderRate: v > 0 ? Math.round(o / v * 1000) / 10 : 0,
       };
     }).sort(function (a, b) { return (a.month + a.sku).localeCompare(b.month + b.sku); });
 
@@ -2333,7 +2344,7 @@
 
     function dim(samples) {
       var age = {}, body = {}, official = {}, category = {}, color = {}, lang = {}, approval = {};
-      var fulfilledCreators = {}, orderedRows = 0;
+      var videoCreators = {}, orderedCreators = {};
       samples.forEach(function (s) {
         if (s.age) age[s.age] = (age[s.age] || 0) + 1;
         if (s.bodyType) body[s.bodyType] = (body[s.bodyType] || 0) + 1;
@@ -2346,11 +2357,14 @@
         lang[l] = (lang[l] || 0) + 1;
         if (s.approval) approval[s.approval] = (approval[s.approval] || 0) + 1;
         var m = s.fulfillMethod || '';
-        if (m === '视频' || m.indexOf('直播') >= 0) fulfilledCreators[s.creator] = true;
-        // 分子 = 出单行数（与 PPT 产品分析表一致）；分母 = 履约达人去重
-        if (s.orderCount && s.orderCount > 0) orderedRows++;
+        // 2026-11-08 定稿：分母 = 视频发布达人（履约方式=「视频」，不含直播）去重
+        if (m === '视频') videoCreators[s.creator] = true;
+        // 分子 = 出单达人去重（不限履约方式）
+        if (s.orderCount && s.orderCount > 0) orderedCreators[s.creator] = true;
       });
-      return { age: age, body: body, official: official, category: category, color: color, language: lang, approval: approval, sampleCount: samples.length, fulfilledCreators: Object.keys(fulfilledCreators).length, orderedCreators: orderedRows };
+      var vCount = Object.keys(videoCreators).length;
+      var oCount = Object.keys(orderedCreators).length;
+      return { age: age, body: body, official: official, category: category, color: color, language: lang, approval: approval, sampleCount: samples.length, fulfilledCreators: vCount, orderedCreators: oCount };
     }
 
     function toArr(obj) {
@@ -2395,28 +2409,23 @@
     return result.sort(function (a, b) { return Math.abs(b.diff || 0) - Math.abs(a.diff || 0); });
   }
 
-  // 指定 SKU + (可选)日期区间内的「整体出单率」= 出单达人去重 ÷ 履约达人去重。
-  // 口径与 PPT 产品分析表一致（2026-11-08 用户确认）：分母是履约方式为视频/直播的达人，
+  // 指定 SKU + (可选)日期区间内的「整体出单率」= 出单达人去重 ÷ 视频发布达人去重。
+  // 口径与 PPT 产品分析表一致（2026-11-08 用户定稿）：分母是履约方式为「视频」的达人（不含直播），
   // 不是「全量视频表里有视频记录的人」——后者是另一批人，会把分母算成 42 之类。
   // 无论是否带时间筛选，都按当前筛选范围做一次聚合，而不是"各月出单率的平均值"。
   function getSKUOrderRateInRange(sku, startDate, endDate) {
     var samples = D.samples;
     if (sku) samples = samples.filter(function (s) { return s.sku === sku; });
     if (startDate || endDate) samples = samples.filter(function (s) { return s.sampleTime && attrInRange(s.sampleTime, { start: startDate, end: endDate }); });
-    var fulfilledCreators = {}, orderedCreators = {};
-    var orderedRows = 0;
+    var videoCreators = {}, orderedCreators = {};
     samples.forEach(function (s) {
       var m = s.fulfillMethod || '';
-      if (m === '视频' || (m && String(m).indexOf('直播') >= 0)) fulfilledCreators[s.creator] = true;
-      if (s.orderCount && s.orderCount > 0) { orderedRows++; orderedCreators[s.creator] = true; }
+      if (m === '视频') videoCreators[s.creator] = true;
+      if (s.orderCount && s.orderCount > 0) orderedCreators[s.creator] = true;
     });
-    // 分子 = 出单行数（与 PPT 产品分析表一致，且是去重达人的超集 → 保证 ≤100% 需限制在履约达人内）
-    var o = 0;
-    samples.forEach(function (s) {
-      if (s.orderCount && s.orderCount > 0 && fulfilledCreators[s.creator]) o++;
-    });
-    var f = Object.keys(fulfilledCreators).length;
-    return { sampleCount: samples.length, fulfilledCreators: f, orderedCreators: o, orderRate: f > 0 ? Math.round(o / f * 1000) / 10 : 0 };
+    var v = Object.keys(videoCreators).length;
+    var o = Object.keys(orderedCreators).length;
+    return { sampleCount: samples.length, fulfilledCreators: v, orderedCreators: o, orderRate: v > 0 ? Math.round(o / v * 1000) / 10 : 0 };
   }
 
   // 综合数据看板

@@ -139,26 +139,26 @@
       return;
     }
 
-    // 按产品定位档位排序，同档按出单率（出单达人 ÷ 履约达人）降序
+    // 按产品定位档位排序，同档按出单率（出单达人 ÷ 视频达人）降序
     products.sort(function (a, b) {
       var ta = Data.getSKUPositionTier(a.sku), tb = Data.getSKUPositionTier(b.sku);
       if (ta !== tb) return ta - tb;
       return b.orderRate - a.orderRate;
     });
 
-    // 口径（与 PPT 产品分析表一致，2026-11-08 用户确认）：
-    //   履约率 = 履约行数 ÷ 寄样行数       → p.fulfillRate（例 2178: 20/26 = 76.9%）
-    //   出单率 = 出单达人去重 ÷ 履约达人去重 → p.orderRate （例 2178: 7/17 = 41.2%）
-    // ⚠️「履约达人」= 履约方式为视频/直播的达人（即发了视频的达人），
-    //    不要拿「全量视频表里有视频记录的人」当分母，那是另一批人，会算出 33/42 之类完全不符的数。
+    // 口径（与 PPT 产品分析表一致，2026-11-08 用户二次定稿，以此为准）：
+    //   履约率 = 履约达人去重(视频/直播) ÷ 寄样达人去重 → p.fulfillRate（例 2178: 20/26 = 76.9%）
+    //   出单率 = 出单达人去重 ÷ 视频发布达人去重        → p.orderRate （例 2178: 7/17 = 41.2%）
+    // ⚠️「视频发布达人」= 履约方式标「视频」的达人（不含直播，2178: 视频17/直播3/已催4/未填2）。
+    //    不要拿视频/直播合计的履约达人(20)当出单率分母，也不要拿「全量视频表里有视频记录的人」当分母。
     var html = '<div class="card" style="overflow-x:auto;"><table style="width:100%;font-size:12px;border-collapse:collapse;">'
       + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
       + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-2);">SKU</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-2);">寄样</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--c-info);">履约</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-2);">寄样达人</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--c-info);">履约达人</th>'
       + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--pink-500);">出单达人</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">履约率<br><span style="font-weight:400;font-size:10px;">(履约÷寄样)</span></th>'
-      + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-3);">出单率<br><span style="font-weight:400;font-size:10px;">(出单÷履约达人)</span></th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">履约率<br><span style="font-weight:400;font-size:10px;">(履约达人÷寄样达人)</span></th>'
+      + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-3);">出单率<br><span style="font-weight:400;font-size:10px;">(出单达人÷视频达人)</span></th>'
       + '</tr></thead><tbody>';
 
     products.slice(0, 20).forEach(function (p) {
@@ -167,9 +167,9 @@
       var barColor = rate >= 50 ? 'var(--c-success)' : rate >= 25 ? 'var(--c-warning)' : 'var(--pink-400)';
       html += '<tr style="border-bottom:1px solid var(--border-1);">'
         + '<td style="padding:6px 4px;font-weight:600;color:var(--text-1);">SKU ' + App.escapeHtml(p.sku) + '</td>'
-        + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + p.approved + '</td>'
-        + '<td style="padding:6px 4px;text-align:center;color:var(--c-info);">' + (p.fulfilled != null ? p.fulfilled : p.fulfilledCreators) + '</td>'
-        + '<td style="padding:6px 4px;text-align:center;color:var(--pink-500);font-weight:700;">' + (p.ordered != null ? p.ordered : p.orderedCreators) + '</td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + (p.sampleCreators != null ? p.sampleCreators : p.approved) + '</td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--c-info);">' + (p.fulfilledCreators != null ? p.fulfilledCreators : p.fulfilled) + '</td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--pink-500);font-weight:700;">' + (p.orderedCreators != null ? p.orderedCreators : p.ordered) + '</td>'
         + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + fulfillRate + '%</td>'
         + '<td style="padding:6px 4px;">'
         + '<div style="display:flex;align-items:center;gap:6px;">'
@@ -218,7 +218,7 @@
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-primary);">' + App.formatNumber(analytics.total) + '</div><div class="stat-card__label">视频总数</div></div>'
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + App.formatNumber(analytics.orderedVideos) + '</div><div class="stat-card__label">出单视频</div></div>'
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-success);">' + analytics.orderRate + '%</div><div class="stat-card__label">出单率</div></div>'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + App.formatNumber(analytics.fulfilledCreators) + '</div><div class="stat-card__label">履约达人</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + App.formatNumber(analytics.fulfilledCreators) + '</div><div class="stat-card__label">视频达人</div></div>'
       + '</div>';
 
     // 达人出单视频 TOP 20（含视频链接）
