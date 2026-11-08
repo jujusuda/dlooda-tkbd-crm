@@ -36,6 +36,10 @@ cfg.feishu.baseAppToken = E.FEISHU_BASE_APP_TOKEN || cfg.feishu.baseAppToken;
   console.log('SYNC OK ->', r.out);
   console.log('stats:', JSON.stringify(r.stats));
   console.log('counts:', JSON.stringify(r.counts));
+  if (r.warnings && r.warnings.length) {
+    console.log('\nWARNINGS (' + r.warnings.length + '):');
+    r.warnings.forEach(function (w) { console.log('  - ' + w); });
+  }
 })().catch(function (e) {
   console.error('SYNC FAILED:', e && e.message ? e.message : e);
   process.exit(1);

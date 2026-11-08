@@ -228,9 +228,10 @@ function buildFromTables(tables, cfg) {
 
   // 全量视频表：所有达人的视频记录（达人 / SKU / 视频链接 / 视频时间）。
   // 未配置 tableId（占位/空）时 videos=[]，前端自动回退到寄样内嵌视频。
+  const vidRaw = tables.videos || [];
   const vidF = F.videos && F.videos.fields;
   const videos = vidF
-    ? (tables.videos || []).map((rec) => {
+    ? vidRaw.map((rec) => {
         const creator = getField(rec, vidF, 'creator');
         if (!creator) return null;
         return {
@@ -241,6 +242,12 @@ function buildFromTables(tables, cfg) {
         };
       }).filter(Boolean)
     : [];
+
+  const warnings = [];
+  if (vidF && vidRaw.length > 0 && videos.length === 0) {
+    const actual = Object.keys((vidRaw[0] && vidRaw[0].fields) || {});
+    warnings.push('全量视频表拉到 ' + vidRaw.length + ' 条记录但解析出 0 条：字段名可能不匹配。配置列=' + JSON.stringify(vidF) + '；实际列=' + JSON.stringify(actual));
+  }
 
   const data = { creators, samples, pending, invites, tasks, skus, offline, videos };
   const stats = {
@@ -254,7 +261,7 @@ function buildFromTables(tables, cfg) {
     videoCount: samples.reduce((s, x) => s + x.videos.length, 0),
     videoRecordCount: videos.length,
   };
-  return { data, stats };
+  return { data, stats, warnings };
 }
 
 // 把对象序列化成 JS 里的 JSON.parse('...') 参数。
@@ -288,6 +295,7 @@ async function syncFromFeishu(cfg, root) {
   const token = await feishu.getTenantToken(f.appId, f.appSecret);
   const tables = {};
   const keys = ['daily', 'pending', 'invites', 'tasks', 'offline', 'products', 'videos'];
+  const warnings = [];
   for (const k of keys) {
     const tcfg = f.tables[k] || {};
     const tid = tcfg.tableId;
@@ -295,13 +303,23 @@ async function syncFromFeishu(cfg, root) {
     if (!tid || String(tid).indexOf('REPLACE') >= 0) { tables[k] = []; continue; }
     // 允许单表指定独立 appToken（「全量视频」可能在另一个多维表格），否则回退主 base token
     const perTable = tcfg.appToken && String(tcfg.appToken).indexOf('REPLACE') < 0 ? tcfg.appToken : null;
-    tables[k] = await feishu.listRecords(token, perTable || f.baseAppToken, tid);
+    try {
+      tables[k] = await feishu.listRecords(token, perTable || f.baseAppToken, tid);
+    } catch (e) {
+      // videos 为可选增强表，读失败只降级为空（前端回退内嵌视频），不影响其余 6 张主表
+      if (k === 'videos') {
+        tables[k] = [];
+        warnings.push('全量视频表读取失败（已跳过，主数据不受影响）：' + String((e && e.message) || e));
+      } else {
+        throw e;
+      }
+    }
   }
   const built = buildFromTables(tables, cfg);
   const out = writeRealData(built.data, built.stats, root);
   const counts = {};
   keys.forEach((k) => { counts[k] = tables[k] ? tables[k].length : 0; });
-  return { out: out, stats: built.stats, counts: counts };
+  return { out: out, stats: built.stats, counts: counts, warnings: warnings.concat(built.warnings || []) };
 }
 
 // 直接调用（node server/sync.js --demo 用内置样例验证映射管线，写到临时文件不覆盖真实数据）

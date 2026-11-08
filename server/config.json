@@ -57,8 +57,8 @@
       },
       "videos": {
         "_tableName": "全量视频",
-        "_note": "tableId 从飞书表链接 /base/{appToken}?table={tableId} 里取。若此表不在主多维表格（FEISHU_BASE_TOKEN 指向的 base），把链接里的 {appToken} 填到下面的 appToken；同一 base 则留空即可。",
-        "tableId": "REPLACE_WITH_全量视频_TABLE_ID",
+        "_note": "表链接 https://ycnhpb1skj4a.feishu.cn/wiki/AendwrOUDiV6J2kbuOuc5ly7nKf?table=tblfc3sDKek2SV7H 。wiki 节点经 get_node 解析 obj_token=TBu5bPDU0apfCPs5ppacyHtdn4g，与 FEISHU_BASE_TOKEN 相同 → 同一 base，appToken 留空。该 base 开了高级权限(is_advanced)，应用须被授予此表的访问权限，否则同步会降级跳过并在 warnings 里提示。",
+        "tableId": "tblfc3sDKek2SV7H",
         "appToken": "",
         "fields": {
           "creator": "达人名称",

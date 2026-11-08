@@ -172,9 +172,10 @@ function buildFromTables(tables, cfgObj) {
 
   // 全量视频表：所有达人的视频记录（达人 / SKU / 视频链接 / 视频时间）。
   // 用于「素材量（按日期）」与「有视频链接达人」分母，替代寄样表里几乎为空的内嵌视频。
+  const vidRaw = tables.videos || [];
   const vidF = F.videos && F.videos.fields;
   const videos = vidF
-    ? (tables.videos || []).map((rec) => {
+    ? vidRaw.map((rec) => {
         const creator = getField(rec, vidF, 'creator');
         if (!creator) return null;
         return {
@@ -186,6 +187,13 @@ function buildFromTables(tables, cfgObj) {
       }).filter(Boolean)
     : [];
 
+  const warnings = [];
+  // 有记录但一条都没解析出来 = 字段名全对不上，把真实列名带出来，方便直接改 config
+  if (vidF && vidRaw.length > 0 && videos.length === 0) {
+    const actual = Object.keys((vidRaw[0] && vidRaw[0].fields) || {});
+    warnings.push('全量视频表拉到 ' + vidRaw.length + ' 条记录但解析出 0 条：字段名可能不匹配。配置列=' + JSON.stringify(vidF) + '；实际列=' + JSON.stringify(actual));
+  }
+
   const data = { creators, samples, pending, invites, tasks, skus, offline, videos };
   const stats = {
     creatorCount: creators.length, sampleCount: samples.length, pendingCount: pending.length,
@@ -193,7 +201,7 @@ function buildFromTables(tables, cfgObj) {
     offlineCount: offline.length, videoCount: samples.reduce((s, x) => s + x.videos.length, 0),
     videoRecordCount: videos.length,
   };
-  return { data, stats };
+  return { data, stats, warnings };
 }
 
 function generateRealDataJs(data, stats) {
@@ -218,6 +226,7 @@ export async function syncFromFeishu(env) {
   const token = await getTenantToken(f.appId, f.appSecret);
   const keys = ['daily', 'pending', 'invites', 'tasks', 'offline', 'products', 'videos'];
   const tables = {};
+  const warnings = [];
   for (const k of keys) {
     const tcfg = f.tables[k] || {};
     const tid = tcfg.tableId;
@@ -226,11 +235,22 @@ export async function syncFromFeishu(env) {
     // 允许单表指定独立 appToken：新增的「全量视频」表可能位于另一个多维表格；
     // 未配置（或含 REPLACE）时回退到主 base 的 token，完全向后兼容现有 6 张表。
     const perTable = tcfg.appToken && String(tcfg.appToken).indexOf('REPLACE') < 0 ? tcfg.appToken : null;
-    tables[k] = await listRecords(token, perTable || f.baseAppToken, tid);
+    try {
+      tables[k] = await listRecords(token, perTable || f.baseAppToken, tid);
+    } catch (e) {
+      // videos 是可选增强表：读失败（如高级权限未授权 RolePermNotAllow）只降级为空，
+      // 前端自动回退寄样内嵌视频，绝不能让整次同步失败、连累其余 6 张主表。
+      if (k === 'videos') {
+        tables[k] = [];
+        warnings.push('全量视频表读取失败（已跳过，主数据不受影响）：' + String((e && e.message) || e));
+      } else {
+        throw e;
+      }
+    }
   }
   const built = buildFromTables(tables, { feishu: f });
   const js = generateRealDataJs(built.data, built.stats);
   const counts = {};
   keys.forEach((k) => { counts[k] = tables[k] ? tables[k].length : 0; });
-  return { js, stats: built.stats, counts };
+  return { js, stats: built.stats, counts, warnings: warnings.concat(built.warnings || []) };
 }

@@ -10,7 +10,10 @@
 - **SKU 排序**：爆品→销售→测品→撤退。
 - **复投口径（8-09 定）**：声明=「已推XXXX」；成功=声明后同SKU再寄样且「通过」非空；观察期30天；双口径（按SKU默认/按达人）dashboard 顶部切换。
 - **两个率口径（11-08 重定，勿混）**：**履约率 = 出单达人 ÷ 履约达人**（履约方式=视频/直播，fulfillMethod 判断）；**出单率 = 出单达人 ÷ 有视频链接达人**。出单=orderCount>0，达人去重。产品分析表两列并存（`orderRate`=履约率、`videoOrderRate`=出单率）；出单达人须与分母取交集，保证 ≤100%。
-- **「有视频达人」分母 & 素材量 = 飞书「全量视频」表（11-08 新增第7张表）**：`REAL_DATA.videos=[{creator,sku,url,date}]`，`getVideos()` 优先用它、无则回退 samples 内嵌 videos。素材看板按 `date` 统计、达人去重。旧口径（videos url 非空）因寄样表内嵌视频几乎为空导致出单率 >100%，已废弃。⚠️ `server/config.json` 的 `videos.tableId` 仍是占位符 `REPLACE_WITH_全量视频_TABLE_ID`，**必须填真实 id 才生效**；占位时 sync 会跳过该表（含 REPLACE 即跳过）不破坏整次同步。
+- **「有视频达人」分母 & 素材量 = 飞书「全量视频」表（11-08 新增第7张表）**：`REAL_DATA.videos=[{creator,sku,url,date}]`，`getVideos()` 优先用它、无则回退 samples 内嵌 videos。素材看板按 `date` 统计、达人去重。旧口径（videos url 非空）因寄样表内嵌视频几乎为空导致出单率 >100%，已废弃。
+- **全量视频表已定位（11-08 傍晚，用户给 wiki 链接）**：`https://ycnhpb1skj4a.feishu.cn/wiki/AendwrOUDiV6J2kbuOuc5ly7nKf?table=tblfc3sDKek2SV7H&view=vewo93ekUh`。⚠️ **wiki 链接不是 `/base/{appToken}`，`/wiki/{node_token}` 要先调 `GET /open-apis/wiki/v2/spaces/get_node?token=...` 拿 `data.node.obj_token` 才是 base appToken**。本例 obj_token=`TBu5bPDU0apfCPs5ppacyHtdn4g`，与 `.env`/`start.bat` 的 FEISHU_BASE_TOKEN **完全相同 → 同一 base**，`videos.appToken` 留空即可（先前"表在另一个多维表格"的推断是错的，已纠正）。`config.json` 已填 `tableId=tblfc3sDKek2SV7H`。
+- ⚠️ **真正的阻塞 = 飞书高级权限**：该 base `is_advanced:true`，drive 权限里应用 `cli_aafc7b8903789d2d` 有 `perm:edit`，但角色无该表权限 → `/tables` 只列出 6 张（把新表过滤掉了，这才是"查不到表"的原因）、访问目标表报 `1254302 RolePermNotAllow`（**不存在的 id 报的是 `1254041 TableIdNotFound`，两者错误码不同可区分"无权限"与"不存在"**）；`fields`/`records`/`roles` 接口同样 1254302 → **目前无法核实真实列名**。需用户在飞书多维表格「···→高级权限/协作者」给该应用（或把新表加入其角色）授权，否则同步降级跳过 videos。角色列表 API 本身也报 1254302，无法用 API 自助授权。
+- ✅ **已加容错（两份 sync 都有）**：`videos` 是可选增强表，`listRecords` 抛错只降级 `tables.videos=[]` 并写 `warnings`，**绝不拖垮其余 6 张主表 / 整次 /api/sync**；非 videos 表失败照常抛错。另加「字段名诊断」：拉到记录但解析 0 条时，warning 带出配置的列名+实际列名（等权限开了同步一次即可看到真实列名，用来核对 `config.json videos.fields`）。`/api/sync` 响应新增 `warnings` 字段，`_run_sync_once.js` 也打印。
 - **PPT 权威数据源（9-13 定）**：`scripts/_authoritative_data.json`（用户文字表）；绝不用 real-data.js/_correct_sku_data.json 填 PPT；看不到图片数字，必须用户贴文字。
 - **PPT 月度窗口非自然月**：如「8月」= 7/15-8/15。
 
