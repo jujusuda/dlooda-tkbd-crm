@@ -39,7 +39,7 @@
 - 邀约：Hook → 品牌+产品 → 佣金 → Feel free to apply，产品匹配 SKU；私信简短热情，中/英/西；translator.js 须在 invite/message.js 前加载。
 
 ## 通用坑清单
-不加评分字段 / 只维护 creator.html 单版本 / 不手写 Sidebar(app.js 注入) / 不做假数据 Dashboard / AI 页全链路 / 列表限100+搜索 / 不重复实现 copyToClipboard/populateSkuSelect / JS 多行拼接：`?`/`:` 与 return 行不能带行首 `+`（roster.js 踩过两次，2026-10-24）。
+不加评分字段 / 只维护 creator.html 单版本 / 不手写 Sidebar(app.js 注入) / 不做假数据 Dashboard / AI 页全链路 / 列表限100+搜索 / 不重复实现 copyToClipboard/populateSkuSelect / JS 多行拼接：`?`/`:` 与 return 行不能带行首 `+`（roster.js 踩过两次，2026-10-24） / **PWA 受 SW 控制的页面绝不能用同步 XHR 拉实时数据**（SW 的异步 respondWith 无法满足同步请求→请求被丢弃→静默回退旧数据；2026-11-08 因此「飞书更新网页仍是10月数据」），实时数据应交给 SW 拦截对应请求用异步 fetch 提供，或页面用异步 fetch+重载。**测线上功能不能只 curl：curl 绕过 SW，会误判「接口正常」**（同上）。
 
 ## PPT 已交付
 - 8月 v7（19页，六 SKU 差异化视角，`scripts/build_ppt_v7.py`）；9月简约版 12 页（`build_sep_report.py`，暗玫 #A6446B）。python-pptx 关键坑：双轴不用 secondary_axis API，做 plotArea OOXML 手术；lineChart dLblPos 只许 t/b/ctr/l/r；轴 title 必须在 numFmt 前；保存会污染未改动页（按部件还原）；逐点柱色用 dPt。详见 2026-10-13/14/15.md。
