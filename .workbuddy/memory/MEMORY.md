@@ -20,6 +20,7 @@
 - ⚠️ 旧路径误区（已修正）：之前以为 `/js/real-data.js` 仓库静态优先、KV 兜底、「同步飞书」按钮不影响线上——错。现在 KV 优先覆盖静态。若用户曾用页面「上传 Excel」(localStorage `dlooda_uploaded_data`) 该数据仍优先于 KV/静态，可能掩盖飞书更新，需清 localStorage 才能还原。
 - 飞书时间戳按 UTC+8 解析；orderCount 是字符串、fulfillMethod/category/creatorType 是数组，判断前先归一化。**SKU 也可能是数字/文本/单选/多选（数组或 {text}）**：`sync.mjs` 与 `data.js` 各有 `normSku()` 统一成去空格字符串；下游用严格 `!==` 比 sku，两侧都要归一化，否则该 SKU 的视频被静默全过滤（出单率恒 0）。实测仓库 real-data.js 的 sku 是字符串，混数字(2178)与字母数字(2F08)。
 - `node server/sync.js` 不会同步；用 `_run_sync_once.js` 或线上 POST /api/sync。
+- ⚠️ **同步逻辑有两份，改必须同时改**：线上主路径 `functions/lib/sync.mjs`（Cloudflare Functions `/api/sync`）+ 本地兜底 `server/sync.js`（`_run_sync_once.js` 调它，生成 `js/real-data.js`）。2026-11-08 接入「全量视频」时曾只改线上那份，兜底仍拉 6 张表导致生成的 real-data.js 缺 videos。两份都要有：keys 列表、占位 tableId 跳过、单表 appToken 覆盖、normSku、data.videos。**占位 tableId（含 REPLACE）自动跳过该表不破坏整次同步**；`tables[k].appToken` 可让某张表来自另一个多维表格（留空回退 `FEISHU_BASE_TOKEN`）。
 - 改前端必递增 sw.js CACHE_VERSION。
 
 ## CRM 名单库 roster.html（2026-10-25 重构版，铁律）
