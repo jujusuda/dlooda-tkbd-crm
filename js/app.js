@@ -268,8 +268,90 @@
 
   /* ---------- 页面初始化 ---------- */
 
+  /* 数据源体检（2026-11-08 加）
+     两个坑会导致「明明同步了飞书，页面还是旧数字」：
+     ① 本机点过「上传 Excel」→ localStorage 里的旧快照优先级高于云端 KV，永远盖住最新数据；
+     ② 硬刷新（Ctrl+Shift+R）会绕过 Service Worker，直接拿仓库里的静态 real-data.js 旧快照。
+     这里分别处理：① 底部提示条 + 一键改用云端；② 首屏异步比对 KV 样本数，更新则自动重载一次，
+     若重载后仍旧（说明 SW 缓存卡住），给出「强制更新」按钮（注销 SW + 清缓存）。 */
+  function injectDataSourceNotice() {
+    var host = location.hostname;
+    var isLocal = host === 'localhost' || host === '127.0.0.1';
+
+    function makeBar(html) {
+      var bar = document.createElement('div');
+      bar.id = 'data-source-bar';
+      bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#fff4e5;'
+        + 'border-top:1px solid #ffd8a8;padding:9px 14px;font-size:12px;color:#8a4b00;'
+        + 'display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;';
+      bar.innerHTML = html;
+      document.body.appendChild(bar);
+      return bar;
+    }
+    var btnStyle = 'border:0;background:#f28b82;color:#fff;padding:4px 12px;border-radius:8px;font-size:12px;cursor:pointer;';
+
+    // ① 本机导入数据盖住云端
+    var uploaded = null;
+    try { uploaded = localStorage.getItem('dlooda_uploaded_data'); } catch (e) {}
+    if (uploaded) {
+      var bar = makeBar('⚠️ 当前显示的是<b>本机导入的旧数据</b>，会覆盖云端最新数据，所以数字不更新。'
+        + '<button id="dlooda-use-cloud" style="' + btnStyle + '">改用云端最新数据</button>');
+      var b = bar.querySelector('#dlooda-use-cloud');
+      if (b) b.onclick = function () {
+        try {
+          localStorage.removeItem('dlooda_uploaded_data');
+          localStorage.removeItem('dlooda_uploaded_stats');
+        } catch (e) {}
+        location.reload();
+      };
+      return; // 导入数据优先，不再做 KV 比对（避免来回刷新）
+    }
+
+    if (isLocal || !(window.fetch)) return;
+
+    // ② 比对云端样本数 vs 当前使用的样本数
+    var localCount = (window.REAL_DATA && window.REAL_DATA.samples || []).length;
+    fetch('/api/data', { cache: 'no-store' }).then(function (r) {
+      return r && r.ok ? r.text() : null;
+    }).then(function (txt) {
+      if (!txt) return;
+      var kvCount = (txt.match(/"sampleTime"/g) || []).length;
+      if (kvCount <= localCount) return;   // 云端不比本地新，正常
+      var guardKey = 'dlooda_kv_reload_at';
+      var last = 0;
+      try { last = parseInt(sessionStorage.getItem(guardKey) || '0', 10); } catch (e) {}
+      if (!last) {                          // 本次会话第一次发现 → 自动重载一次
+        try { sessionStorage.setItem(guardKey, String(Date.now())); } catch (e) {}
+        location.reload();
+        return;
+      }
+      // 重载后仍是旧数据 → SW 缓存卡住，给强制更新按钮
+      if (document.getElementById('data-source-bar')) return;
+      var bar2 = makeBar('⚠️ 页面数据可能不是最新（' + localCount + ' 条，云端 ' + kvCount + ' 条）。'
+        + '<button id="dlooda-force-refresh" style="' + btnStyle + '">强制更新</button>');
+      var f = bar2.querySelector('#dlooda-force-refresh');
+      if (f) f.onclick = function () {
+        var done = function () {
+          // 清掉「已重载过」标记：新 SW 装好后的下一次加载会再自动重载一次，最终拿到 KV 数据
+          try { sessionStorage.removeItem('dlooda_kv_reload_at'); } catch (e) {}
+          location.reload();
+        };
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          navigator.serviceWorker.getRegistrations().then(function (rs) {
+            return Promise.all(rs.map(function (r) { return r.unregister(); }));
+          }).then(function () {
+            return window.caches ? caches.keys().then(function (ks) {
+              return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+            }) : null;
+          }).then(done).catch(done);
+        } else { done(); }
+      };
+    }).catch(function () {});
+  }
+
   function init() {
     injectNavigation();
+    injectDataSourceNotice();
   }
 
   // DOMContentLoaded
