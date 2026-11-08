@@ -1,6 +1,8 @@
 'use strict';
-// 把飞书多维表格的 6 张表记录，映射成前端用的 real-data.js
+// 把飞书多维表格的 7 张表记录（含「全量视频」），映射成前端用的 real-data.js
 // 字段映射完全对齐 scripts/convert_excel.py，保证输出形状一致
+// 注意：线上主路径是 functions/lib/sync.mjs（Cloudflare Functions），本文件是本地兜底，
+//       两者逻辑需保持一致（videos 表、占位跳过、单表 appToken、normSku）。
 const fs = require('fs');
 const path = require('path');
 const feishu = require('./feishu');
@@ -71,6 +73,14 @@ function num(v) {
   if (v === null || v === undefined || v === '') return null;
   const n = Number(v);
   return isNaN(n) ? null : n;
+}
+
+// SKU 可能是文本/数字/单选(数组或 {text})，前端用严格 !== 比较，统一成去空格字符串
+function normSku(v) {
+  if (v === null || v === undefined) return '';
+  if (Array.isArray(v)) return v.length ? normSku(v[0]) : '';
+  if (typeof v === 'object') return normSku(v.text != null ? v.text : (v.value != null ? v.value : v.name));
+  return String(v).trim();
 }
 
 // tables: { daily:[{record_id, fields}], pending:[], invites:[], tasks:[], products:[] }
@@ -216,7 +226,23 @@ function buildFromTables(tables, cfg) {
       })).filter((o) => o.creator || o.sku)
     : [];
 
-  const data = { creators, samples, pending, invites, tasks, skus, offline };
+  // 全量视频表：所有达人的视频记录（达人 / SKU / 视频链接 / 视频时间）。
+  // 未配置 tableId（占位/空）时 videos=[]，前端自动回退到寄样内嵌视频。
+  const vidF = F.videos && F.videos.fields;
+  const videos = vidF
+    ? (tables.videos || []).map((rec) => {
+        const creator = getField(rec, vidF, 'creator');
+        if (!creator) return null;
+        return {
+          creator: String(creator).trim(),
+          sku: normSku(getField(rec, vidF, 'sku')),
+          url: extractUrl(getField(rec, vidF, 'url')),
+          date: parseDate(getField(rec, vidF, 'date')),
+        };
+      }).filter(Boolean)
+    : [];
+
+  const data = { creators, samples, pending, invites, tasks, skus, offline, videos };
   const stats = {
     creatorCount: creators.length,
     sampleCount: samples.length,
@@ -226,6 +252,7 @@ function buildFromTables(tables, cfg) {
     skuCount: skus.length,
     offlineCount: offline.length,
     videoCount: samples.reduce((s, x) => s + x.videos.length, 0),
+    videoRecordCount: videos.length,
   };
   return { data, stats };
 }
@@ -260,10 +287,15 @@ async function syncFromFeishu(cfg, root) {
   if (!f.appId || !f.appSecret || !f.baseAppToken) throw new Error('飞书凭据未配置（appId/appSecret/baseAppToken）');
   const token = await feishu.getTenantToken(f.appId, f.appSecret);
   const tables = {};
-  const keys = ['daily', 'pending', 'invites', 'tasks', 'offline', 'products'];
+  const keys = ['daily', 'pending', 'invites', 'tasks', 'offline', 'products', 'videos'];
   for (const k of keys) {
-    const tid = f.tables[k] && f.tables[k].tableId;
-    tables[k] = tid ? await feishu.listRecords(token, f.baseAppToken, tid) : [];
+    const tcfg = f.tables[k] || {};
+    const tid = tcfg.tableId;
+    // 占位 tableId（含 REPLACE）说明该表尚未在 config.json 配置，跳过以免破坏整次同步
+    if (!tid || String(tid).indexOf('REPLACE') >= 0) { tables[k] = []; continue; }
+    // 允许单表指定独立 appToken（「全量视频」可能在另一个多维表格），否则回退主 base token
+    const perTable = tcfg.appToken && String(tcfg.appToken).indexOf('REPLACE') < 0 ? tcfg.appToken : null;
+    tables[k] = await feishu.listRecords(token, perTable || f.baseAppToken, tid);
   }
   const built = buildFromTables(tables, cfg);
   const out = writeRealData(built.data, built.stats, root);
