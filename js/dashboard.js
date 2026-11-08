@@ -520,6 +520,8 @@
   /* ========== 达人层级 × 出单率（2026-11-08 新增） ==========
      按官方等级（L0-1/L2/.../L7）聚合，行数口径：
        出单率 = 出单行 ÷ 视频行；履约率 = 履约行 ÷ 寄样行 */
+  var levelMode = 'rows';   // 'rows' = 寄样行（不去重，默认）；'creators' = 达人去重
+
   function renderLevelAnalysis() {
     var container = document.getElementById('level-analysis');
     if (!container) return;
@@ -529,6 +531,7 @@
       return;
     }
 
+    var byRows = levelMode === 'rows';
     var total = { creators: 0, rows: 0, fulfilled: 0, video: 0, ordered: 0, orders: 0, materials: 0 };
     rows.forEach(function (r) {
       total.creators += r.creatorCount; total.rows += r.rows;
@@ -546,7 +549,8 @@
         + '<div class="stat-card__label">' + label + (sub ? '<span style="display:block;font-size:10px;font-weight:400;color:var(--text-3);margin-top:2px;">' + sub + '</span>' : '') + '</div></div>';
     };
     var html = '<div class="stat-grid" style="margin-bottom:14px;">'
-      + cardHtml('等级档位', rows.length + ' 档', '共 ' + total.creators + ' 位达人', 'var(--pink-500)')
+      + cardHtml('等级档位', rows.length + ' 档',
+          byRows ? '共 ' + total.rows + ' 行寄样' : '共 ' + total.creators + ' 位达人', 'var(--pink-500)')
       + cardHtml('整体出单率', totalOrderRate + '%', total.ordered + '÷' + total.video, 'var(--c-success)')
       + cardHtml('整体履约率', totalFulfillRate + '%', total.fulfilled + '÷' + total.rows, 'var(--c-info)')
       + cardHtml('出单量最高等级', best ? best.level : '—', best ? best.orderRate + '% · ' + best.orders + ' 单' : '视频行不足', 'var(--pink-500)')
@@ -562,13 +566,18 @@
     html += '<div class="card" style="overflow-x:auto;">'
       + '<div class="card__header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">'
       + '<h3 class="card__title">各等级出单率 / 履约率对比</h3>'
-      + '<span style="font-size:11px;color:var(--text-3);">出单率 = 出单行 ÷ 视频行 · 履约率 = 履约行 ÷ 寄样行</span>'
+      + '<span style="display:inline-flex;gap:6px;align-items:center;">'
+      +   '<span style="display:inline-flex;border:1px solid var(--border-1);border-radius:var(--r-full);overflow:hidden;">'
+      +     '<button class="filter-btn' + (byRows ? ' active' : '') + '" data-level-mode="rows" style="border:0;border-radius:0;">按寄样行</button>'
+      +     '<button class="filter-btn' + (byRows ? '' : ' active') + '" data-level-mode="creators" style="border:0;border-radius:0;">按达人</button>'
+      +   '</span>'
+      +   '<span style="font-size:11px;color:var(--text-3);">出单率 = 出单行 ÷ 视频行 · 履约率 = 履约行 ÷ 寄样行</span>'
+      + '</span>'
       + '</div>'
       + '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
       + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
       + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-2);">等级</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">达人</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">寄样行</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">' + (byRows ? '寄样行' : '达人') + '</th>'
       + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--c-info);">履约率</th>'
       + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">视频行</th>'
       + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">出单行</th>'
@@ -583,8 +592,7 @@
       var ordersPct = total.orders > 0 ? Math.round(r.orders / total.orders * 100) : 0;
       html += '<tr style="border-bottom:1px solid var(--border-1);">'
         + '<td style="padding:8px 4px;font-weight:700;color:' + lvColor + ';">' + App.escapeHtml(r.level) + '</td>'
-        + '<td style="padding:8px 4px;text-align:center;color:var(--text-2);">' + r.creatorCount + '</td>'
-        + '<td style="padding:8px 4px;text-align:center;color:var(--text-2);">' + r.rows + '</td>'
+        + '<td style="padding:8px 4px;text-align:center;color:var(--text-2);">' + (byRows ? r.rows : r.creatorCount) + '</td>'
         + '<td style="padding:8px 4px;min-width:110px;">' + bar(r.fulfillRate, 'var(--c-info)') + '</td>'
         + '<td style="padding:8px 4px;text-align:center;color:var(--text-2);">' + r.video + '</td>'
         + '<td style="padding:8px 4px;text-align:center;color:var(--text-2);">' + r.ordered + '</td>'
@@ -597,8 +605,7 @@
 
     html += '<tr style="background:var(--bg-pink-soft);font-weight:700;">'
       + '<td style="padding:8px 4px;color:var(--text-1);">合计</td>'
-      + '<td style="padding:8px 4px;text-align:center;">' + total.creators + '</td>'
-      + '<td style="padding:8px 4px;text-align:center;">' + total.rows + '</td>'
+      + '<td style="padding:8px 4px;text-align:center;">' + (byRows ? total.rows : total.creators) + '</td>'
       + '<td style="padding:8px 4px;">' + bar(totalFulfillRate, 'var(--c-info)') + '</td>'
       + '<td style="padding:8px 4px;text-align:center;">' + total.video + '</td>'
       + '<td style="padding:8px 4px;text-align:center;">' + total.ordered + '</td>'
@@ -612,6 +619,12 @@
       + '</div>';
 
     container.innerHTML = html;
+    container.querySelectorAll('[data-level-mode]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        levelMode = this.getAttribute('data-level-mode');
+        renderLevelAnalysis();
+      });
+    });
   }
 
   // 各区块与渲染函数的映射，便于按需渲染

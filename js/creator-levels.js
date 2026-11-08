@@ -17,7 +17,7 @@
   var ORD = { 'L0-1': 0, 'L2': 1, 'L3': 2, 'L4': 3, 'L5': 4, 'L6': 5, 'L7': 6 };
   var PAGE = 100;
 
-  var state = { startDate: '', endDate: '', sku: '', level: '', minLevel: '', order: '', mat: '', kw: '', expanded: false };
+  var state = { startDate: '', endDate: '', sku: '', level: '', minLevel: '', order: '', mat: '', kw: '', mode: 'rows', expanded: false };
 
   /* ---------- 数据归一化（与 data.js 保持一致） ---------- */
   function normSku(v) {
@@ -139,6 +139,10 @@
       +   '</div>'
       +   '<div id="cl-tiers" style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0 12px;"></div>'
       +   '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">'
+      +     '<span style="display:inline-flex;border:1px solid var(--border-1);border-radius:var(--r-full);overflow:hidden;">'
+      +       '<button class="filter-btn" data-mode="rows" style="border:0;border-radius:0;">按寄样行</button>'
+      +       '<button class="filter-btn" data-mode="creators" style="border:0;border-radius:0;">按达人</button>'
+      +     '</span>'
       +     '<input class="input" id="cl-start" type="date" style="width:auto;" title="寄样起始日">'
       +     '<span style="color:var(--text-3);font-size:12px;">~</span>'
       +     '<input class="input" id="cl-end" type="date" style="width:auto;" title="寄样结束日（选 15 号时当天归下月）">'
@@ -164,6 +168,16 @@
       +   '<div id="cl-table" style="overflow-x:auto;"></div>'
       + '</div>';
 
+    host.querySelectorAll('[data-mode]').forEach(function (btn) {
+      if (btn.getAttribute('data-mode') === state.mode) btn.classList.add('active');
+      btn.addEventListener('click', function () {
+        state.mode = this.getAttribute('data-mode');
+        state.expanded = false;
+        host.querySelectorAll('[data-mode]').forEach(function (b) { b.classList.remove('active'); });
+        this.classList.add('active');
+        render();
+      });
+    });
     function ymd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
     host.querySelectorAll('[data-quick]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -185,7 +199,7 @@
     document.getElementById('cl-order').addEventListener('change', function () { state.order = this.value; state.expanded = false; render(); });
     document.getElementById('cl-mat').addEventListener('change', function () { state.mat = this.value; state.expanded = false; render(); });
     document.getElementById('cl-reset').addEventListener('click', function () {
-      state = { startDate: '', endDate: '', sku: '', level: '', minLevel: '', order: '', mat: '', kw: '', expanded: false };
+      state = { startDate: '', endDate: '', sku: '', level: '', minLevel: '', order: '', mat: '', kw: '', mode: 'rows', expanded: false };
       renderShell(); render();
     });
 
@@ -204,11 +218,16 @@
 
     // 等级 chips（含人数）
     // 等级 chips：按「实际出现的档位」动态生成，未填等级单独一档，保证加总 = 命中达人数
-    var counts = { '': base.length };
+    // 计数口径：'rows' = 寄样行数（不去重，默认）；'creators' = 达人去重人数
+    var byRows = state.mode === 'rows';
+    var counts = { '': 0 };
     var others = [];
     base.forEach(function (a) {
       var lv = a.level || '';
-      counts[lv] = (counts[lv] || 0) + 1;
+      var inc = byRows ? a.rows : 1;
+      var key = lv || '__none';          // ⚠️ 空等级不能直接用 ''，会撞到「全部」这个桶
+      counts[key] = (counts[key] || 0) + inc;
+      counts[''] += inc;
       if (lv && KNOWN_LEVELS.indexOf(lv) < 0 && others.indexOf(lv) < 0) others.push(lv);
     });
     others.sort();
@@ -250,7 +269,9 @@
         + '</div>';
     };
     document.getElementById('cl-summary').innerHTML = ''
-      + card('命中达人', sum.n + ' 位', '', 'var(--pink-500)')
+      + (state.mode === 'rows'
+          ? card('命中寄样行', sum.rows + ' 行', '共 ' + sum.n + ' 位达人', 'var(--pink-500)')
+          : card('命中达人', sum.n + ' 位', '共 ' + sum.rows + ' 行寄样', 'var(--pink-500)'))
       + card('寄样行', sum.rows, '')
       + card('履约率', fmtPct(fulfillRate, sum.rows > 0), sum.fulfilled + '÷' + sum.rows, 'var(--c-info)')
       + card('出单率', fmtPct(orderRate, sum.video > 0), sum.orderedRows + '÷' + sum.video, 'var(--c-success)')
