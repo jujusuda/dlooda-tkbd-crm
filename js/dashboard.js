@@ -139,32 +139,38 @@
       return;
     }
 
-    // 按产品定位档位排序，同档按出单率（出单÷有视频达人）降序
+    // 按产品定位档位排序，同档按出单率（出单达人 ÷ 履约达人）降序
     products.sort(function (a, b) {
       var ta = Data.getSKUPositionTier(a.sku), tb = Data.getSKUPositionTier(b.sku);
       if (ta !== tb) return ta - tb;
-      return (b.videoOrderRate != null ? b.videoOrderRate : 0) - (a.videoOrderRate != null ? a.videoOrderRate : 0);
+      return b.orderRate - a.orderRate;
     });
 
+    // 口径（与 PPT 产品分析表一致，2026-11-08 用户确认）：
+    //   履约率 = 履约行数 ÷ 寄样行数       → p.fulfillRate（例 2178: 20/26 = 76.9%）
+    //   出单率 = 出单达人去重 ÷ 履约达人去重 → p.orderRate （例 2178: 7/17 = 41.2%）
+    // ⚠️「履约达人」= 履约方式为视频/直播的达人（即发了视频的达人），
+    //    不要拿「全量视频表里有视频记录的人」当分母，那是另一批人，会算出 33/42 之类完全不符的数。
     var html = '<div class="card" style="overflow-x:auto;"><table style="width:100%;font-size:12px;border-collapse:collapse;">'
       + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
       + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-2);">SKU</th>'
       + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-2);">寄样</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--c-info);">有视频达人</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--c-info);">履约</th>'
       + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--pink-500);">出单达人</th>'
-      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">履约率<br><span style="font-weight:400;font-size:10px;">(出单÷履约)</span></th>'
-      + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-3);">出单率<br><span style="font-weight:400;font-size:10px;">(出单÷有视频)</span></th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">履约率<br><span style="font-weight:400;font-size:10px;">(履约÷寄样)</span></th>'
+      + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-3);">出单率<br><span style="font-weight:400;font-size:10px;">(出单÷履约达人)</span></th>'
       + '</tr></thead><tbody>';
 
     products.slice(0, 20).forEach(function (p) {
-      var rate = (p.videoOrderRate != null ? p.videoOrderRate : (p.orderRate || 0));
+      var rate = p.orderRate || 0;
+      var fulfillRate = p.fulfillRate || 0;
       var barColor = rate >= 50 ? 'var(--c-success)' : rate >= 25 ? 'var(--c-warning)' : 'var(--pink-400)';
       html += '<tr style="border-bottom:1px solid var(--border-1);">'
         + '<td style="padding:6px 4px;font-weight:600;color:var(--text-1);">SKU ' + App.escapeHtml(p.sku) + '</td>'
         + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + p.approved + '</td>'
-        + '<td style="padding:6px 4px;text-align:center;color:var(--c-info);">' + (p.videoCreators != null ? p.videoCreators : p.fulfilledCreators) + '</td>'
-        + '<td style="padding:6px 4px;text-align:center;color:var(--pink-500);font-weight:700;">' + p.orderedCreators + '</td>'
-        + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + (p.orderRate != null ? p.orderRate : 0) + '%</td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--c-info);">' + (p.fulfilled != null ? p.fulfilled : p.fulfilledCreators) + '</td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--pink-500);font-weight:700;">' + (p.ordered != null ? p.ordered : p.orderedCreators) + '</td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + fulfillRate + '%</td>'
         + '<td style="padding:6px 4px;">'
         + '<div style="display:flex;align-items:center;gap:6px;">'
         + '<div style="flex:1;min-width:60px;height:12px;background:var(--bg-pink-soft);border-radius:6px;overflow:hidden;">'
