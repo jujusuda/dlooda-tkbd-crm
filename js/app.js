@@ -102,6 +102,7 @@
     var sidebar = document.querySelector('.sidebar');
     if (sidebar) {
       sidebar.innerHTML = buildSidebar(currentPage);
+      injectVersionTag(sidebar);
     }
 
     // 移动端底部导航
@@ -114,8 +115,52 @@
     prefetchPages(currentPage);
   }
 
-  function prefetchPages(currentPage) {
-    if (!document.head) return;
+  /* 侧边栏底部：缓存版本号 + 强制更新（治「页面还是旧的」） */
+  function injectVersionTag(sidebar) {
+    try {
+      var tag = document.createElement('div');
+      tag.style.cssText = 'margin-top:auto;padding:10px 18px 14px;font-size:10px;color:var(--text-3);display:flex;align-items:center;gap:8px;';
+      tag.innerHTML = '<span id="dlooda-ver">…</span>'
+        + '<button id="dlooda-force-update" style="border:1px solid var(--border-1);background:#fff;color:var(--pink-500);border-radius:8px;padding:2px 8px;font-size:10px;cursor:pointer;">强制更新</button>';
+      sidebar.appendChild(tag);
+
+      // 读出当前控制的 SW 缓存版本（取脚本里最后一段路径名）
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        fetch('./sw.js', { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) {
+          var m = t.match(/CACHE_VERSION\s*=\s*'([^']+)'/);
+          var el = document.getElementById('dlooda-ver');
+          if (el) el.textContent = m ? m[1].replace('dlooda-tkbd-', '版本 ') : '版本 —';
+        }).catch(function () {});
+      } else {
+        var el0 = document.getElementById('dlooda-ver');
+        if (el0) el0.textContent = '版本（未启用缓存）';
+      }
+
+      var btn = document.getElementById('dlooda-force-update');
+      if (btn) btn.onclick = function () {
+        btn.textContent = '更新中…';
+        var done = function () { location.reload(); };
+        var clearLocal = function () {
+          try {
+            localStorage.removeItem('dlooda_uploaded_data');
+            localStorage.removeItem('dlooda_uploaded_stats');
+            sessionStorage.removeItem('dlooda_kv_reload_at');
+          } catch (e) {}
+        };
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          navigator.serviceWorker.getRegistrations().then(function (rs) {
+            return Promise.all(rs.map(function (r) { return r.unregister(); }));
+          }).then(function () {
+            return window.caches ? caches.keys().then(function (ks) {
+              return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+            }) : null;
+          }).then(function () { clearLocal(); done(); }).catch(function () { clearLocal(); done(); });
+        } else { clearLocal(); done(); }
+      };
+    } catch (e) {}
+  }
+
+  function prefetchPages(currentPage) {    if (!document.head) return;
     NAV_ITEMS.forEach(function (item) {
       if (!item.enabled || item.id === currentPage) return;
       var link = document.createElement('link');

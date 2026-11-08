@@ -30,7 +30,7 @@
   /* ---------- 顶部分析标签页（点击切换，一次显示一个区块） ---------- */
   function initAnalysisTabs() {
     var tabs = Array.prototype.slice.call(document.querySelectorAll('.analysis-tab'));
-    var sections = ['section-persona','section-language','section-dev','section-trend','section-product','section-fulfill','section-video','section-reinvest'];
+    var sections = ['section-persona','section-language','section-dev','section-trend','section-product','section-levels','section-fulfill','section-video','section-reinvest'];
     function showTab(targetId) {
       sections.forEach(function (id) {
         var el = document.getElementById(id);
@@ -186,8 +186,7 @@
   }
 
   // 把分布对象渲染成带占比数字的条形
-  function qualityBars(title, dist) {
-    var entries = Object.keys(dist || {}).map(function (k) { return [k, dist[k]]; })
+  function qualityBars(title, dist) {    var entries = Object.keys(dist || {}).map(function (k) { return [k, dist[k]]; })
       .sort(function (a, b) { return b[1] - a[1]; });
     if (entries.length === 0) return '';
     var total = entries.reduce(function (s, e) { return s + e[1]; }, 0) || 1;
@@ -518,6 +517,103 @@
       barBlock('出单语言分布', d.orderByLang, '有出单的寄样 ' + orderCount + ' 条') + skuHtml;
   }
 
+  /* ========== 达人层级 × 出单率（2026-11-08 新增） ==========
+     按官方等级（L0-1/L2/.../L7）聚合，行数口径：
+       出单率 = 出单行 ÷ 视频行；履约率 = 履约行 ÷ 寄样行 */
+  function renderLevelAnalysis() {
+    var container = document.getElementById('level-analysis');
+    if (!container) return;
+    var rows = Data.getLevelAnalysis(filterState.startDate, filterState.endDate, filterState.sku);
+    if (!rows || rows.length === 0) {
+      container.innerHTML = '<div class="card"><div style="padding:16px;color:var(--text-3);font-size:13px;text-align:center;">暂无数据</div></div>';
+      return;
+    }
+
+    var total = { creators: 0, rows: 0, fulfilled: 0, video: 0, ordered: 0, orders: 0, materials: 0 };
+    rows.forEach(function (r) {
+      total.creators += r.creatorCount; total.rows += r.rows;
+      total.fulfilled += r.fulfilled; total.video += r.video;
+      total.ordered += r.ordered; total.orders += r.orders;
+      total.materials += r.materials;
+    });
+    var totalOrderRate = total.video > 0 ? Math.round(total.ordered / total.video * 1000) / 10 : 0;
+    var totalFulfillRate = total.rows > 0 ? Math.round(total.fulfilled / total.rows * 1000) / 10 : 0;
+    var best = rows.filter(function (r) { return r.video >= 5; })
+      .sort(function (a, b) { return b.orderRate - a.orderRate; })[0];
+
+    var cardHtml = function (label, value, sub, color) {
+      return '<div class="stat-card"><div class="stat-card__value" style="color:' + (color || 'var(--text-1)') + ';">' + value + '</div>'
+        + '<div class="stat-card__label">' + label + (sub ? '<span style="display:block;font-size:10px;font-weight:400;color:var(--text-3);margin-top:2px;">' + sub + '</span>' : '') + '</div></div>';
+    };
+    var html = '<div class="stat-grid" style="margin-bottom:14px;">'
+      + cardHtml('等级档位', rows.length + ' 档', '共 ' + total.creators + ' 位达人', 'var(--pink-500)')
+      + cardHtml('整体出单率', totalOrderRate + '%', total.ordered + '÷' + total.video, 'var(--c-success)')
+      + cardHtml('整体履约率', totalFulfillRate + '%', total.fulfilled + '÷' + total.rows, 'var(--c-info)')
+      + cardHtml('出单量最高等级', best ? best.level : '—', best ? best.orderRate + '% · ' + best.orders + ' 单' : '视频行不足', 'var(--pink-500)')
+      + '</div>';
+
+    function bar(pct, color) {
+      return '<div style="display:flex;align-items:center;gap:6px;">'
+        + '<div style="flex:1;min-width:44px;height:9px;background:var(--bg-pink-soft);border-radius:5px;overflow:hidden;">'
+        + '<div style="height:100%;width:' + Math.min(pct, 100) + '%;background:' + color + ';border-radius:5px;"></div></div>'
+        + '<span style="font-size:11px;font-weight:700;min-width:36px;text-align:right;color:var(--text-2);">' + pct + '%</span></div>';
+    }
+
+    html += '<div class="card" style="overflow-x:auto;">'
+      + '<div class="card__header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">'
+      + '<h3 class="card__title">各等级出单率 / 履约率对比</h3>'
+      + '<span style="font-size:11px;color:var(--text-3);">出单率 = 出单行 ÷ 视频行 · 履约率 = 履约行 ÷ 寄样行</span>'
+      + '</div>'
+      + '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
+      + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
+      + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--text-2);">等级</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">达人</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">寄样行</th>'
+      + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--c-info);">履约率</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">视频行</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">出单行</th>'
+      + '<th style="padding:8px 4px;text-align:left;font-weight:600;color:var(--c-success);">出单率</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--pink-500);">出单量</th>'
+      + '<th style="padding:8px 4px;text-align:center;font-weight:600;color:var(--text-3);">素材</th>'
+      + '</tr></thead><tbody>';
+
+    rows.forEach(function (r) {
+      var lvColor = (r.level === 'L5' || r.level === 'L6' || r.level === 'L7') ? 'var(--pink-500)'
+        : r.level === 'L4' ? 'var(--c-info)' : r.level === 'L3' ? 'var(--c-success)' : 'var(--text-3)';
+      var ordersPct = total.orders > 0 ? Math.round(r.orders / total.orders * 100) : 0;
+      html += '<tr style="border-bottom:1px solid var(--border-1);">'
+        + '<td style="padding:8px 4px;font-weight:700;color:' + lvColor + ';">' + App.escapeHtml(r.level) + '</td>'
+        + '<td style="padding:8px 4px;text-align:center;color:var(--text-2);">' + r.creatorCount + '</td>'
+        + '<td style="padding:8px 4px;text-align:center;color:var(--text-2);">' + r.rows + '</td>'
+        + '<td style="padding:8px 4px;min-width:110px;">' + bar(r.fulfillRate, 'var(--c-info)') + '</td>'
+        + '<td style="padding:8px 4px;text-align:center;color:var(--text-2);">' + r.video + '</td>'
+        + '<td style="padding:8px 4px;text-align:center;color:var(--text-2);">' + r.ordered + '</td>'
+        + '<td style="padding:8px 4px;min-width:110px;">' + bar(r.orderRate, 'var(--pink-400)') + '</td>'
+        + '<td style="padding:8px 4px;text-align:center;font-weight:700;color:var(--pink-500);">' + App.formatNumber(r.orders)
+        + ' <span style="font-size:10px;font-weight:400;color:var(--text-3);">' + ordersPct + '%</span></td>'
+        + '<td style="padding:8px 4px;text-align:center;color:var(--text-2);">' + r.materials + '</td>'
+        + '</tr>';
+    });
+
+    html += '<tr style="background:var(--bg-pink-soft);font-weight:700;">'
+      + '<td style="padding:8px 4px;color:var(--text-1);">合计</td>'
+      + '<td style="padding:8px 4px;text-align:center;">' + total.creators + '</td>'
+      + '<td style="padding:8px 4px;text-align:center;">' + total.rows + '</td>'
+      + '<td style="padding:8px 4px;">' + bar(totalFulfillRate, 'var(--c-info)') + '</td>'
+      + '<td style="padding:8px 4px;text-align:center;">' + total.video + '</td>'
+      + '<td style="padding:8px 4px;text-align:center;">' + total.ordered + '</td>'
+      + '<td style="padding:8px 4px;">' + bar(totalOrderRate, 'var(--pink-400)') + '</td>'
+      + '<td style="padding:8px 4px;text-align:center;color:var(--pink-500);">' + App.formatNumber(total.orders) + '</td>'
+      + '<td style="padding:8px 4px;text-align:center;">' + total.materials + '</td>'
+      + '</tr>';
+
+    html += '</tbody></table>'
+      + '<div style="padding:8px 4px 2px;font-size:11px;color:var(--text-3);">等级来自飞书「官方等级」字段；未填等级的达人归入「未填」。出单量 = 寄样行 orderCount 合计，括号内为占全部出单量比例。</div>'
+      + '</div>';
+
+    container.innerHTML = html;
+  }
+
   // 各区块与渲染函数的映射，便于按需渲染
   var SECTION_RENDERERS = {
     'section-persona': function () { safeRender('persona-analysis', renderPersona); },
@@ -525,6 +621,7 @@
     'section-dev': function () { safeRender('dev-effect', renderDevEffect); },
     'section-trend': function () { safeRender('trend-analysis', renderTrend); },
     'section-product': function () { safeRender('product-analysis', renderProductAnalysis); },
+    'section-levels': function () { safeRender('level-analysis', renderLevelAnalysis); },
     'section-fulfill': function () { safeRender('fulfill-method', renderFulfillMethod); },
     'section-video': function () { safeRender('video-quality', renderVideoQuality); },
     'section-reinvest': function () { safeRender('reinvest-analysis', renderReinvest); },

@@ -1070,6 +1070,50 @@
     });
   }
 
+  /* ========== 达人层级聚合（2026-11-08） ==========
+     官方等级 L0-1 / L2 / L3 / L4 / L5 / L6 / L7，按寄样「行数」算：
+       出单率 = 出单行 ÷ 视频行（履约方式=视频，不含直播行）
+       履约率 = 履约行 ÷ 寄样行
+     与产品分析表口径完全一致。 */
+  var LEVEL_ORDER = { 'L0-1': 0, 'L2': 1, 'L3': 2, 'L4': 3, 'L5': 4, 'L6': 5, 'L7': 6 };
+  function levelRank(lv) { return LEVEL_ORDER[lv] == null ? 99 : LEVEL_ORDER[lv]; }
+
+  function getLevelAnalysis(startDate, endDate, skuFilter) {
+    var samples = filterSamples(D.samples, startDate, endDate, skuFilter);
+    var levelOf = {};
+    D.creators.forEach(function (c) { levelOf[c.name] = c.official || '未填'; });
+    var by = {};
+    samples.forEach(function (s) {
+      var lv = levelOf[s.creator] || '未填';
+      if (!by[lv]) by[lv] = { level: lv, rows: 0, fulfilled: 0, video: 0, ordered: 0, orders: 0, materials: 0, creators: {}, orderedCreators: {} };
+      var a = by[lv];
+      a.rows++;
+      a.creators[s.creator] = true;
+      var m = s.fulfillMethod || '';
+      if (m === '视频' || m.indexOf('直播') >= 0) a.fulfilled++;
+      if (m === '视频') a.video++;
+      var oc = parseInt(s.orderCount, 10) || 0;
+      if (oc > 0) { a.ordered++; a.orders += oc; a.orderedCreators[s.creator] = true; }
+      if (s.videos) a.materials += s.videos.length;
+    });
+    return Object.keys(by).map(function (k) {
+      var a = by[k];
+      return {
+        level: a.level,
+        creatorCount: Object.keys(a.creators).length,
+        orderedCreatorCount: Object.keys(a.orderedCreators).length,
+        rows: a.rows,
+        fulfilled: a.fulfilled,
+        video: a.video,
+        ordered: a.ordered,
+        orders: a.orders,
+        materials: a.materials,
+        fulfillRate: a.rows > 0 ? Math.round(a.fulfilled / a.rows * 1000) / 10 : 0,
+        orderRate: a.video > 0 ? Math.round(a.ordered / a.video * 1000) / 10 : 0,
+      };
+    }).sort(function (x, y) { return levelRank(x.level) - levelRank(y.level); });
+  }
+
   // 样品看板：按SKU + 时间范围筛选，返回合作情况统计
   function getSampleDashboard(sku, startDate, endDate) {
     var samples = filterSamples(D.samples, startDate, endDate, sku);
@@ -2836,6 +2880,7 @@
     getSKUAttributionDetail: getSKUAttributionDetail,
     getSKUOrderRateInRange: getSKUOrderRateInRange,
     getAvailableSKUs: getAvailableSKUs,
+    getLevelAnalysis: getLevelAnalysis,
     getCreatorValueAnalysis: getCreatorValueAnalysis,
     getSampleFunnel: getSampleFunnel,
     getVideoLatencyAnalysis: getVideoLatencyAnalysis,
