@@ -590,6 +590,19 @@
     return String(v).trim();
   }
 
+  // 视频日期格式归一：飞书「视频时间」可能是 2026/10/22(斜杠)、单位数月日、文本日期。
+  // 统一成 YYYY-MM-DD 开头（保留后续 HH:MM），否则窗口字符串比较会把斜杠日期误判为超窗排除。
+  // ⚠️ 只用于「全量视频」表；解析不出的脏值（[object Object]/URL）原样返回，
+  //    让它继续按旧规则被 endDate 排除，绝不能变成空串（空串会被当成「无日期」计入分母）。
+  function normVideoDate(raw) {
+    if (raw === null || raw === undefined) return '';
+    if (typeof raw === 'object') return String(raw);
+    var s = String(raw).trim().replace(/\//g, '-');
+    var m = /^(\d{4})-(\d{1,2})-(\d{1,2})(.*)$/.exec(s);
+    if (!m) return s;
+    return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) + m[4];
+  }
+
   // 视频数据：优先使用飞书「全量视频」表（REAL_DATA.videos，含所有达人的视频记录）；
   // 该表未同步（旧数据/本地预览）时回退到寄样记录内嵌的视频，保证不中断。
   function getVideos() {
@@ -603,7 +616,7 @@
           sku: normSku(v.sku),
           color: null,
           url: v.url,
-          postTime: v.date,
+          postTime: normVideoDate(v.date),
           sampleTime: null,
           fulfillMethod: null,
           category: null,
@@ -1558,10 +1571,14 @@
     var skuKey = sku ? normSku(sku) : '';
 
     // 数据源：飞书「全量视频」表（getVideos 优先），未同步时回退寄样内嵌视频
+    // ⚠️ 素材看板按日聚合必须再校验一次日期：飞书「视频时间」列混有
+    //    [object Object]、URL 串等脏值，不校验会生成 "[object Ob"/"https://ww" 垃圾分组。
+    //    getVideos 里已对全量视频表做 format 归一（斜杠→横杠、补零），此处兼容回退的原始数据。
+    //    注意：这里只过滤「看板分组」，不改 getVideoCreators 的分母口径（实测改了会有 42→51 回归）。
     getVideos().forEach(function (v) {
-      var t = v.postTime || '';
+      var t = normVideoDate(v.postTime);
       var day = t.slice(0, 10);
-      if (!day) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
       if (skuKey && v.sku !== skuKey) return;
       if (startDate && day < startDate) return;
       if (endDate && day > endDate) return;
