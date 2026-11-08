@@ -1143,6 +1143,205 @@
     }).sort(function (x, y) { return levelRank(x.level) - levelRank(y.level); });
   }
 
+  /* ========== 新老视频 / 新老达人 / 多品合作分析（2026-11-08） ==========
+     视频：发布时间落在筛选区间内 = 新视频，之前 = 老视频（区间之后的不计入）。
+     达人：首次寄样时间早于区间起点 = 老达人，否则新达人。
+     订单归属：按寄样行统计（同一行多视频不重复计单）；视频条数按条计。
+     多品：区间内同一达人合作的 SKU 数（按寄样行 distinct）。 */
+  function getFreshnessAnalysis(startDate, endDate, skuFilter) {
+    var skuKey = skuFilter ? normSku(skuFilter) : '';
+    var samples = D.samples.filter(function (s) {
+      if (skuKey && normSku(s.sku) !== skuKey) return false;
+      return true;
+    });
+
+    // 每个达人最早寄样时间（不受筛选影响，用于判定新老）
+    var firstSeen = {};
+    D.samples.forEach(function (s) {
+      var t = String(s.sampleTime || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(t) || !s.creator) return;
+      if (!firstSeen[s.creator] || t < firstSeen[s.creator]) firstSeen[s.creator] = t;
+    });
+
+    var inWin = function (t) {
+      var d = String(t || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+      if (startDate && d < startDate) return false;
+      if (endDate && !withinEnd(d, endDate)) return false;
+      return true;
+    };
+    var beforeWin = function (t) {
+      var d = String(t || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+      return !!(startDate && d < startDate);
+    };
+
+    // 视频：新/老分组（按发布时间）
+    // ⚠️ 全量视频表没有「寄样时间」字段，无法把视频一对一挂到寄样行上（URL 匹配率仅 ~23%）。
+    // 因此订单按「达人 × SKU」组合归属，再按该组合内新/老视频条数比例分摊；
+    // 出单判断用「该组合是否有订单」作为代理（组合级出单率，UI 已注明）。
+    var combo = {};
+    function comboKey(creator, sku) { return creator + '|' + normSku(sku); }
+    getVideos().forEach(function (v) {
+      if (skuKey && normSku(v.sku) !== skuKey) return;
+      var pt = String(v.postTime || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(pt)) return;
+      var isNew = inWin(pt), isOld = beforeWin(pt);
+      if (!isNew && !isOld) return;   // 区间之后发布的先不计
+      var k = comboKey(v.creator, v.sku);
+      var c = combo[k] || (combo[k] = { creator: v.creator, sku: normSku(v.sku), newV: 0, oldV: 0, winOrders: 0 });
+      if (isNew) c.newV++; else c.oldV++;
+    });
+    // 订单池：只看【区间内】的寄样行订单（含订单数只在寄样行上，没有逐单时间，
+    // 所以用「本期订单」来判断新素材 vs 老素材的贡献），再按该组合新/老视频条数比例分摊。
+    D.samples.forEach(function (s) {
+      if (skuKey && normSku(s.sku) !== skuKey) return;
+      if (!s.creator || !s.sku) return;
+      var c = combo[comboKey(s.creator, s.sku)];
+      if (!c) return;
+      var t = String(s.sampleTime || '').slice(0, 10);
+      if (!inWin(t)) return;
+      c.winOrders += (parseInt(s.orderCount, 10) || 0);
+    });
+
+    var vid = {
+      newVideos: 0, oldVideos: 0,
+      newCombos: 0, oldCombos: 0, newOrderedCombos: 0, oldOrderedCombos: 0,
+      newOrders: 0, oldOrders: 0
+    };
+    Object.keys(combo).forEach(function (k) {
+      var c = combo[k];
+      var tv = c.newV + c.oldV;
+      if (!tv) return;
+      var newShare = c.winOrders * (c.newV / tv);
+      var oldShare = c.winOrders * (c.oldV / tv);
+      if (c.newV) {
+        vid.newVideos += c.newV; vid.newCombos++;
+        vid.newOrders += newShare;
+        if (newShare > 0) vid.newOrderedCombos++;
+      }
+      if (c.oldV) {
+        vid.oldVideos += c.oldV; vid.oldCombos++;
+        vid.oldOrders += oldShare;
+        if (oldShare > 0) vid.oldOrderedCombos++;
+      }
+    });
+    vid.newOrders = Math.round(vid.newOrders);
+    vid.oldOrders = Math.round(vid.oldOrders);
+
+    // 新老达人
+    var cr = {
+      newCreators: {}, oldCreators: {},
+      newRows: 0, oldRows: 0, newVideoRows: 0, oldVideoRows: 0,
+      newOrderedRows: 0, oldOrderedRows: 0, newOrders: 0, oldOrders: 0
+    };
+    samples.forEach(function (s) {
+      var t = String(s.sampleTime || '').slice(0, 10);
+      if (startDate || endDate) { if (!inWin(t)) return; }
+      var first = firstSeen[s.creator] || t;
+      var isNew = !!startDate && first >= startDate;
+      var m = s.fulfillMethod || '';
+      var oc = parseInt(s.orderCount, 10) || 0;
+      if (isNew) {
+        cr.newCreators[s.creator] = true; cr.newRows++;
+        if (m === '视频') cr.newVideoRows++;
+        if (oc > 0) { cr.newOrderedRows++; cr.newOrders += oc; }
+      } else {
+        cr.oldCreators[s.creator] = true; cr.oldRows++;
+        if (m === '视频') cr.oldVideoRows++;
+        if (oc > 0) { cr.oldOrderedRows++; cr.oldOrders += oc; }
+      }
+    });
+
+    // 多品合作：区间内每个达人 distinct SKU 数
+    var perCreator = {};
+    samples.forEach(function (s) {
+      var t = String(s.sampleTime || '').slice(0, 10);
+      if (startDate || endDate) { if (!inWin(t)) return; }
+      if (!s.creator || !s.sku) return;
+      var p = perCreator[s.creator] || (perCreator[s.creator] = { creator: s.creator, skus: {}, rows: 0, videoRows: 0, orderedRows: 0, orders: 0 });
+      p.skus[normSku(s.sku)] = true;
+      p.rows++;
+      if ((s.fulfillMethod || '') === '视频') p.videoRows++;
+      var oc = parseInt(s.orderCount, 10) || 0;
+      if (oc > 0) { p.orderedRows++; p.orders += oc; }
+    });
+    var multiGroups = { '1': { label: '1 款', creators: 0, rows: 0, videoRows: 0, orderedRows: 0, orders: 0 },
+                        '2': { label: '2 款', creators: 0, rows: 0, videoRows: 0, orderedRows: 0, orders: 0 },
+                        '3': { label: '3 款', creators: 0, rows: 0, videoRows: 0, orderedRows: 0, orders: 0 },
+                        '4+': { label: '4 款及以上', creators: 0, rows: 0, videoRows: 0, orderedRows: 0, orders: 0 } };
+    var multiList = [];
+    Object.keys(perCreator).forEach(function (k) {
+      var p = perCreator[k];
+      p.skuCount = Object.keys(p.skus).length;
+      var g = p.skuCount >= 4 ? '4+' : String(p.skuCount);
+      var o = multiGroups[g];
+      o.creators++; o.rows += p.rows; o.videoRows += p.videoRows;
+      o.orderedRows += p.orderedRows; o.orders += p.orders;
+      if (p.skuCount >= 2) {
+        multiList.push({
+          creator: p.creator, skuCount: p.skuCount, skus: Object.keys(p.skus),
+          rows: p.rows, videoRows: p.videoRows, orderedRows: p.orderedRows, orders: p.orders,
+          orderRate: p.videoRows > 0 ? Math.round(p.orderedRows / p.videoRows * 1000) / 10 : 0
+        });
+      }
+    });
+    multiList.sort(function (a, b) { return b.orders - a.orders || b.skuCount - a.skuCount; });
+
+    function pct(a, b) { return b > 0 ? Math.round(a / b * 1000) / 10 : 0; }
+
+    return {
+      hasRange: !!(startDate || endDate),
+      start: startDate || '', end: endDate || '',
+      video: {
+        newVideos: vid.newVideos, oldVideos: vid.oldVideos,
+        newVideosShare: pct(vid.newVideos, vid.newVideos + vid.oldVideos),
+        oldVideosShare: pct(vid.oldVideos, vid.newVideos + vid.oldVideos),
+        newCombos: vid.newCombos, oldCombos: vid.oldCombos,
+        newOrderedCombos: vid.newOrderedCombos, oldOrderedCombos: vid.oldOrderedCombos,
+        newOrderRate: pct(vid.newOrderedCombos, vid.newCombos),
+        oldOrderRate: pct(vid.oldOrderedCombos, vid.oldCombos),
+        newOrders: vid.newOrders, oldOrders: vid.oldOrders,
+        newOrdersShare: pct(vid.newOrders, vid.newOrders + vid.oldOrders),
+        oldOrdersShare: pct(vid.oldOrders, vid.newOrders + vid.oldOrders),
+        totalOrders: vid.newOrders + vid.oldOrders,
+      },
+      creator: {
+        newCreators: Object.keys(cr.newCreators).length, oldCreators: Object.keys(cr.oldCreators).length,
+        newCreatorsShare: pct(Object.keys(cr.newCreators).length, Object.keys(cr.newCreators).length + Object.keys(cr.oldCreators).length),
+        newRows: cr.newRows, oldRows: cr.oldRows,
+        newVideoRows: cr.newVideoRows, oldVideoRows: cr.oldVideoRows,
+        newOrderedRows: cr.newOrderedRows, oldOrderedRows: cr.oldOrderedRows,
+        newOrders: cr.newOrders, oldOrders: cr.oldOrders,
+        newOrderRate: pct(cr.newOrderedRows, cr.newVideoRows),
+        oldOrderRate: pct(cr.oldOrderedRows, cr.oldVideoRows),
+        newOrdersShare: pct(cr.newOrders, cr.newOrders + cr.oldOrders),
+        oldOrdersShare: pct(cr.oldOrders, cr.newOrders + cr.oldOrders),
+      },
+      multi: (function () {
+        var keys = ['1', '2', '3', '4+'];
+        var totalOrdersM = keys.reduce(function (sum, k) { return sum + multiGroups[k].orders; }, 0);
+        var totalCreatorsM = keys.reduce(function (sum, k) { return sum + multiGroups[k].creators; }, 0);
+        return {
+          groups: keys.map(function (k) {
+            var o = multiGroups[k];
+            return {
+              label: o.label, creators: o.creators, rows: o.rows, videoRows: o.videoRows,
+              orderedRows: o.orderedRows, orders: o.orders,
+              orderRate: pct(o.orderedRows, o.videoRows),
+              creatorsShare: pct(o.creators, totalCreatorsM),
+              ordersShare: pct(o.orders, totalOrdersM),
+            };
+          }),
+          totalCreators: totalCreatorsM,
+          totalOrders: totalOrdersM,
+          top: multiList.slice(0, 12),
+          multiCreatorCount: multiList.length,
+        };
+      })(),
+    };
+  }
+
   // 样品看板：按SKU + 时间范围筛选，返回合作情况统计
   function getSampleDashboard(sku, startDate, endDate) {
     var samples = filterSamples(D.samples, startDate, endDate, sku);
@@ -2911,6 +3110,7 @@
     getSKUOrderRateInRange: getSKUOrderRateInRange,
     getAvailableSKUs: getAvailableSKUs,
     getLevelAnalysis: getLevelAnalysis,
+    getFreshnessAnalysis: getFreshnessAnalysis,
     getCreatorValueAnalysis: getCreatorValueAnalysis,
     getSampleFunnel: getSampleFunnel,
     getVideoLatencyAnalysis: getVideoLatencyAnalysis,
