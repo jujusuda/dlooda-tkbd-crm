@@ -2157,10 +2157,12 @@
   }
 
   // SKU 出单率趋势：按月份统计每个SKU的出单率（用于复盘）
-  // 月中到月中的月份桶：标签为 YYYY-MM，代表区间 [上个月15号 ~ 当月15号]。
-  // 例：标签 2026-08 表示窗口 2026-07-15 ~ 2026-08-15（即用户口径的"8月出单率"）。
-  // 归属规则：某条寄样记录归到「以它所在日期为起点的那段15号区间」。
-  //   日期 >= 当月15号  => 归到下一个标签月（作为其起点）；否则归到当前标签月。
+  // 月中到月中的月份桶：标签 YYYY-MM 代表【左闭右开】区间 [上个月15号 ~ 当月15号)。
+  // 例：标签 2026-10 = 9/15 ~ 10/14；**10/15 当天归入 2026-11 桶**（不重不漏）。
+  // ⚠️ 用户口头/手工统计常用「9/15~10/15」闭区间（含 10/15），会比月度桶多当天记录
+  //    （实测 2026-10-15 有 13 条：2178 +2、2190 +2、28173 +4 等），
+  //    这正是「手工统计 vs 页面月度趋势」对不上的原因，不是数据回填。
+  //    若要与手工口径一致，请用复盘页顶部「区间出单率」手动选 9/15~10/15（该处含结束日）。
   function midMonthBucket(dateStr) {
     if (!dateStr || dateStr.length < 10) return dateStr;
     var y = +dateStr.slice(0, 4), m = +dateStr.slice(5, 7), d = +dateStr.slice(8, 10);
@@ -2215,6 +2217,11 @@
   }
 
   // 日期范围命中：支持 YYYY-MM（整月）或 YYYY-MM-DD；range = {start,end}
+  // ⚠️ 必须只比较日期部分（前 10 位）：sampleTime 是 "2026-10-15 16:24" 带时间，
+  //    若直接和纯日期 "2026-10-15" 字符串比较，"...15 16:24" > "...15" 成立 →
+  //    结束日当天全部记录被误判为超范围排除（曾导致 9/15~10/15 少算 10/15 的 13 条，
+  //    用户手工统计与复盘页差 2~4 行）。filterSamples 用 endDate + ' 23:59' 是正确写法，
+  //    此处统一按 slice(0,10) 比较，保证复盘页与 Dashboard 同一筛选结果一致。
   function attrInRange(t, range) {
     if (!range) return true;
     var start = range.start, end = range.end;
@@ -2229,8 +2236,10 @@
       return v;
     }
     var s = expand(start, false), e = expand(end, true);
-    if (s && t < s) return false;
-    if (e && t > e) return false;
+    if (!t) return false;
+    var d = String(t).slice(0, 10);
+    if (s && d < s.slice(0, 10)) return false;
+    if (e && d > e.slice(0, 10)) return false;
     return true;
   }
 

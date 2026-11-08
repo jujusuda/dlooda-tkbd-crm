@@ -47,7 +47,7 @@
     var endDate = filterState.endDate || null;
     var trend = Data.getSKUTrendAnalysis(sku, startDate, endDate);
     var changes = Data.getSKUAttributionAnalysis(sku, startDate, endDate);
-    // 顶部核心指标：按当前筛选范围(含时间)聚合的出单率 = 出单达人 ÷ 履约达人
+    // 顶部核心指标：按当前筛选范围(含时间)聚合的出单率 = 出单达人 ÷ 有视频链接达人
     var agg = Data.getSKUOrderRateInRange(sku, startDate, endDate);
     renderTrendMetrics(trend, changes, agg);
     renderSKUTrendChart(trend);
@@ -63,9 +63,9 @@
     var down = changes.filter(function (c) { return c.direction === 'down'; }).length;
     var heroRate = agg && typeof agg.orderRate === 'number' ? agg.orderRate : 0;
     var hasRange = !!(filterState.startDate || filterState.endDate);
-    // 出单率 = 出单达人 ÷ 履约达人（带/不带时间筛选都在当前范围内聚合，而非各月均值）
+    // 出单率 = 出单达人 ÷ 有视频链接达人（带/不带时间筛选都在当前范围内聚合，而非各月均值）
     var heroLabel = hasRange ? '区间出单率' : '整体出单率';
-    var heroNote = '出单 ' + agg.orderedCreators + ' ÷ 履约 ' + agg.fulfilledCreators;
+    var heroNote = '出单 ' + agg.orderedCreators + ' ÷ 有视频达人 ' + agg.fulfilledCreators;
     container.innerHTML = ''
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + Object.keys(skuSet).length + '</div><div class="stat-card__label">统计 SKU</div></div>'
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + heroRate + '%</div><div class="stat-card__label">' + heroLabel + '<span style="font-size:10px;color:var(--text-3);display:block;font-weight:400;margin-top:2px;">' + heroNote + '</span></div></div>'
@@ -131,7 +131,7 @@
       + '</svg>';
 
     container.innerHTML = '<div style="padding:8px 4px;">' + svg
-      + '<div style="font-size:11px;color:var(--text-3);margin-top:6px;">整体月度出单率趋势（出单达人 ÷ 履约达人 · 每月按上月15号~当月15号统计）</div></div>';
+      + '<div style="font-size:11px;color:var(--text-3);margin-top:6px;">月度履约率趋势（出单达人 ÷ 履约达人，非「出单率」）· 标签 2026-10 = 9/15~10/14（左闭右开，10/15 归入 11 月桶）</div></div>';
   }
 
   function renderSKUChangeRanking(changes) {

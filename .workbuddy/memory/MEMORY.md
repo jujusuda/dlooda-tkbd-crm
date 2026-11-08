@@ -16,7 +16,9 @@
 - ⚠️ **真正的阻塞 = 飞书高级权限**：该 base `is_advanced:true`，drive 权限里应用 `cli_aafc7b8903789d2d` 有 `perm:edit`，但角色无该表权限 → `/tables` 只列出 6 张（把新表过滤掉了，这才是"查不到表"的原因）、访问目标表报 `1254302 RolePermNotAllow`（**不存在的 id 报的是 `1254041 TableIdNotFound`，两者错误码不同可区分"无权限"与"不存在"**）；`fields`/`records`/`roles` 接口同样 1254302 → **目前无法核实真实列名**。需用户在飞书多维表格「···→高级权限/协作者」给该应用（或把新表加入其角色）授权，否则同步降级跳过 videos。角色列表 API 本身也报 1254302，无法用 API 自助授权。
 - ✅ **已加容错（两份 sync 都有）**：`videos` 是可选增强表，`listRecords` 抛错只降级 `tables.videos=[]` 并写 `warnings`，**绝不拖垮其余 6 张主表 / 整次 /api/sync**；非 videos 表失败照常抛错。另加「字段名诊断」：拉到记录但解析 0 条时，warning 带出配置的列名+实际列名（等权限开了同步一次即可看到真实列名，用来核对 `config.json videos.fields`）。`/api/sync` 响应新增 `warnings` 字段，`_run_sync_once.js` 也打印。
 - **PPT 权威数据源（9-13 定）**：`scripts/_authoritative_data.json`（用户文字表）；绝不用 real-data.js/_correct_sku_data.json 填 PPT；看不到图片数字，必须用户贴文字。
-- **PPT 月度窗口非自然月**：如「8月」= 7/15-8/15。
+- **PPT 月度窗口非自然月**：如「8月」= 7/15-8/15。⚠️ CRM 月度趋势桶 `midMonthBucket` 是**左闭右开**：标签 `2026-10` = **9/15~10/14**，10/15 归 `2026-11` 桶（`d>=15→m+1`）。用户口头/手工统计常说「9/15~10/15」闭区间含 10/15，会差当天 13 条记录 —— **这是口径差异不是数据回填**。
+- ⚠️ **日期范围比较必须只比前 10 位**（11-08 血泪坑）：`s.sampleTime` 带时间("2026-10-15 16:24")，`endDate` 纯日期("2026-10-15")，直接字符串 `t > e` 会把**结束日当天全部记录误判超范围排除**。`attrInRange()`(复盘页/归因用) 曾用纯字符串比较；`filterSamples()`(Dashboard/产品分析表用) 写的是 `endDate + ' 23:59'` 是对的 → 曾导致**同一 9/15~10/15 筛选复盘页与 Dashboard 数字对不上**，被误判为「飞书事后回填」。现已统一 `String(t).slice(0,10)` 比较。
+- ⚠️ **页面上「出单率」有多套口径，勿混**：复盘页顶部「区间出单率」= 出单÷**有视频达人**(`getSKUOrderRateInRange`)；复盘页月度趋势图 = 出单÷**履约达人**(`getSKUTrendAnalysis`，其实是履约率)；产品分析表两列并存(`orderRate`=履约率、`videoOrderRate`=出单率)。用户手工统计常被问「对不上」，先确认他要的是哪一组。
 
 ## 部署 & 数据坑（高频）
 - **git**：大批量 add 会 mmap failed → 分 2-3 批提交；命令行 push 不可用（GCM 无凭据）→ **用户在 GitHub Desktop 点 Push origin**。gitignore 含 *.pptx/_preview*/docx_media/nul/work/。
