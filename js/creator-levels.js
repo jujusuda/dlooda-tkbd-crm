@@ -1,7 +1,7 @@
 /* ============================================================
    达人层级划分（达人页顶部区块）
-   - 官方等级：L0-1 / L2 / L3 / L4 / L5 / L6 / L7
-   - 多维筛选：SKU、等级（下限 or 精确）、出单/未出单、素材量、达人昵称搜索
+   - 官方等级：L0-1 / L2 / L3 / L4 / L5 / L6 / L7（实际出现的档位动态生成，含「未填」）
+   - 多维筛选：时间区间、SKU、等级（下限 or 精确）、出单/未出单、素材量、达人昵称搜索
    - 排序：出单量（订单数）降序 → 素材量 → 寄样行
    - 结果汇总：出单率 = 出单行 ÷ 视频行；履约率 = 履约行 ÷ 寄样行（与 PPT 同口径，按行数）
    ============================================================ */
@@ -13,11 +13,11 @@
   var host = document.getElementById('creator-levels');
   if (!Data || !App || !host) return;
 
-  var LEVELS = ['L0-1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7'];
+  var KNOWN_LEVELS = ['L0-1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7'];
   var ORD = { 'L0-1': 0, 'L2': 1, 'L3': 2, 'L4': 3, 'L5': 4, 'L6': 5, 'L7': 6 };
   var PAGE = 100;
 
-  var state = { sku: '', level: '', minLevel: '', order: '', mat: '', kw: '', expanded: false };
+  var state = { startDate: '', endDate: '', sku: '', level: '', minLevel: '', order: '', mat: '', kw: '', expanded: false };
 
   /* ---------- 数据归一化（与 data.js 保持一致） ---------- */
   function normSku(v) {
@@ -31,6 +31,20 @@
     return String((v && v.text) || v || '');
   }
   function orders(s) { return parseInt(s.orderCount, 10) || 0; }
+
+  /* 时间区间判定：结束日选 15 号时当天归下月（与全站「15 号切月」一致） */
+  function inRange(t) {
+    if (!state.startDate && !state.endDate) return true;
+    var d = String(t || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+    if (state.startDate && d < state.startDate) return false;
+    if (state.endDate) {
+      var e = state.endDate;
+      if (e.slice(8, 10) === '15') { if (d >= e) return false; }
+      else if (d > e) return false;
+    }
+    return true;
+  }
 
   /* ---------- 聚合：按达人汇总寄样行/履约行/视频行/出单行/订单数/素材数 ---------- */
   function aggregate() {
@@ -55,6 +69,7 @@
     allSamples.forEach(function (s) {
       if (!s.creator) return;
       if (state.sku && normSku(s.sku) !== state.sku) return;
+      if (!inRange(s.sampleTime)) return;
       var a = map[s.creator] || (map[s.creator] = {
         name: s.creator, rows: 0, fulfilled: 0, video: 0, orderedRows: 0, orders: 0, materials: 0,
         level: '', stars: ''
@@ -74,6 +89,7 @@
       var day = String(v.postTime || '').slice(0, 10);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
       if (state.sku && normSku(v.sku) !== state.sku) return;
+      if (!inRange(day)) return;
       a.materials++;
     });
 
@@ -98,7 +114,8 @@
     return true;
   }
   function passesLevel(a) {
-    if (state.level && a.level !== state.level) return false;
+    if (state.level === '__none') { if (a.level) return false; }
+    else if (state.level && a.level !== state.level) return false;
     if (state.minLevel && (ORD[a.level] == null || ORD[a.level] < ORD[state.minLevel])) return false;
     return true;
   }
@@ -122,6 +139,11 @@
       +   '</div>'
       +   '<div id="cl-tiers" style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0 12px;"></div>'
       +   '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">'
+      +     '<input class="input" id="cl-start" type="date" style="width:auto;" title="寄样起始日">'
+      +     '<span style="color:var(--text-3);font-size:12px;">~</span>'
+      +     '<input class="input" id="cl-end" type="date" style="width:auto;" title="寄样结束日（选 15 号时当天归下月）">'
+      +     '<button class="filter-btn" data-quick="7">近7天</button>'
+      +     '<button class="filter-btn" data-quick="30">近30天</button>'
       +     '<select class="select" id="cl-sku" style="width:auto;min-width:130px;">' + skuOpts + '</select>'
       +     '<select class="select" id="cl-min" style="width:auto;min-width:120px;">'
       +       '<option value="">等级下限不限</option>'
@@ -142,12 +164,28 @@
       +   '<div id="cl-table" style="overflow-x:auto;"></div>'
       + '</div>';
 
+    function ymd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+    host.querySelectorAll('[data-quick]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var days = parseInt(this.getAttribute('data-quick'), 10);
+        var now = new Date();
+        var from = new Date(now.getTime() - (days - 1) * 86400000);
+        state.startDate = ymd(from);
+        state.endDate = ymd(now);
+        document.getElementById('cl-start').value = state.startDate;
+        document.getElementById('cl-end').value = state.endDate;
+        state.expanded = false;
+        render();
+      });
+    });
+    document.getElementById('cl-start').addEventListener('change', function () { state.startDate = this.value; state.expanded = false; render(); });
+    document.getElementById('cl-end').addEventListener('change', function () { state.endDate = this.value; state.expanded = false; render(); });
     document.getElementById('cl-sku').addEventListener('change', function () { state.sku = this.value; state.expanded = false; render(); });
     document.getElementById('cl-min').addEventListener('change', function () { state.minLevel = this.value; state.expanded = false; render(); });
     document.getElementById('cl-order').addEventListener('change', function () { state.order = this.value; state.expanded = false; render(); });
     document.getElementById('cl-mat').addEventListener('change', function () { state.mat = this.value; state.expanded = false; render(); });
     document.getElementById('cl-reset').addEventListener('click', function () {
-      state = { sku: '', level: '', minLevel: '', order: '', mat: '', kw: '', expanded: false };
+      state = { startDate: '', endDate: '', sku: '', level: '', minLevel: '', order: '', mat: '', kw: '', expanded: false };
       renderShell(); render();
     });
 
@@ -165,15 +203,25 @@
     var base = all.filter(passesBase);
 
     // 等级 chips（含人数）
+    // 等级 chips：按「实际出现的档位」动态生成，未填等级单独一档，保证加总 = 命中达人数
     var counts = { '': base.length };
-    LEVELS.forEach(function (lv) { counts[lv] = 0; });
-    base.forEach(function (a) { if (counts[a.level] != null) counts[a.level]++; });
-    var tierHtml = [{ id: '', label: '全部' }].concat(LEVELS.map(function (lv) { return { id: lv, label: lv }; }))
-      .map(function (t) {
-        var active = state.level === t.id;
-        return '<button class="filter-tab' + (active ? ' active' : '') + '" data-level="' + t.id + '">'
-          + t.label + '<span class="count">' + (counts[t.id] || 0) + '</span></button>';
-      }).join('');
+    var others = [];
+    base.forEach(function (a) {
+      var lv = a.level || '';
+      counts[lv] = (counts[lv] || 0) + 1;
+      if (lv && KNOWN_LEVELS.indexOf(lv) < 0 && others.indexOf(lv) < 0) others.push(lv);
+    });
+    others.sort();
+    var chipList = [{ id: '', label: '全部' }]
+      .concat(KNOWN_LEVELS.map(function (lv) { return { id: lv, label: lv }; }))
+      .concat(others.map(function (lv) { return { id: lv, label: lv }; }))
+      .concat([{ id: '__none', label: '未填' }])
+      .filter(function (t) { return t.id === '' || (counts[t.id] || 0) > 0; });
+    var tierHtml = chipList.map(function (t) {
+      var active = state.level === t.id || (t.id === '__none' && state.level === '__none');
+      return '<button class="filter-tab' + (active ? ' active' : '') + '" data-level="' + t.id + '">'
+        + t.label + '<span class="count">' + (counts[t.id] || 0) + '</span></button>';
+    }).join('');
     var tierBox = document.getElementById('cl-tiers');
     tierBox.innerHTML = tierHtml;
     tierBox.querySelectorAll('.filter-tab').forEach(function (b) {
