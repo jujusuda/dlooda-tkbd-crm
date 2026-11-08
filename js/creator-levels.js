@@ -1,0 +1,248 @@
+/* ============================================================
+   达人层级划分（达人页顶部区块）
+   - 官方等级：L0-1 / L2 / L3 / L4 / L5 / L6 / L7
+   - 多维筛选：SKU、等级（下限 or 精确）、出单/未出单、素材量、达人昵称搜索
+   - 排序：出单量（订单数）降序 → 素材量 → 寄样行
+   - 结果汇总：出单率 = 出单行 ÷ 视频行；履约率 = 履约行 ÷ 寄样行（与 PPT 同口径，按行数）
+   ============================================================ */
+(function (global) {
+  'use strict';
+
+  var Data = global.DloodaData;
+  var App = global.App;
+  var host = document.getElementById('creator-levels');
+  if (!Data || !host) return;
+
+  var LEVELS = ['L0-1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7'];
+  var ORD = { 'L0-1': 0, 'L2': 1, 'L3': 2, 'L4': 3, 'L5': 4, 'L6': 5, 'L7': 6 };
+  var PAGE = 100;
+
+  var state = { sku: '', level: '', minLevel: '', order: '', mat: '', kw: '', expanded: false };
+
+  /* ---------- 数据归一化（与 data.js 保持一致） ---------- */
+  function normSku(v) {
+    if (v == null) return '';
+    if (Array.isArray(v)) return v.map(function (x) { return (x && x.text) || x || ''; }).join(',').replace(/\s/g, '');
+    return String((v && v.text) || v).replace(/\s/g, '');
+  }
+  function method(s) {
+    var v = s.fulfillMethod;
+    if (Array.isArray(v)) return v.map(function (x) { return (x && x.text) || x || ''; }).join('');
+    return String((v && v.text) || v || '');
+  }
+  function orders(s) { return parseInt(s.orderCount, 10) || 0; }
+
+  /* ---------- 聚合：按达人汇总寄样行/履约行/视频行/出单行/订单数/素材数 ---------- */
+  function aggregate() {
+    var meta = {};
+    Data.getCreators().forEach(function (c) { meta[c.name] = c; });
+
+    var map = {};
+    Data.getSamples().forEach(function (s) {
+      if (!s.creator) return;
+      if (state.sku && normSku(s.sku) !== state.sku) return;
+      var a = map[s.creator] || (map[s.creator] = {
+        name: s.creator, rows: 0, fulfilled: 0, video: 0, orderedRows: 0, orders: 0, materials: 0,
+        level: '', stars: ''
+      });
+      var m = method(s);
+      a.rows++;
+      if (m === '视频' || m.indexOf('直播') >= 0) a.fulfilled++;
+      if (m === '视频') a.video++;
+      if (orders(s) > 0) { a.orderedRows++; a.orders += orders(s); }
+      if (s.videos) a.materials += s.videos.length;
+    });
+
+    return Object.keys(map).map(function (k) {
+      var a = map[k], c = meta[k] || {};
+      a.level = c.official || '';
+      a.stars = c.stars || '';
+      a.fulfillRate = a.rows > 0 ? Math.round(a.fulfilled / a.rows * 1000) / 10 : 0;
+      a.orderRate = a.video > 0 ? Math.round(a.orderedRows / a.video * 1000) / 10 : 0;
+      return a;
+    });
+  }
+
+  /* ---------- 逐层过滤（等级滤镜最后处理，以便 chips 显示前置条件下的分布） ---------- */
+  function passesBase(a) {
+    if (state.order === 'yes' && a.orders <= 0) return false;
+    if (state.order === 'no' && a.orders > 0) return false;
+    if (state.mat === 'yes' && a.materials <= 0) return false;
+    if (state.mat === 'no' && a.materials > 0) return false;
+    if (state.mat && state.mat.indexOf('>=') === 0 && a.materials < parseInt(state.mat.slice(2), 10)) return false;
+    if (state.kw && a.name.toLowerCase().indexOf(state.kw) < 0) return false;
+    return true;
+  }
+  function passesLevel(a) {
+    if (state.level && a.level !== state.level) return false;
+    if (state.minLevel && (ORD[a.level] == null || ORD[a.level] < ORD[state.minLevel])) return false;
+    return true;
+  }
+
+  function fmtPct(v, hasBase) { return hasBase ? (v + '%') : '—'; }
+
+  /* ---------- 控件 ---------- */
+  function renderShell() {
+    var skus = (Data.getAvailableSKUs ? Data.getAvailableSKUs() : []).map(function (s) {
+      return typeof s === 'string' ? s : (s.sku || s.name || '');
+    }).filter(Boolean);
+    var skuOpts = '<option value="">全部 SKU</option>' + skus.map(function (s) {
+      return '<option value="' + App.escapeHtml(normSku(s)) + '">SKU ' + App.escapeHtml(normSku(s)) + '</option>';
+    }).join('');
+
+    host.innerHTML = ''
+      + '<div class="card" style="margin-bottom:16px;">'
+      +   '<div class="card__header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">'
+      +     '<h3 class="card__title">达人层级划分</h3>'
+      +     '<span style="font-size:11px;color:var(--text-3);">按出单量排序 · 出单率=出单行÷视频行 · 履约率=履约行÷寄样行</span>'
+      +   '</div>'
+      +   '<div id="cl-tiers" style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0 12px;"></div>'
+      +   '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">'
+      +     '<select class="select" id="cl-sku" style="width:auto;min-width:130px;">' + skuOpts + '</select>'
+      +     '<select class="select" id="cl-min" style="width:auto;min-width:120px;">'
+      +       '<option value="">等级下限不限</option>'
+      +       '<option value="L2">≥ L2</option><option value="L3">≥ L3</option>'
+      +       '<option value="L4">≥ L4</option><option value="L5">≥ L5</option><option value="L6">≥ L6</option>'
+      +     '</select>'
+      +     '<select class="select" id="cl-order" style="width:auto;min-width:110px;">'
+      +       '<option value="">出单不限</option><option value="yes">只看出单</option><option value="no">只看未出单</option>'
+      +     '</select>'
+      +     '<select class="select" id="cl-mat" style="width:auto;min-width:110px;">'
+      +       '<option value="">素材不限</option><option value="yes">有素材</option><option value="no">无素材</option>'
+      +       '<option value=">=3">素材 ≥3</option><option value=">=5">素材 ≥5</option><option value=">=10">素材 ≥10</option>'
+      +     '</select>'
+      +     '<input class="input" id="cl-kw" type="text" placeholder="搜索达人昵称" style="width:auto;min-width:150px;flex:1;max-width:220px;">'
+      +     '<button class="filter-btn" id="cl-reset">重置</button>'
+      +   '</div>'
+      +   '<div id="cl-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>'
+      +   '<div id="cl-table" style="overflow-x:auto;"></div>'
+      + '</div>';
+
+    document.getElementById('cl-sku').addEventListener('change', function () { state.sku = this.value; state.expanded = false; render(); });
+    document.getElementById('cl-min').addEventListener('change', function () { state.minLevel = this.value; state.expanded = false; render(); });
+    document.getElementById('cl-order').addEventListener('change', function () { state.order = this.value; state.expanded = false; render(); });
+    document.getElementById('cl-mat').addEventListener('change', function () { state.mat = this.value; state.expanded = false; render(); });
+    document.getElementById('cl-reset').addEventListener('click', function () {
+      state = { sku: '', level: '', minLevel: '', order: '', mat: '', kw: '', expanded: false };
+      renderShell(); render();
+    });
+
+    var timer = null;
+    document.getElementById('cl-kw').addEventListener('input', function () {
+      var v = this.value.toLowerCase().trim();
+      clearTimeout(timer);
+      timer = setTimeout(function () { state.kw = v; state.expanded = false; render(); }, 220);
+    });
+  }
+
+  /* ---------- 渲染 ---------- */
+  function render() {
+    var all = aggregate();
+    var base = all.filter(passesBase);
+
+    // 等级 chips（含人数）
+    var counts = { '': base.length };
+    LEVELS.forEach(function (lv) { counts[lv] = 0; });
+    base.forEach(function (a) { if (counts[a.level] != null) counts[a.level]++; });
+    var tierHtml = [{ id: '', label: '全部' }].concat(LEVELS.map(function (lv) { return { id: lv, label: lv }; }))
+      .map(function (t) {
+        var active = state.level === t.id;
+        return '<button class="filter-tab' + (active ? ' active' : '') + '" data-level="' + t.id + '">'
+          + t.label + '<span class="count">' + (counts[t.id] || 0) + '</span></button>';
+      }).join('');
+    var tierBox = document.getElementById('cl-tiers');
+    tierBox.innerHTML = tierHtml;
+    tierBox.querySelectorAll('.filter-tab').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var lv = this.getAttribute('data-level');
+        state.level = (state.level === lv) ? '' : lv;   // 再点一次取消
+        state.expanded = false;
+        render();
+      });
+    });
+
+    // 结果集
+    var rows = base.filter(passesLevel);
+    var sum = { n: rows.length, rows: 0, fulfilled: 0, video: 0, orderedRows: 0, orders: 0, materials: 0 };
+    rows.forEach(function (a) {
+      sum.rows += a.rows; sum.fulfilled += a.fulfilled; sum.video += a.video;
+      sum.orderedRows += a.orderedRows; sum.orders += a.orders; sum.materials += a.materials;
+    });
+    var fulfillRate = sum.rows > 0 ? Math.round(sum.fulfilled / sum.rows * 1000) / 10 : 0;
+    var orderRate = sum.video > 0 ? Math.round(sum.orderedRows / sum.video * 1000) / 10 : 0;
+
+    var card = function (label, value, sub, color) {
+      return '<div style="flex:1;min-width:104px;background:var(--bg-pink-soft);border-radius:10px;padding:10px 12px;">'
+        + '<div style="font-size:18px;font-weight:700;color:' + (color || 'var(--text-1)') + ';">' + value + '</div>'
+        + '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">' + label + (sub ? ' · ' + sub : '') + '</div>'
+        + '</div>';
+    };
+    document.getElementById('cl-summary').innerHTML = ''
+      + card('命中达人', sum.n + ' 位', '', 'var(--pink-500)')
+      + card('寄样行', sum.rows, '')
+      + card('履约率', fmtPct(fulfillRate, sum.rows > 0), sum.fulfilled + '÷' + sum.rows, 'var(--c-info)')
+      + card('出单率', fmtPct(orderRate, sum.video > 0), sum.orderedRows + '÷' + sum.video, 'var(--c-success)')
+      + card('出单量', sum.orders, sum.orderedRows + ' 行')
+      + card('素材量', sum.materials, '');
+
+    // 排序：出单量 → 素材量 → 寄样行 → 名字
+    rows.sort(function (a, b) {
+      if (b.orders !== a.orders) return b.orders - a.orders;
+      if (b.materials !== a.materials) return b.materials - a.materials;
+      if (b.rows !== a.rows) return b.rows - a.rows;
+      return a.name.localeCompare(b.name);
+    });
+
+    if (rows.length === 0) {
+      document.getElementById('cl-table').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-3);font-size:13px;">没有符合条件的达人</div>';
+      return;
+    }
+
+    var show = state.expanded ? rows : rows.slice(0, PAGE);
+    var html = '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
+      + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
+      + '<th style="padding:8px 4px;text-align:left;color:var(--text-3);font-weight:600;">#</th>'
+      + '<th style="padding:8px 4px;text-align:left;color:var(--text-2);font-weight:600;">达人</th>'
+      + '<th style="padding:8px 4px;text-align:center;color:var(--text-3);font-weight:600;">等级</th>'
+      + '<th style="padding:8px 4px;text-align:center;color:var(--text-3);font-weight:600;">星级</th>'
+      + '<th style="padding:8px 4px;text-align:center;color:var(--text-3);font-weight:600;">寄样</th>'
+      + '<th style="padding:8px 4px;text-align:center;color:var(--pink-500);font-weight:600;">出单量</th>'
+      + '<th style="padding:8px 4px;text-align:center;color:var(--text-3);font-weight:600;">出单率</th>'
+      + '<th style="padding:8px 4px;text-align:center;color:var(--text-3);font-weight:600;">履约率</th>'
+      + '<th style="padding:8px 4px;text-align:center;color:var(--text-3);font-weight:600;">素材</th>'
+      + '</tr></thead><tbody>';
+
+    show.forEach(function (a, i) {
+      var lvColor = a.level === 'L5' || a.level === 'L6' || a.level === 'L7' ? 'var(--pink-500)'
+        : a.level === 'L4' ? 'var(--c-info)'
+        : a.level === 'L3' ? 'var(--c-success)' : 'var(--text-3)';
+      html += '<tr style="border-bottom:1px solid var(--border-1);">'
+        + '<td style="padding:6px 4px;color:var(--text-3);">' + (i + 1) + '</td>'
+        + '<td style="padding:6px 4px;font-weight:600;color:var(--text-1);">' + App.escapeHtml(a.name) + '</td>'
+        + '<td style="padding:6px 4px;text-align:center;"><span style="font-size:11px;font-weight:700;color:' + lvColor + ';">' + (a.level || '—') + '</span></td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + (a.stars || '—') + '</td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + a.rows + '</td>'
+        + '<td style="padding:6px 4px;text-align:center;font-weight:700;color:var(--pink-500);">' + a.orders + '</td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--c-success);">' + fmtPct(a.orderRate, a.video > 0) + '<span style="color:var(--text-3);font-size:10px;"> ' + a.orderedRows + '÷' + a.video + '</span></td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--c-info);">' + a.fulfillRate + '%<span style="color:var(--text-3);font-size:10px;"> ' + a.fulfilled + '÷' + a.rows + '</span></td>'
+        + '<td style="padding:6px 4px;text-align:center;color:var(--text-2);">' + a.materials + '</td>'
+        + '</tr>';
+    });
+    html += '</tbody></table>';
+
+    if (!state.expanded && rows.length > PAGE) {
+      html += '<button class="filter-btn" id="cl-more" style="margin:10px auto 0;display:block;">显示全部 ' + rows.length + ' 位达人</button>';
+    }
+    var tableBox = document.getElementById('cl-table');
+    tableBox.innerHTML = html;
+    var more = document.getElementById('cl-more');
+    if (more) more.addEventListener('click', function () { state.expanded = true; render(); });
+  }
+
+  function init() {
+    renderShell();
+    render();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})(window);
