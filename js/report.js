@@ -66,7 +66,7 @@
     // 出单率 = 出单达人去重 ÷ 视频发布达人去重（履约方式=「视频」，不含直播）
     var heroLabel = hasRange ? '区间出单率' : '整体出单率';
     var heroNote = '出单达人 ' + agg.orderedCreators + ' ÷ 视频达人 ' + agg.fulfilledCreators
-      + (hasRange ? '（含结束日当天）' : '');
+      + (hasRange ? '（左闭右开：结束日选 15 号时当天归下月）' : '');
     container.innerHTML = ''
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + Object.keys(skuSet).length + '</div><div class="stat-card__label">统计 SKU</div></div>'
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + heroRate + '%</div><div class="stat-card__label">' + heroLabel + '<span style="font-size:10px;color:var(--text-3);display:block;font-weight:400;margin-top:2px;">' + heroNote + '</span></div></div>'

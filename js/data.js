@@ -440,7 +440,7 @@
     var filtered = D.invites;
     if (sku) filtered = filtered.filter(function (i) { return i.sku === sku; });
     if (startDate) filtered = filtered.filter(function (i) { return i.date && i.date >= startDate; });
-    if (endDate) filtered = filtered.filter(function (i) { return i.date && i.date <= endDate + ' 23:59'; });
+    if (endDate) filtered = filtered.filter(function (i) { return withinEnd(i.date, endDate); });
     var total = 0;
     filtered.forEach(function (i) { if (i.achieved) total += i.achieved; });
     return total;
@@ -1054,7 +1054,7 @@
     var result = samples;
     if (sku) result = result.filter(function (s) { return s.sku === sku; });
     if (startDate) result = result.filter(function (s) { return s.sampleTime && s.sampleTime >= startDate; });
-    if (endDate) result = result.filter(function (s) { return s.sampleTime && s.sampleTime <= endDate + ' 23:59'; });
+    if (endDate) result = result.filter(function (s) { return withinEnd(s.sampleTime, endDate); });
     return result;
   }
 
@@ -1502,7 +1502,7 @@
     var filteredInvites = D.invites;
     if (skuFilter) filteredInvites = filteredInvites.filter(function (i) { return i.sku === skuFilter; });
     if (startDate) filteredInvites = filteredInvites.filter(function (i) { return i.date && i.date >= startDate; });
-    if (endDate) filteredInvites = filteredInvites.filter(function (i) { return i.date && i.date <= endDate + ' 23:59'; });
+    if (endDate) filteredInvites = filteredInvites.filter(function (i) { return withinEnd(i.date, endDate); });
     filteredInvites.forEach(function (i) {
       if (!i.sku) return;
       if (!stats[i.sku]) stats[i.sku] = { invited: 0, approved: 0, fulfilled: 0, ordered: 0, videos: 0, reinvest: 0, fulfilledCreators: {}, orderedCreators: {}, videoCreators: {}, sampleCreators: {} };
@@ -1563,7 +1563,7 @@
     // 邀约条数：该时间范围内的邀约记录（按 SKU 统计）
     var invites = D.invites;
     if (startDate) invites = invites.filter(function (i) { return i.date && i.date >= startDate; });
-    if (endDate) invites = invites.filter(function (i) { return i.date && i.date <= endDate + ' 23:59'; });
+    if (endDate) invites = invites.filter(function (i) { return withinEnd(i.date, endDate); });
     var inviteCountBySKU = {};
     invites.forEach(function (i) {
       if (i.sku) inviteCountBySKU[i.sku] = (inviteCountBySKU[i.sku] || 0) + 1;
@@ -1677,13 +1677,13 @@
     var samples = D.samples;
     if (sku) samples = samples.filter(function (s) { return s.sku === sku; });
     if (startDate) samples = samples.filter(function (s) { return s.sampleTime && s.sampleTime >= startDate; });
-    if (endDate) samples = samples.filter(function (s) { return s.sampleTime && s.sampleTime <= endDate + ' 23:59'; });
+    if (endDate) samples = samples.filter(function (s) { return withinEnd(s.sampleTime, endDate); });
 
     // 邀约实际数量：邀约表「达成」字段（触达人数）合计，按飞书原始日期（无时区滞后）
     var invites = D.invites;
     if (sku) invites = invites.filter(function (i) { return i.sku === sku; });
     if (startDate) invites = invites.filter(function (i) { return i.date && i.date >= startDate; });
-    if (endDate) invites = invites.filter(function (i) { return i.date && i.date <= endDate + ' 23:59'; });
+    if (endDate) invites = invites.filter(function (i) { return withinEnd(i.date, endDate); });
 
     // 月度序列
     var byMonth = {};
@@ -1710,9 +1710,9 @@
     var allSamples = D.samples;
     var allInvites = D.invites;
     if (startDate) allSamples = allSamples.filter(function (s) { return s.sampleTime && s.sampleTime >= startDate; });
-    if (endDate) allSamples = allSamples.filter(function (s) { return s.sampleTime && s.sampleTime <= endDate + ' 23:59'; });
+    if (endDate) allSamples = allSamples.filter(function (s) { return withinEnd(s.sampleTime, endDate); });
     if (startDate) allInvites = allInvites.filter(function (i) { return i.date && i.date >= startDate; });
-    if (endDate) allInvites = allInvites.filter(function (i) { return i.date && i.date <= endDate + ' 23:59'; });
+    if (endDate) allInvites = allInvites.filter(function (i) { return withinEnd(i.date, endDate); });
     var sampleBySKU = {}, inviteBySKU = {};
     allSamples.forEach(function (s) {
       if (s.sku) sampleBySKU[s.sku] = (sampleBySKU[s.sku] || 0) + 1;
@@ -2261,9 +2261,20 @@
   // 日期范围命中：支持 YYYY-MM（整月）或 YYYY-MM-DD；range = {start,end}
   // ⚠️ 必须只比较日期部分（前 10 位）：sampleTime 是 "2026-10-15 16:24" 带时间，
   //    若直接和纯日期 "2026-10-15" 字符串比较，"...15 16:24" > "...15" 成立 →
-  //    结束日当天全部记录被误判为超范围排除（曾导致 9/15~10/15 少算 10/15 的 13 条，
-  //    用户手工统计与复盘页差 2~4 行）。filterSamples 用 endDate + ' 23:59' 是正确写法，
-  //    此处统一按 slice(0,10) 比较，保证复盘页与 Dashboard 同一筛选结果一致。
+  //    结束日当天全部记录被误判为超范围排除。
+  // 🔑 业务边界（2026-11-08 用户定稿）：每月 15 号是新统计周期的起点，所以「结束日选在 15 号」
+  //    时当天不计入 —— 9/15~10/15 ≡ 9/15~10/14，与月度桶左闭右开一致。
+  //    例：2178 选 9/15~10/15 出单率 7÷17=41.2%（若把 10/15 算进去会变成 7÷18=38.9%）。
+  function isCycleStartDay(d) {
+    return String(d || '').slice(8, 10) === '15';
+  }
+  // 单条记录的结束日判定（默认含当天；结束日为 15 号则不含当天）
+  function withinEnd(t, endDate) {
+    if (!endDate) return true;
+    if (!t) return false;
+    var d = String(t).slice(0, 10), e = String(endDate).slice(0, 10);
+    return isCycleStartDay(e) ? d < e : d <= e;
+  }
   function attrInRange(t, range) {
     if (!range) return true;
     var start = range.start, end = range.end;
@@ -2281,7 +2292,7 @@
     if (!t) return false;
     var d = String(t).slice(0, 10);
     if (s && d < s.slice(0, 10)) return false;
-    if (e && d > e.slice(0, 10)) return false;
+    if (e && !withinEnd(d, e)) return false;
     return true;
   }
 
