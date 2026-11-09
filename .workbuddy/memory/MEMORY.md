@@ -1,62 +1,60 @@
 # Dlooda TKBD CRM — 项目长期记忆（精简版，细节见同目录日期日志）
 
 ## 概况
-- Dlooda：TikTok Shop 美国女装；CRM = 飞书多维表格 → Web CRM（GitHub `jujusuda/dlooda-tkbd-crm`，Cloudflare Pages，PWA）。淡粉治愈风 + Hello Kitty 点缀。
-- 详细日志：2026-08~10 各日 md；PPT OOXML 坑见 2026-10-13/14.md；名单库见 2026-10-23/24.md。
+- Dlooda：TikTok Shop 美国女装；CRM = 飞书多维表格 → Web CRM（GitHub `jujusuda/dlooda-tkbd-crm`，Cloudflare Pages，PWA）。淡粉治愈风 + Hello Kitty 点缀。详细日志见各日期 md。
 
 ## 硬性规则（勿改）
 - **评分**：总100 = 月销售40 + 女装垂度20 + 均播15 + 口播15 + 女粉10；不用粉丝数/国家；只显示 ★★★★★ + 95/100。
-- **佣金**（data.js SKU_DETAILS）：2178=15+10、2190=16+10、2722=11+8、2757=15+8、2789=12+8、2189=13+8、28173=15+10。
-- **SKU 排序**：爆品→销售→测品→撤退。
-- **复投口径（8-09 定）**：声明=「已推XXXX」；成功=声明后同SKU再寄样且「通过」非空；观察期30天；双口径（按SKU默认/按达人）dashboard 顶部切换。
-- 🚨 **两个率口径最终定稿（11-08 晚，用户拿 PPT 权威截图纠正，之前记的全错，以此为准）**：
-  - **履约率 = 履约行数 ÷ 寄样行数**（`fulfillRate`）。例 2178: 20/26 = **76.9%**；合计 134/160 = **83.8%**。用线上真实数据 5 个 SKU + 合计行 **100% 精确复现**。
-  - **出单率 = 出单「行数」 ÷ 履约达人去重**（`orderRate`）。例 PPT 旧快照 2178: 7/17 = **41.2%**。**分子是行数不是去重达人数**（2189 PPT 列显示 8 = 出单 8 行，去重达人只有 6）；**分母是履约达人**（fulfillMethod=视频/直播），PPT 旧快照 17 个，当前线上 20 个（数据回填）。
-  - ⚠️ **「有视频达人」在用户口语里 = 履约达人**（履约方式视频/直播 = 发了视频），**不是「全量视频表里有视频记录的人」**！我曾误解成后者，把分母算成 33/42，导致 2178 十月份出单率显示 6%/16.7%，而正确是 41.2%。用户原话「分母根本就不一样」就是指这个。**全量视频表只用于按发布时间统计素材量，绝不参与任何率的分母**。
-  - `getProductAnalysis` 的 `fulfillRate`/`orderRate` 本来就对，是我中途把两列对调 + 换了分母，现已全部改回。全站出单率计算点（产品分析表、复盘页顶部、趋势图、归因详情、视频分析 SKU 排名/整体）统一为上述口径。
-- **飞书「全量视频」表（第7张表）**：`REAL_DATA.videos=[{creator,sku,url,date}]`，`getVideos()` 优先用它、无则回退 samples 内嵌 videos。**唯一用途 = 素材看板按发布时间统计素材量**（达人去重）。`getVideoCreators()` 已无调用者，仅保留并加醒目警告注释防误用。
-- ⚠️ **绝不能改 `getVideos()` 回退分支的 `postTime` 语义**：飞书「视频时间」混入 `[object Object]`/URL 串/斜杠日期。曾在回退分支把脏值清成空串 → `getVideoCreators` 的「无日期一律计入分母」把脏日期达人算进去，**复盘 2178 十月窗分母 42→51、出单率 16.7%→13.7%（口径回归）**。正确做法：只对**全量视频表分支**用 `normVideoDate()` 归一日格式（斜杠→横杠/补零，脏值原样返回），回退分支原样保留；`getMaterialDashboard` 单独用 `^\d{4}-\d{2}-\d{2}$` 校验跳过垃圾桶（只影响分组不碰分母）。线上真实数据复验：率零回归 + dayCount 461→423。
-- **全量视频表已定位（11-08 傍晚，用户给 wiki 链接）**：`https://ycnhpb1skj4a.feishu.cn/wiki/AendwrOUDiV6J2kbuOuc5ly7nKf?table=tblfc3sDKek2SV7H&view=vewo93ekUh`。⚠️ **wiki 链接不是 `/base/{appToken}`，`/wiki/{node_token}` 要先调 `GET /open-apis/wiki/v2/spaces/get_node?token=...` 拿 `data.node.obj_token` 才是 base appToken**。本例 obj_token=`TBu5bPDU0apfCPs5ppacyHtdn4g`，与 `.env`/`start.bat` 的 FEISHU_BASE_TOKEN **完全相同 → 同一 base**，`videos.appToken` 留空即可（先前"表在另一个多维表格"的推断是错的，已纠正）。`config.json` 已填 `tableId=tblfc3sDKek2SV7H`。
-- ✅ **授权已解决（11-08 16:00）**：`1254302` = 缺少**多维表格高级权限**；文档协作者「可编辑」**不够**。正解是「多维表格右上 `···`→`···更多`→**添加文档应用**→给**可管理**」，或在「高级权限」里给应用所在角色授权该表。用户给「可管理」后 API 立刻 `tables` 6→7、`fields`/`records` 均 code 0。区分码：不存在的 id 报 `1254041 TableIdNotFound`；无权限报 `1254302 RolePermNotAllow`（且 `/tables` 会把无权限的表过滤掉，造成"表不存在"假象）。
-- **真实列名（授权后 fields 核实）**：`达人名称` / `视频链接`(Url, {link,text}) / **`发布时间`**(DateTime 毫秒戳) / `SKU` / `颜色` / `寄样时间`。素材量按「发布时间」算。`config.json videos.fields.date` 已改成 **`发布时间`**（原写「视频时间」是错的）；两份 sync 另有 `VID_FIELD_CANDIDATES` 候选列名兜底。
-- 🚨 **「全量视频」表目前不是全量（11-08 实测）**：分页拉全仅 **26 条、1 个达人 `cuteclassycart`、2026-03-03~06-09**，9/15~10/15 窗口 **0 条**；单视图 `vewo93ekUh` 无筛选，`total=26 has_more=false`。**直接拿它当分母会让十月份出单率全变 0%**。
-- ✅ **已加 `fullVideoTableReady()` 完整性守卫**：阈值 `max(100 条, 寄样内嵌视频数 × 0.2)`（线上内嵌 6904 → 需 ≥1381 条）。未达标自动回退寄样内嵌视频，线上数字不被清零；导全后自动启用无需改代码。新增 `getVideoSource()` 导出，素材看板注脚显示当前数据源。
-- ✅ **已加容错（两份 sync 都有）**：`videos` 是可选增强表，`listRecords` 抛错只降级 `tables.videos=[]` 并写 `warnings`，**绝不拖垮其余 6 张主表 / 整次 /api/sync**；非 videos 表失败照常抛错。另加「字段名诊断」：拉到记录但解析 0 条时，warning 带出配置的列名+实际列名（等权限开了同步一次即可看到真实列名，用来核对 `config.json videos.fields`）。`/api/sync` 响应新增 `warnings` 字段，`_run_sync_once.js` 也打印。
-- **PPT 权威数据源（9-13 定）**：`scripts/_authoritative_data.json`（用户文字表）；绝不用 real-data.js/_correct_sku_data.json 填 PPT；看不到图片数字，必须用户贴文字。
-- **PPT 月度窗口非自然月**：如「8月」= 7/15-8/15。⚠️ CRM 月度趋势桶 `midMonthBucket` 是**左闭右开**：标签 `2026-10` = **9/15~10/14**，10/15 归 `2026-11` 桶（`d>=15→m+1`）。用户口头/手工统计常说「9/15~10/15」闭区间含 10/15，会差当天 13 条记录 —— **这是口径差异不是数据回填**。
-- ⚠️ **日期范围比较必须只比前 10 位**（11-08 血泪坑）：`s.sampleTime` 带时间("2026-10-15 16:24")，`endDate` 纯日期("2026-10-15")，直接字符串 `t > e` 会把**结束日当天全部记录误判超范围排除**。`attrInRange()`(复盘页/归因用) 曾用纯字符串比较；`filterSamples()`(Dashboard/产品分析表用) 写的是 `endDate + ' 23:59'` 是对的 → 曾导致**同一 9/15~10/15 筛选复盘页与 Dashboard 数字对不上**，被误判为「飞书事后回填」。现已统一 `String(t).slice(0,10)` 比较。
-- ✅ **月度桶 = 左闭右开**（用户 11-08 拍板不改）：标签 `2026-10` = 9/15~10/14，10/15 归 11 月桶。**趋势图/升降榜/归因底层算的是「出单率」(出单行÷履约达人)，标题就叫「SKU 出单率趋势」/「出单率升降榜」/「出单率」** —— 我中途误改成「履约率」，现已全部改回。
-- 📌 **十月份对账口径**：PPT 权威表窗口 = 9/15~10/14（左闭右开，寄样 26 / 履约 20 / 出单 7）。用户口头说「9/15~10/15」会多含 10/15 当天 13 条记录。用复盘页顶部「区间出单率」手动选日期时可对齐；月度趋势桶固定 9/15~10/14。
-- ⚠️ **数字仍有差异是数据回填，不是口径**：PPT 旧快照出单率分母 17/18/8/47/30（合计120），当前线上履约达人去重 20/19/9/50/32（合计130），故 2178 从 41.2% → 35%、2190 从 44.4% → 42.1%、2189 从 26.7% → 25%。履约率、寄样、履约、出单行数则逐项精确一致。别再为这几个数字改口径。
+- **佣金**（data.js SKU_DETAILS）：2178=15+10、2190=16+10、2722=11+8、2757=15+8、2789=12+8、2189=13+8、28173=15+10。**SKU 排序**：爆品→销售→测品→撤退。
+- **复投口径**：声明=「已推XXXX」；成功=声明后同SKU再寄样且「通过」非空；观察期30天；双口径（按SKU/按达人）切换。
+- 🚨 **两率最终定稿（11-08 晚第三次纠正，已用 4 个 SKU 精确复现 PPT，覆盖之前所有版本）**：
+  - 全部按**寄样「行数」**，不是去重达人数（去重会算出 2190 90.5%/37.5%，与 PPT 不符）。
+  - **履约率 = 履约行数(视频/直播) ÷ 寄样行数**。2190: 21/23 = **91.3%**；2178: 20/26 = **76.9%**；2189: 34/44 = 77.3%。
+  - **出单率 = 出单行数 ÷ 视频行数（履约方式=「视频」，不含直播行）**。2190: 8/18 = **44.4%**；2178: 7/17 = **41.2%**；2189: 8/30 = **26.7%**；2722: 2/8 = 25%。
+  - 用「行」而非「人」的原因：同一达人可有多行寄样（颜色/多次寄样），PPT 就是按行统计。分子出单行不限履约方式（直播约的达人出单也计入）。
+  - 全站计算点已统一（getProductAnalysis / getVideoAnalytics skuRanking+整体 / getSKUTrendAnalysis / getAttribution dim / getSKUOrderRateInRange / getFulfillmentRate），SW v48。返回字段：`videoRows`/`orderedRows`（产品表另有 approved/fulfilled/ordered）。
+  - 🔑 **区间左闭右开（11-08 定）**：业务月按 15 号切，**结束日选 15 号时当天归下月**（9/15~10/15 ≡ 9/15~10/14）。实现 = data.js `isCycleStartDay()` + `withinEnd()`，所有率的聚合走它（列表过滤除外）。
+  - 2757 目前在 9/15~10/14 窗口只有 0~1 行（PPT 曾是 47 行），属数据缺失，不是口径问题。
+- **PPT**：权威数据源 `scripts/_authoritative_data.json`（用户文字表）；月度窗口非自然月（8月=7/15~8/15）。
 
-## 部署 & 数据坑（高频）
-- **git**：大批量 add 会 mmap failed → 分 2-3 批提交；命令行 push 不可用（GCM 无凭据）→ **用户在 GitHub Desktop 点 Push origin**。gitignore 含 *.pptx/_preview*/docx_media/nul/work/。
-- **主数据(REAL_DATA)加载 = KV 优先 + 静态兜底（2026-11-08 落地，v37）**：`js/data.js` 在读取 `window.REAL_DATA` 之前，用**同步 XHR** 从 `functions/api/data.js`(GET，env.DATA 读 `real-data.js`) 拉最新数据并间接 eval 覆盖（本地 localhost 跳过，避免阻塞）；SW 已网络优先，`/api/data` 每次取最新不被缓存。→ **「同步飞书」按钮(POST /api/sync 写 KV) 现在真的能让网页更新**：按钮成功后 `location.reload()`，重载时 data.js 拉 KV 最新。另加 150s 轮询：检测 KV 数据指纹变化且无输入框聚焦时自动 `location.reload()`（飞书同步后最多 2~3 分钟自动刷新）。旧「本地生成 real-data.js→commit+push→构建」路径仍可作为兜底。
-- ⚠️ 旧路径误区（已修正）：之前以为 `/js/real-data.js` 仓库静态优先、KV 兜底、「同步飞书」按钮不影响线上——错。现在 KV 优先覆盖静态。若用户曾用页面「上传 Excel」(localStorage `dlooda_uploaded_data`) 该数据仍优先于 KV/静态，可能掩盖飞书更新，需清 localStorage 才能还原。
-- 飞书时间戳按 UTC+8 解析；orderCount 是字符串、fulfillMethod/category/creatorType 是数组，判断前先归一化。**SKU 也可能是数字/文本/单选/多选（数组或 {text}）**：`sync.mjs` 与 `data.js` 各有 `normSku()` 统一成去空格字符串；下游用严格 `!==` 比 sku，两侧都要归一化，否则该 SKU 的视频被静默全过滤（出单率恒 0）。实测仓库 real-data.js 的 sku 是字符串，混数字(2178)与字母数字(2F08)。
-- `node server/sync.js` 不会同步；用 `_run_sync_once.js` 或线上 POST /api/sync。
-- ⚠️ **同步逻辑有两份，改必须同时改**：线上主路径 `functions/lib/sync.mjs`（Cloudflare Functions `/api/sync`）+ 本地兜底 `server/sync.js`（`_run_sync_once.js` 调它，生成 `js/real-data.js`）。2026-11-08 接入「全量视频」时曾只改线上那份，兜底仍拉 6 张表导致生成的 real-data.js 缺 videos。两份都要有：keys 列表、占位 tableId 跳过、单表 appToken 覆盖、normSku、data.videos。**占位 tableId（含 REPLACE）自动跳过该表不破坏整次同步**；`tables[k].appToken` 可让某张表来自另一个多维表格（留空回退 `FEISHU_BASE_TOKEN`）。
-- 改前端必递增 sw.js CACHE_VERSION。
+## 飞书「全量视频」表（第7张表）
+- wiki 链接须先 `GET /open-apis/wiki/v2/spaces/get_node?token=...` 拿 `obj_token`；本例与 FEISHU_BASE_TOKEN 同 base，`videos.appToken` 留空。tableId=`tblfc3sDKek2SV7H`，真实列名：达人名称/视频链接/**发布时间**/SKU/颜色/寄样时间。
+- 授权坑：`1254302`=缺多维表格高级权限（文档应用给「可管理」才行）；`1254041`=id 不存在；无权限时 /tables 会过滤该表造成「表不存在」假象。
+- 表目前仅 26 条非全量 → `fullVideoTableReady()` 守卫（需 ≥max(100, 内嵌×0.2)）未达标自动回退寄样内嵌视频；`getVideoSource()` 供注脚。
+- ⚠️ 绝不改 `getVideos()` 回退分支 `postTime` 语义（脏日期清空会扩大分母导致口径回归）；仅全量表分支用 `normVideoDate()`。
+- videos 是可选增强表：同步抛错只降级+warnings，不拖垮主表；`/api/sync` 响应带 `warnings`。
+- 全量视频表**唯一用途** = 素材看板按发布时间统计素材量，绝不参与任何率的分母。
 
-## CRM 名单库 roster.html（2026-10-25 重构版，铁律）
-- **跨设备云同步（Cloudflare KV）**：所有名单库数据（roster/auto/outreach/designated/reinvest/rules/tracking/settings + 达人池）经 KV 同步。`functions/api/roster.js`（GET 读 `roster-v1` / POST 覆盖带 `_updatedAt`）+ `js/store.js` 云端引擎（persist 后防抖 2s 上推；打开页面 `cloudPull` 按 `_updatedAt` 大者覆盖本地）。断网/无 Functions 静默降级纯本地。改前端必递增 sw.js CACHE_VERSION（已 v35）。
-- **三模块**（页面不用"模块1/2/3"字样）：①「自动达人名单」(tab-sample) ②「竞品达人+爆单达人复投名单」(tab-outreach) ③「指定达人名单」(tab-designated)。
-- **模块1 达人池（不按 SKU 存）**：所有达人放一个大「达人池」`auto.pool=[handle]`；**首次打开 `poolSeedFromAuto()` 自动把 DloodaAuto 静态名单库灌进池**（poolSeeded 守卫，init+cloudPull 后各一次；灌入时剔黑名单/低效/skuLimit，实测 2375 入池）；选中某 SKU 时 `poolCompute()` 动态拆分 可发送/已发送/被剔除。剔除规则：黑名单→低效→合作3款以上未出单(skuLimit, **仅当无出单才锁**；已出单老达人允许复投)→已合作该款(进「已发送/飞书已寄样」)。**导入弹窗**逐条列出被剔除达人+原因，点「确认导入达人池」才入池（dedup 去重）。已发送 = `sent[handle][sku]={date,note}`；标记后从可发送移到已发送（飞书已寄样的按 cooperated 自动进已发送）。分组增删查改（静态组改名走 `groupNames` 覆盖、删除走 `groupDeleted` 名单）+ 达人增删。
-- **模块2 建联名单（图片分组 + 下钻，2026-10-25 晚定稿）**：`outreach.batches`(图片分组卡片) + `outreach.members`；tab-outreach 顶部就是分组卡片网格（旧「复投记录」平铺列表已删除），`switchTab('outreach')→renderObAll()`。点击分组→已建联/未建联计数→下钻具体达人+建联记录 `touches=[{date,channel,result,script,note}]`（渠道 TK私信/邮件/官号/抖音私信/WhatsApp/其他；无邮箱填"无"）。批次/成员 CRUD + 记录增删改（已有 touch 内联可编辑：date/channel/result/script，`Store.updateMemberRecord`）+ 图片上传(canvas 压 360px dataURL)。首次打开 `obSeedFromReinvest()` 按 Excel 原分组自动灌 45 组/911 人/932 条记录（obSeeded 守卫；同组重复达人追加为多条 touch；合并保护手填批次）。
-- **模块2 数据自动迁移 `obSeedFromReinvest()`**（init 一次性，`settings.obSeeded` 守卫）：把 `js/reinvest-data.js` 932 条按 Excel「类型」列原分组归类 → **45 组/911 人**（同义组名合并走 `OB_NAME_MAP`；同组重复达人追加第二条 touch 不丢数据；合并式不覆盖手填批次）。渠道从 method 解析、状态 ✅/❌/回复 映射。迁移组卡片暂无图（粉色首字占位），点「编辑」可传图。
-- **模块3 指定达人名单**：同 10-24 版（静态 designated-data.js + 本机改动）。
-- **自动邀约 = 复制名单用户自己发**；复制格式 line/comma/at（settings.rosterCopyFormat）。
-- 接口 `window.DloodaRoster`：refresh/renderGroups/copyGroup/markGroupSent/resetGroupSent/renderOutreach/renderDesignated/openDesignatedCard/switchTab/renderAuto/renderReinvest 等；池/模块2 相关逻辑在 `js/roster.js` 内部（poolCompute/renderPool/poolImportFlow/openObDrill 等，store API 全导出）。
+## 部署 & 数据坑
+- git：大批量 add 会 mmap failed（分批）；命令行 push 不可用 → **用户在 GitHub Desktop 点 Push origin**。
+- **主数据 KV 优先（v37）**：data.js 同步 XHR 拉 `/api/data`（KV）覆盖静态 real-data.js（localhost 跳过）+150s 轮询自动 reload。同步飞书按钮=写 KV 真正生效。localStorage `dlooda_uploaded_data` 会掩盖 KV 更新。
+- ⚠️ 同步逻辑**两份必须同步改**：`functions/lib/sync.mjs`（线上主路径）+ `server/sync.js`（本地兜底）。占位 tableId 自动跳过；`tables[k].appToken` 单表覆盖。`node server/sync.js` 不会同步，用 `_run_sync_once.js` 或 POST /api/sync。
+- normSku 两端归一（sku 可能数字/数组/{text}）；时间戳 UTC+8；orderCount 字符串、fulfillMethod 数组，判断前归一化。
+- ⚠️ 日期范围比较只比前 10 位（`slice(0,10)`），否则结束日当天被吞（曾致复盘页与 Dashboard 对不上）。
+- 改前端必递增 sw.js CACHE_VERSION（当前 v44）。核对线上数字用 `/api/data`，仓库静态 real-data.js 是旧快照。
 
-## 功能：日程提醒 & 履约追踪
-- 提醒（todo.html）：弹窗+邮件（POST ./api/notify → Resend，无 RESEND_API_KEY 降级）；每 2 天重复；**规则完全自助增删查改——内置规则(rule_stats/rule_urge)现在也可删**（`Store.deleteRule` 已去掉 builtin 守卫，renderRules 也去掉删除按钮守卫）；用户可自定默认任务+提醒范围，到点弹窗。⚠️ 曾因严格模式下 `editingId` 未声明导致编辑弹窗打不开，已补 `var editingId=null`（js/todo.js）。
-- 履约（tracking.html）：未履约=updateTime 空 且 fulfillMethod 空；窗口每月 25-30 工作日；目标寄样窗=上月15~本月15；回飞书 `App.pushToFeishu`。
+## CRM 名单库 roster.html（铁律）
+- 跨设备云同步 KV（`functions/api/roster.js` + `js/store.js`，防抖 2s 上推，`_updatedAt` 大者胜，断网降级本地）。
+- 三模块：①自动达人名单（大「达人池」不按SKU存，poolSeedFromAuto 灌 2375，剔除规则：黑名单→低效→合作3款未出单→已合作；导入弹窗确认才入池）②竞品+复投建联名单（outreach.batches 图片分组卡片+下钻 touches；obSeedFromReinvest 灌 45组/911人/932条）③指定达人名单（designated-data.js）。
+- 接口 `window.DloodaRoster`；池逻辑在 js/roster.js 内部，store API 全导出。
 
-## 话术
-- 邀约：Hook → 品牌+产品 → 佣金 → Feel free to apply，产品匹配 SKU；私信简短热情，中/英/西；translator.js 须在 invite/message.js 前加载。
+## 功能
+- 提醒（todo.html）：弹窗+邮件（Resend），规则可删可自建（deleteRule 已去 builtin 守卫）；履约（tracking.html）：未履约=updateTime 空且 fulfillMethod 空，目标窗=上月15~本月15。
+- 达人层级划分（creator.html 顶部，`js/creator-levels.js`，v54）：等级 chips **按实际分布动态生成**（含「未填」）+ 时间区间（含近7/30天）+ SKU/等级下限/出单/素材/昵称筛选，按出单量排序；计数默认**按寄样行（不去重）**，可切「按达人」。
+- 看板「达人层级」tab（v50/v54）：`Data.getLevelAnalysis()` 聚合双率+出单量占比；达人/寄样行列合一、随「按寄样行/按达人」切换（同渲染器）。
+- ⚠️ 计数桶坑：空等级若直接用 `''` 当 key 会撞「全部」桶导致重复累加，必须映射成 `__none`。
+- 看板「视频质量分析」尾部三块（v55~v59）：①新老视频 ②新老达人 ③多品合作。三块**全部走真实订单**：`js/order-data.js`（`scripts/build_order_data.py` 从「D店总订单.xlsx」生成，内容ID→视频ID 96% 可匹配）+ `Data.getOrderFreshness()`；订单日期用**创建时间**（文件名"截至10月22"不可信，实际含到 11/5）、按视频发布日期分新老；**退款单列**（毛额/退款单/退款额/净额）。缺文件时回退估算。
+- **回归自检**：`node scripts/audit_data.js` 校验 15 号切月等价、产品表/区间率/趋势/履约率/层级/素材量/视频总数/订单分项/边界，改动数据口径后必跑。
+- 看板「达人层级」tab（v50）：`Data.getLevelAnalysis()` 按等级聚合双率+出单量占比（renderLevelAnalysis，加 tab 需同时改 dashboard.html、SECTION_RENDERERS、initAnalysisTabs 的 sections 数组）。
+- **等级取值规则（v52）**：同一达人多条寄样等级不同 → 一律取**最新寄样记录（sampleTime 最大）的 official**，其余行沿用；最新行为空则沿用最近一次有值的。看板 tab 与达人页区块都要遵守。
+- 素材量口径：层级表必须用 `getVideos()` + 发布时间（同素材看板），不能用寄样行内嵌 videos 长度，否则 61 vs 41 对不上。
+- 侧边栏底部（v50）：SW 版本号 + 「强制更新」按钮（注销 SW/清 caches/localStorage 上传数据后重载），治「页面还是旧的」。curl 查线上必须带 `-L`（不带得 308 空体，会误判没部署）。
+- 话术：Hook→品牌+产品→佣金→Feel free to apply；translator.js 须在 invite/message.js 前加载。
 
-## 通用坑清单
-不加评分字段 / 只维护 creator.html 单版本 / 不手写 Sidebar(app.js 注入) / 不做假数据 Dashboard / AI 页全链路 / 列表限100+搜索 / 不重复实现 copyToClipboard/populateSkuSelect / JS 多行拼接：`?`/`:` 与 return 行不能带行首 `+`（roster.js 踩过两次，2026-10-24） / **PWA 受 SW 控制的页面绝不能用同步 XHR 拉实时数据**（SW 的异步 respondWith 无法满足同步请求→请求被丢弃→静默回退旧数据；2026-11-08 因此「飞书更新网页仍是10月数据」），实时数据应交给 SW 拦截对应请求用异步 fetch 提供，或页面用异步 fetch+重载。**测线上功能不能只 curl：curl 绕过 SW，会误判「接口正常」**（同上）。
-
-## PPT 已交付
-- 8月 v7（19页，六 SKU 差异化视角，`scripts/build_ppt_v7.py`）；9月简约版 12 页（`build_sep_report.py`，暗玫 #A6446B）。python-pptx 关键坑：双轴不用 secondary_axis API，做 plotArea OOXML 手术；lineChart dLblPos 只许 t/b/ctr/l/r；轴 title 必须在 numFmt 前；保存会污染未改动页（按部件还原）；逐点柱色用 dPt。详见 2026-10-13/14/15.md。
+## 通用坑
+- **`window.DloodaApp` 不是 `window.App`**：app.js 导出的是 `DloodaApp`，各页面自己 `var App = window.DloodaApp`。新写独立脚本照做，否则 `App.escapeHtml` 报 TypeError、区块静默空白（creator-levels.js 踩过）。
+- 排查线上前端错误：本机 Chrome 无头 `--headless=new --enable-logging=stderr --dump-dom` + grep "Uncaught"，比反复猜快得多。
+- 不加评分字段/不手写 Sidebar/不做假数据/列表限100+搜索/不重复实现 copyToClipboard、populateSkuSelect。
+- JS 多行拼接 `?`/`:` 与 return 行不能带行首 `+`。
+- **PWA 页面绝不能用同步 XHR 拉实时数据**（SW 异步 respondWith 无法满足→静默旧数据）；测线上不能只 curl（绕过 SW 会误判正常）。
+- python-pptx：双轴做 plotArea OOXML 手术；dLblPos 只许 t/b/ctr/l/r；轴 title 在 numFmt 前；保存会污染未改动页；逐点柱色用 dPt。详见 2026-10-13/14/15.md。
