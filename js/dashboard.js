@@ -319,27 +319,40 @@
       html += '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
         + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
         + '<th style="padding:7px 4px;text-align:left;color:var(--text-3);font-weight:600;">类型</th>'
-        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">视频条数</th>'
-        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">订单数</th>'
-        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">件数</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">视频</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">订单</th>'
         + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">成交额</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--c-danger);font-weight:600;">退款单</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--c-danger);font-weight:600;">退款额</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--c-success);font-weight:600;">净额</th>'
         + '<th style="padding:7px 4px;text-align:center;color:var(--c-success);font-weight:600;">订单占比</th>'
-        + '<th style="padding:7px 4px;text-align:center;color:var(--pink-500);font-weight:600;">金额占比</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--pink-500);font-weight:600;">净额占比</th>'
         + '</tr></thead><tbody>'
-        + row('新视频', td(of.videos.news), td(App.formatNumber(of.g.news.orders)), td(App.formatNumber(of.g.news.units)),
-              td('$' + App.formatNumber(Math.round(of.g.news.amount))), td(pctBar(of.newsShare, 'var(--pink-400)')),
-              td(of.newsAmountShare + '%', 'var(--pink-500)', true))
-        + row('老视频', td(of.videos.olds), td(App.formatNumber(of.g.olds.orders)), td(App.formatNumber(of.g.olds.units)),
-              td('$' + App.formatNumber(Math.round(of.g.olds.amount))), td(pctBar(of.oldsShare, 'var(--c-info)')),
-              td(of.oldsAmountShare + '%', 'var(--c-info)', true))
-        + (of.g.unknown.orders ? row('未知视频', td(of.videos.unknown), td(App.formatNumber(of.g.unknown.orders)), td(App.formatNumber(of.g.unknown.units)),
-              td('$' + App.formatNumber(Math.round(of.g.unknown.amount))), td(pctBar(of.unknownShare, 'var(--text-3)')), td('—')) : '')
+        + row('新视频', td(of.videos.news), td(App.formatNumber(of.g.news.orders)),
+              td('$' + App.formatNumber(Math.round(of.g.news.amount))),
+              td(App.formatNumber(of.g.news.refundOrders)), td('$' + App.formatNumber(Math.round(of.g.news.refundAmount))),
+              td('$' + App.formatNumber(Math.round(of.g.news.net)), 'var(--c-success)', true),
+              td(pctBar(of.newsShare, 'var(--pink-400)')), td(of.newsAmountShare + '%', 'var(--pink-500)', true))
+        + row('老视频', td(of.videos.olds), td(App.formatNumber(of.g.olds.orders)),
+              td('$' + App.formatNumber(Math.round(of.g.olds.amount))),
+              td(App.formatNumber(of.g.olds.refundOrders)), td('$' + App.formatNumber(Math.round(of.g.olds.refundAmount))),
+              td('$' + App.formatNumber(Math.round(of.g.olds.net)), 'var(--c-info)', true),
+              td(pctBar(of.oldsShare, 'var(--c-info)')), td(of.oldsAmountShare + '%', 'var(--c-info)', true))
+        + (of.g.unknown.orders ? row('未知视频', td(of.videos.unknown), td(App.formatNumber(of.g.unknown.orders)),
+              td('$' + App.formatNumber(Math.round(of.g.unknown.amount))),
+              td(App.formatNumber(of.g.unknown.refundOrders)), td('$' + App.formatNumber(Math.round(of.g.unknown.refundAmount))),
+              td('$' + App.formatNumber(Math.round(of.g.unknown.net))),
+              td(pctBar(of.unknownShare, 'var(--text-3)')), td(of.unknownAmountShare + '%', 'var(--text-3)')) : '')
         + '</tbody></table>'
-        + '<div style="margin-top:8px;font-size:11px;color:var(--text-3);line-height:1.6;">'
-        +   '数据源：总订单表（' + App.formatNumber(of.meta.orders || 0) + ' 单，内容ID 匹配率约 96%）。'
-        +   '只统计支付时间落在本期（' + f.start + ' ~ ' + f.end + '，结束日 15 号归下月）的订单，合计 '
-        +   App.formatNumber(of.total.orders) + ' 单 / $' + App.formatNumber(Math.round(of.total.amount)) + '。'
-        +   '未知视频 = 订单内容ID在视频表里找不到（商品橱窗、外部流量等非视频订单）。'
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--text-3);line-height:1.7;">'
+        +   '<span>本期合计：' + App.formatNumber(of.total.orders) + ' 单 · 成交 $' + App.formatNumber(Math.round(of.total.amount))
+        +   ' · 退款 ' + App.formatNumber(of.total.refundOrders) + ' 单/$' + App.formatNumber(Math.round(of.total.refundAmount))
+        +   '（退款率 ' + of.total.refundRate + '%）· 净额 $' + App.formatNumber(Math.round(of.total.net)) + '</span>'
+        + '</div>'
+        + '<div style="margin-top:6px;font-size:11px;color:var(--text-3);line-height:1.6;">'
+        +   '数据源：D 店总订单表（' + App.formatNumber(of.meta.orders || 0) + ' 单，内容ID 匹配率约 96%）。'
+        +   '订单按【创建时间】与【视频发布日期】比较：发布日期落在本期 = 新视频，早于本期 = 老视频；成交额未扣退款，净额 = 成交额 − 退款额。'
+        +   '未知视频 = 订单内容ID在视频表里找不到（商品橱窗、外部流量、直播等非视频订单）。'
         + '</div>';
     } else {
       // 没接入订单表时的兜底（按达人×SKU 估算）

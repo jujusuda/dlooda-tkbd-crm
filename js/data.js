@@ -1159,7 +1159,8 @@
       if (endDate && !withinEnd(d, endDate)) return false;
       return true;
     }
-    var empty = function () { return { orders: 0, units: 0, amount: 0 }; };
+    // 每行：[视频索引, 订单日期(创建时间), 订单数, 件数, 支付金额, 退款单数, 退款金额]
+    var empty = function () { return { orders: 0, units: 0, amount: 0, refundOrders: 0, refundAmount: 0, net: 0 }; };
     var res = {
       hasRange: !!(startDate || endDate),
       start: startDate || '', end: endDate || '',
@@ -1178,19 +1179,39 @@
       var x = v[r[0]];
       if (!x) return;
       if (skuKey && normSku(x[2]) !== skuKey) return;
-      if (!inWin(r[1])) return;                       // 只统计区间内的订单（按支付日）
+      if (!inWin(r[1])) return;
       var b = !x[0] ? res.g.unknown : (inWin(x[0]) ? res.g.news : res.g.olds);
-      b.orders += r[2]; b.units += r[3]; b.amount += r[4];
-      res.total.orders += r[2]; res.total.units += r[3]; res.total.amount += r[4];
+      b.orders += r[2] || 0;
+      b.units += r[3] || 0;
+      b.amount += r[4] || 0;
+      b.refundOrders += r[5] || 0;
+      b.refundAmount += r[6] || 0;
+      res.total.orders += r[2] || 0;
+      res.total.units += r[3] || 0;
+      res.total.amount += r[4] || 0;
+      res.total.refundOrders += r[5] || 0;
+      res.total.refundAmount += r[6] || 0;
     });
-    function pct(a, b) { return b > 0 ? Math.round(a / b * 1000) / 10 : 0; }
-    res.newsShare = pct(res.g.news.orders, res.total.orders);
-    res.oldsShare = pct(res.g.olds.orders, res.total.orders);
-    res.unknownShare = pct(res.g.unknown.orders, res.total.orders);
-    res.newsAmountShare = pct(res.g.news.amount, res.total.amount);
-    res.oldsAmountShare = pct(res.g.olds.amount, res.total.amount);
-    res.newsUnitsShare = pct(res.g.news.units, res.total.units);
-    res.oldsUnitsShare = pct(res.g.olds.units, res.total.units);
+    ['news', 'olds', 'unknown'].forEach(function (k) {
+      var b = res.g[k];
+      b.amount = Math.round(b.amount * 100) / 100;
+      b.refundAmount = Math.round(b.refundAmount * 100) / 100;
+      b.net = Math.round((b.amount - b.refundAmount) * 100) / 100;
+      b.refundRate = b.orders > 0 ? Math.round(b.refundOrders / b.orders * 1000) / 10 : 0;
+    });
+    var t = res.total;
+    t.amount = Math.round(t.amount * 100) / 100;
+    t.refundAmount = Math.round(t.refundAmount * 100) / 100;
+    t.net = Math.round((t.amount - t.refundAmount) * 100) / 100;
+    t.refundRate = t.orders > 0 ? Math.round(t.refundOrders / t.orders * 1000) / 10 : 0;
+
+    function pct(a1, b1) { return b1 > 0 ? Math.round(a1 / b1 * 1000) / 10 : 0; }
+    res.newsShare = pct(res.g.news.orders, t.orders);
+    res.oldsShare = pct(res.g.olds.orders, t.orders);
+    res.unknownShare = pct(res.g.unknown.orders, t.orders);
+    res.newsAmountShare = pct(res.g.news.net, t.net);
+    res.oldsAmountShare = pct(res.g.olds.net, t.net);
+    res.unknownAmountShare = pct(res.g.unknown.net, t.net);
     res.meta = OD.meta || {};
     return res;
   }
