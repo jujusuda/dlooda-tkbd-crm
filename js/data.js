@@ -1143,6 +1143,58 @@
     }).sort(function (x, y) { return levelRank(x.level) - levelRank(y.level); });
   }
 
+  /* ========== 订单级新老视频（2026-11-08） ==========
+     数据源：D 店总订单表（scripts/build_order_data.py 生成 window.ORDER_DATA）。
+     每条订单带「内容ID」= 视频 ID，用视频 ID 反查《全量视频》里的发布日期：
+       发布日期落在筛选区间 → 新视频订单；早于区间 → 老视频订单。
+     这是精确口径，优先于 getFreshnessAnalysis 里按 达人×SKU 的估算。 */
+  function getOrderFreshness(startDate, endDate, skuFilter) {
+    var OD = global.ORDER_DATA;
+    if (!OD || !OD.v || !OD.o) return null;
+    var v = OD.v, o = OD.o;
+    var skuKey = skuFilter ? normSku(skuFilter) : '';
+    function inWin(d) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d))) return false;
+      if (startDate && d < startDate) return false;
+      if (endDate && !withinEnd(d, endDate)) return false;
+      return true;
+    }
+    var empty = function () { return { orders: 0, units: 0, amount: 0 }; };
+    var res = {
+      hasRange: !!(startDate || endDate),
+      start: startDate || '', end: endDate || '',
+      videos: { news: 0, olds: 0, unknown: 0 },
+      g: { news: empty(), olds: empty(), unknown: empty() },
+      total: empty(),
+    };
+    v.forEach(function (x) {
+      if (skuKey && normSku(x[2]) !== skuKey) return;
+      var d = String(x[0] || '');
+      if (!d) { res.videos.unknown++; return; }
+      if (inWin(d)) res.videos.news++;
+      else if (!startDate || d < startDate) res.videos.olds++;
+    });
+    o.forEach(function (r) {
+      var x = v[r[0]];
+      if (!x) return;
+      if (skuKey && normSku(x[2]) !== skuKey) return;
+      if (!inWin(r[1])) return;                       // 只统计区间内的订单（按支付日）
+      var b = !x[0] ? res.g.unknown : (inWin(x[0]) ? res.g.news : res.g.olds);
+      b.orders += r[2]; b.units += r[3]; b.amount += r[4];
+      res.total.orders += r[2]; res.total.units += r[3]; res.total.amount += r[4];
+    });
+    function pct(a, b) { return b > 0 ? Math.round(a / b * 1000) / 10 : 0; }
+    res.newsShare = pct(res.g.news.orders, res.total.orders);
+    res.oldsShare = pct(res.g.olds.orders, res.total.orders);
+    res.unknownShare = pct(res.g.unknown.orders, res.total.orders);
+    res.newsAmountShare = pct(res.g.news.amount, res.total.amount);
+    res.oldsAmountShare = pct(res.g.olds.amount, res.total.amount);
+    res.newsUnitsShare = pct(res.g.news.units, res.total.units);
+    res.oldsUnitsShare = pct(res.g.olds.units, res.total.units);
+    res.meta = OD.meta || {};
+    return res;
+  }
+
   /* ========== 新老视频 / 新老达人 / 多品合作分析（2026-11-08） ==========
      视频：发布时间落在筛选区间内 = 新视频，之前 = 老视频（区间之后的不计入）。
      达人：首次寄样时间早于区间起点 = 老达人，否则新达人。
@@ -3111,6 +3163,7 @@
     getAvailableSKUs: getAvailableSKUs,
     getLevelAnalysis: getLevelAnalysis,
     getFreshnessAnalysis: getFreshnessAnalysis,
+    getOrderFreshness: getOrderFreshness,
     getCreatorValueAnalysis: getCreatorValueAnalysis,
     getSampleFunnel: getSampleFunnel,
     getVideoLatencyAnalysis: getVideoLatencyAnalysis,

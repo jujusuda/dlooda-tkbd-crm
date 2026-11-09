@@ -304,17 +304,45 @@
 
     var html = '';
 
-    // ① 新老视频
+    // ① 新老视频（订单级精确口径：订单内容ID → 视频发布日期）
+    var of = Data.getOrderFreshness ? Data.getOrderFreshness(filterState.startDate, filterState.endDate, filterState.sku) : null;
     html += '<div class="card" style="margin-bottom:12px;">'
       + '<div class="card__header" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">'
       + '<h3 class="card__title">新老视频 · 出单与订单占比 🆕</h3>'
-      + '<span style="font-size:11px;color:var(--text-3);">按视频发布时间：区间内=新视频，区间前=老视频</span>'
+      + '<span style="font-size:11px;color:var(--text-3);">订单按内容ID反查视频发布日期：区间内=新视频，区间前=老视频</span>'
       + '</div>'
       + '<div style="padding:10px 12px;">';
 
     if (!f.hasRange) {
       html += '<div style="padding:14px;color:var(--text-3);font-size:12px;text-align:center;">请先在顶部选择时间区间，才能区分新老视频 / 新老达人</div>';
+    } else if (of) {
+      html += '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
+        + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
+        + '<th style="padding:7px 4px;text-align:left;color:var(--text-3);font-weight:600;">类型</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">视频条数</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">订单数</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">件数</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">成交额</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--c-success);font-weight:600;">订单占比</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--pink-500);font-weight:600;">金额占比</th>'
+        + '</tr></thead><tbody>'
+        + row('新视频', td(of.videos.news), td(App.formatNumber(of.g.news.orders)), td(App.formatNumber(of.g.news.units)),
+              td('$' + App.formatNumber(Math.round(of.g.news.amount))), td(pctBar(of.newsShare, 'var(--pink-400)')),
+              td(of.newsAmountShare + '%', 'var(--pink-500)', true))
+        + row('老视频', td(of.videos.olds), td(App.formatNumber(of.g.olds.orders)), td(App.formatNumber(of.g.olds.units)),
+              td('$' + App.formatNumber(Math.round(of.g.olds.amount))), td(pctBar(of.oldsShare, 'var(--c-info)')),
+              td(of.oldsAmountShare + '%', 'var(--c-info)', true))
+        + (of.g.unknown.orders ? row('未知视频', td(of.videos.unknown), td(App.formatNumber(of.g.unknown.orders)), td(App.formatNumber(of.g.unknown.units)),
+              td('$' + App.formatNumber(Math.round(of.g.unknown.amount))), td(pctBar(of.unknownShare, 'var(--text-3)')), td('—')) : '')
+        + '</tbody></table>'
+        + '<div style="margin-top:8px;font-size:11px;color:var(--text-3);line-height:1.6;">'
+        +   '数据源：总订单表（' + App.formatNumber(of.meta.orders || 0) + ' 单，内容ID 匹配率约 96%）。'
+        +   '只统计支付时间落在本期（' + f.start + ' ~ ' + f.end + '，结束日 15 号归下月）的订单，合计 '
+        +   App.formatNumber(of.total.orders) + ' 单 / $' + App.formatNumber(Math.round(of.total.amount)) + '。'
+        +   '未知视频 = 订单内容ID在视频表里找不到（商品橱窗、外部流量等非视频订单）。'
+        + '</div>';
     } else {
+      // 没接入订单表时的兜底（按达人×SKU 估算）
       html += '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
         + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
         + '<th style="padding:7px 4px;text-align:left;color:var(--text-3);font-weight:600;">类型</th>'
@@ -332,8 +360,7 @@
               td(pctBar(v.oldOrderRate, 'var(--c-info)')), td(App.formatNumber(v.oldOrders)), td(v.oldOrdersShare + '%', 'var(--c-info)', true))
         + '</tbody></table>'
         + '<div style="margin-top:8px;font-size:11px;color:var(--text-3);line-height:1.6;">'
-        +   '新视频 = 发布时间落在 ' + f.start + ' ~ ' + f.end + '（结束日 15 号归下月）；老视频 = 发布时间早于此区间。'
-        +   '订单只统计区间内寄样行的订单（视频表没有逐单时间），按该「达人×SKU」新/老视频条数比例分摊；出单占比为组合级判断（该组合本期是否有单）。本期合计 ' + App.formatNumber(v.totalOrders) + ' 单。'
+        +   '未接入总订单表（js/order-data.js），以下为按「达人×SKU」的估算口径。'
         + '</div>';
     }
     html += '</div></div>';
