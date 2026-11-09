@@ -1199,6 +1199,57 @@
       b.net = Math.round((b.amount - b.refundAmount) * 100) / 100;
       b.refundRate = b.orders > 0 ? Math.round(b.refundOrders / b.orders * 1000) / 10 : 0;
     });
+    // ---- 达人维度：首次寄样早于区间起点 = 老达人；订单按视频所属达人归属 ----
+    var firstSeen = {};
+    D.samples.forEach(function (sm) {
+      var day = String(sm.sampleTime || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !sm.creator) return;
+      if (!firstSeen[sm.creator] || day < firstSeen[sm.creator]) firstSeen[sm.creator] = day;
+    });
+    var crNews = empty(), crOlds = empty(), crUnknown = empty();
+    var setNew = {}, setOld = {}, ordNew = {}, ordOld = {};
+    D.samples.forEach(function (sm) {
+      var day = String(sm.sampleTime || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
+      if (skuKey && normSku(sm.sku) !== skuKey) return;
+      if (!inWin(day)) return;
+      if (!sm.creator) return;
+      var f = firstSeen[sm.creator] || day;
+      if (startDate && f >= startDate) setNew[sm.creator] = 1; else setOld[sm.creator] = 1;
+    });
+    o.forEach(function (r) {
+      var x = v[r[0]];
+      if (!x) return;
+      if (skuKey && normSku(x[2]) !== skuKey) return;
+      if (!inWin(r[1])) return;
+      var c = x[1] || '';
+      var f = c ? firstSeen[c] : '';
+      var b = (!c || !f) ? crUnknown : (startDate && f >= startDate ? crNews : crOlds);
+      b.orders += r[2] || 0;
+      b.units += r[3] || 0;
+      b.amount += r[4] || 0;
+      b.refundOrders += r[5] || 0;
+      b.refundAmount += r[6] || 0;
+      // 出单达人只在「本期有寄样的达人」里算，避免出现 出单达人 > 达人总数（>100%）
+      if (c) {
+        if (setNew[c]) ordNew[c] = 1;
+        else if (setOld[c]) ordOld[c] = 1;
+      }
+    });
+    [crNews, crOlds, crUnknown].forEach(function (b) {
+      b.amount = Math.round(b.amount * 100) / 100;
+      b.refundAmount = Math.round(b.refundAmount * 100) / 100;
+      b.net = Math.round((b.amount - b.refundAmount) * 100) / 100;
+    });
+    res.creatorOrder = {
+      news: crNews, olds: crOlds, unknown: crUnknown,
+      newCreators: Object.keys(setNew).length, oldCreators: Object.keys(setOld).length,
+      newOrderedCreators: Object.keys(ordNew).length, oldOrderedCreators: Object.keys(ordOld).length,
+      newOrderRate: Object.keys(setNew).length > 0 ? Math.round(Object.keys(ordNew).length / Object.keys(setNew).length * 1000) / 10 : 0,
+      oldOrderRate: Object.keys(setOld).length > 0 ? Math.round(Object.keys(ordOld).length / Object.keys(setOld).length * 1000) / 10 : 0,
+      newOrdersShare: 0, oldOrdersShare: 0,
+    };
+
     var t = res.total;
     t.amount = Math.round(t.amount * 100) / 100;
     t.refundAmount = Math.round(t.refundAmount * 100) / 100;
@@ -1206,6 +1257,76 @@
     t.refundRate = t.orders > 0 ? Math.round(t.refundOrders / t.orders * 1000) / 10 : 0;
 
     function pct(a1, b1) { return b1 > 0 ? Math.round(a1 / b1 * 1000) / 10 : 0; }
+    // ---- 多品合作（本期寄样行的 distinct SKU 数）+ 真实订单/净额 ----
+    var perCreator = {};
+    D.samples.forEach(function (sm) {
+      var day = String(sm.sampleTime || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !sm.creator || !sm.sku) return;
+      if (skuKey && normSku(sm.sku) !== skuKey) return;
+      if (!inWin(day)) return;
+      var p1 = perCreator[sm.creator] || (perCreator[sm.creator] = { skus: {}, rows: 0 });
+      p1.skus[normSku(sm.sku)] = 1;
+      p1.rows++;
+    });
+    var ordersByCreator = {};
+    o.forEach(function (r) {
+      var x = v[r[0]];
+      if (!x || !x[1]) return;
+      if (skuKey && normSku(x[2]) !== skuKey) return;
+      if (!inWin(r[1])) return;
+      var p2 = ordersByCreator[x[1]] || (ordersByCreator[x[1]] = { orders: 0, amount: 0, refundAmount: 0, net: 0 });
+      p2.orders += r[2] || 0;
+      p2.amount += r[4] || 0;
+      p2.refundAmount += r[6] || 0;
+    });
+    Object.keys(ordersByCreator).forEach(function (k) {
+      var p2 = ordersByCreator[k];
+      p2.net = Math.round((p2.amount - p2.refundAmount) * 100) / 100;
+      p2.amount = Math.round(p2.amount * 100) / 100;
+      p2.refundAmount = Math.round(p2.refundAmount * 100) / 100;
+    });
+    var mg = {
+      '1': { label: '1 款', creators: 0, rows: 0, orders: 0, net: 0 },
+      '2': { label: '2 款', creators: 0, rows: 0, orders: 0, net: 0 },
+      '3': { label: '3 款', creators: 0, rows: 0, orders: 0, net: 0 },
+      '4+': { label: '4 款及以上', creators: 0, rows: 0, orders: 0, net: 0 },
+    };
+    var multiTop = [];
+    Object.keys(perCreator).forEach(function (name) {
+      var p3 = perCreator[name];
+      var n = Object.keys(p3.skus).length;
+      var gk = n >= 4 ? '4+' : String(n);
+      var g = mg[gk];
+      var od = ordersByCreator[name] || { orders: 0, net: 0 };
+      g.creators++; g.rows += p3.rows; g.orders += od.orders; g.net += od.net;
+      if (n >= 2) {
+        multiTop.push({ creator: name, skuCount: n, skus: Object.keys(p3.skus), rows: p3.rows, orders: od.orders, net: Math.round(od.net) });
+      }
+    });
+    multiTop.sort(function (a, b) { return b.net - a.net || b.orders - a.orders; });
+    var mTotalNet = ['1', '2', '3', '4+'].reduce(function (sum, k) { return sum + mg[k].net; }, 0);
+    var mTotalOrders = ['1', '2', '3', '4+'].reduce(function (sum, k) { return sum + mg[k].orders; }, 0);
+    res.multi = {
+      groups: ['1', '2', '3', '4+'].map(function (k) {
+        var g = mg[k];
+        g.net = Math.round(g.net);
+        g.netShare = mTotalNet > 0 ? Math.round(g.net / mTotalNet * 1000) / 10 : 0;
+        g.ordersShare = mTotalOrders > 0 ? Math.round(g.orders / mTotalOrders * 1000) / 10 : 0;
+        return g;
+      }),
+      totalNet: Math.round(mTotalNet), totalOrders: mTotalOrders,
+      multiCreatorCount: multiTop.length,
+      top: multiTop.slice(0, 12),
+    };
+
+    var crTotal = res.creatorOrder;
+    var crOrders = crTotal.news.orders + crTotal.olds.orders + crTotal.unknown.orders;
+    crTotal.newOrdersShare = pct(crTotal.news.orders, crOrders);
+    crTotal.oldOrdersShare = pct(crTotal.olds.orders, crOrders);
+    var crNet = crTotal.news.net + crTotal.olds.net + crTotal.unknown.net;
+    crTotal.newNetShare = pct(crTotal.news.net, crNet);
+    crTotal.oldNetShare = pct(crTotal.olds.net, crNet);
+
     res.newsShare = pct(res.g.news.orders, t.orders);
     res.oldsShare = pct(res.g.olds.orders, t.orders);
     res.unknownShare = pct(res.g.unknown.orders, t.orders);
@@ -1497,10 +1618,10 @@
     var videos = getVideos().filter(function (v) {
       if (skuKey && v.sku !== skuKey) return false;
       var day = (v.postTime || '').slice(0, 10);
-      if (day) {
-        if (startDate && day < startDate) return false;
-        if (endDate && day > endDate) return false;
-      }
+      if (startDate && day < startDate) return false;
+      // ⚠️ 用 withinEnd：结束日 15 号归下月（此前用 day > endDate 会把 10/15 算进来，
+      // 导致「视频总数」比素材看板多 34 条）
+      if (endDate && !withinEnd(day, endDate)) return false;
       return true;
     });
     var bySKU = {};
@@ -1607,7 +1728,7 @@
 
     return {
       total: videos.length,
-      orderedVideos: orderedVideos,
+      orderedVideos: orderedVideos,     // 寄样行内嵌视频数（仅参考，与 total 不同源）
       orderRate: allVideoRows > 0 ? Math.round(allOrderedRows / allVideoRows * 1000) / 10 : 0,
       videoRows: allVideoRows,
       orderedRows: allOrderedRows,

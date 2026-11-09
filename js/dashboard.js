@@ -214,9 +214,9 @@
 
     var html = '<div class="stat-grid" style="margin-bottom:16px;">'
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-primary);">' + App.formatNumber(analytics.total) + '</div><div class="stat-card__label">视频总数</div></div>'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + App.formatNumber(analytics.orderedVideos) + '</div><div class="stat-card__label">出单视频</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--pink-500);">' + App.formatNumber(analytics.orderedRows) + '</div><div class="stat-card__label">出单行<span style="display:block;font-size:10px;font-weight:400;color:var(--text-3);">出单 ÷ 视频行</span></div></div>'
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-success);">' + analytics.orderRate + '%</div><div class="stat-card__label">出单率</div></div>'
-      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + App.formatNumber(analytics.videoRows) + '</div><div class="stat-card__label">视频行数</div></div>'
+      + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + App.formatNumber(analytics.videoRows) + '</div><div class="stat-card__label">视频行数<span style="display:block;font-size:10px;font-weight:400;color:var(--text-3);">履约方式=视频的寄样行</span></div></div>'
       + '</div>';
 
     // 达人出单视频 TOP 20（含视频链接）
@@ -373,12 +373,12 @@
               td(pctBar(v.oldOrderRate, 'var(--c-info)')), td(App.formatNumber(v.oldOrders)), td(v.oldOrdersShare + '%', 'var(--c-info)', true))
         + '</tbody></table>'
         + '<div style="margin-top:8px;font-size:11px;color:var(--text-3);line-height:1.6;">'
-        +   '未接入总订单表（js/order-data.js），以下为按「达人×SKU」的估算口径。'
+        +   '总订单表（js/order-data.js）未加载（离线或未生成），以下为按「达人×SKU」的估算口径；联网刷新可恢复精确数据。'
         + '</div>';
     }
     html += '</div></div>';
 
-    // ② 新老达人
+    // ② 新老达人（订单级：首次寄样早于区间起点 = 老达人）
     html += '<div class="card" style="margin-bottom:12px;">'
       + '<div class="card__header" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">'
       + '<h3 class="card__title">新老达人 · 出单与订单占比 👥</h3>'
@@ -387,6 +387,32 @@
       + '<div style="padding:10px 12px;">';
     if (!f.hasRange) {
       html += '<div style="padding:14px;color:var(--text-3);font-size:12px;text-align:center;">选择时间区间后可区分新老达人</div>';
+    } else if (of && of.creatorOrder) {
+      var co = of.creatorOrder;
+      html += '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
+        + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
+        + '<th style="padding:7px 4px;text-align:left;color:var(--text-3);font-weight:600;">类型</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">本期寄样达人</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">出单达人</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--c-success);font-weight:600;">出单率</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">订单</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--c-success);font-weight:600;">净额</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--c-success);font-weight:600;">订单占比</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--pink-500);font-weight:600;">净额占比</th>'
+        + '</tr></thead><tbody>'
+        + row('新达人', td(co.newCreators, 'var(--pink-500)', true), td(co.newOrderedCreators),
+              td(pctBar(co.newOrderRate, 'var(--pink-400)')), td(App.formatNumber(co.news.orders)),
+              td('$' + App.formatNumber(Math.round(co.news.net)), 'var(--c-success)', true),
+              td(co.newOrdersShare + '%', 'var(--c-success)', true), td(co.newNetShare + '%', 'var(--pink-500)', true))
+        + row('老达人', td(co.oldCreators, 'var(--c-info)', true), td(co.oldOrderedCreators),
+              td(pctBar(co.oldOrderRate, 'var(--c-info)')), td(App.formatNumber(co.olds.orders)),
+              td('$' + App.formatNumber(Math.round(co.olds.net)), 'var(--c-info)', true),
+              td(co.oldOrdersShare + '%', 'var(--c-info)', true), td(co.oldNetShare + '%', 'var(--c-info)', true))
+        + '</tbody></table>'
+        + '<div style="margin-top:8px;font-size:11px;color:var(--text-3);line-height:1.6;">'
+        +   '达人数/出单率只算「本期有寄样记录」的达人；订单与净额是该组全部达人（含很久以前寄样、仍在本期出单的老达人）。'
+        +   '新达人净额 $' + App.formatNumber(Math.round(co.news.net)) + '，老达人净额 $' + App.formatNumber(Math.round(co.olds.net)) + '。'
+        + '</div>';
     } else {
       html += '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
         + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
@@ -398,55 +424,80 @@
         + '<th style="padding:7px 4px;text-align:center;color:var(--c-success);font-weight:600;">出单率</th>'
         + '<th style="padding:7px 4px;text-align:center;color:var(--pink-500);font-weight:600;">订单占比</th>'
         + '</tr></thead><tbody>'
-        + row('新达人', td(c.newCreators, 'var(--pink-500)', true) + td(c.newRows) + td(c.newVideoRows) + td(c.newOrderedRows)
-              , td(pctBar(c.newOrderRate, 'var(--pink-400)')) + td(c.newOrdersShare + '%', 'var(--pink-500)', true))
-        + row('老达人', td(c.oldCreators, 'var(--c-info)', true) + td(c.oldRows) + td(c.oldVideoRows) + td(c.oldOrderedRows)
-              , td(pctBar(c.oldOrderRate, 'var(--c-info)')) + td(c.oldOrdersShare + '%', 'var(--c-info)', true))
+        + row('新达人', td(c.newCreators, 'var(--pink-500)', true), td(c.newRows), td(c.newVideoRows), td(c.newOrderedRows),
+              td(pctBar(c.newOrderRate, 'var(--pink-400)')), td(c.newOrdersShare + '%', 'var(--pink-500)', true))
+        + row('老达人', td(c.oldCreators, 'var(--c-info)', true), td(c.oldRows), td(c.oldVideoRows), td(c.oldOrderedRows),
+              td(pctBar(c.oldOrderRate, 'var(--c-info)')), td(c.oldOrdersShare + '%', 'var(--c-info)', true))
         + '</tbody></table>'
         + '<div style="margin-top:8px;font-size:11px;color:var(--text-3);">新达人占比 ' + c.newCreatorsShare + '%（' + c.newCreators + '/' + (c.newCreators + c.oldCreators) + '）· 订单 ' + c.newOrders + ' / ' + (c.newOrders + c.oldOrders) + '</div>';
     }
     html += '</div></div>';
 
-    // ③ 多品合作
+    // ③ 多品合作（真实订单口径）
+    var mu = (of && of.multi) ? of.multi : null;
     html += '<div class="card">'
       + '<div class="card__header" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">'
       + '<h3 class="card__title">多品合作达人 🧩</h3>'
-      + '<span style="font-size:11px;color:var(--text-3);">区间内同一达人合作的 SKU 数（' + m.multiCreatorCount + ' 位达人合作 ≥2 款）</span>'
+      + '<span style="font-size:11px;color:var(--text-3);">'
+      + (mu ? '区间内同一达人合作的 SKU 数（' + mu.multiCreatorCount + ' 位达人合作 ≥2 款）' : '区间内同一达人合作的 SKU 数')
+      + '</span>'
       + '</div>'
-      + '<div style="padding:10px 12px;">'
-      + '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
-      + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
-      + '<th style="padding:7px 4px;text-align:left;color:var(--text-3);font-weight:600;">合作款数</th>'
-      + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">达人</th>'
-      + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">寄样行</th>'
-      + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">视频行</th>'
-      + '<th style="padding:7px 4px;text-align:center;color:var(--c-success);font-weight:600;">出单率</th>'
-      + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">订单</th>'
-      + '<th style="padding:7px 4px;text-align:center;color:var(--pink-500);font-weight:600;">订单占比</th>'
-      + '</tr></thead><tbody>'
-      + m.groups.map(function (g) {
-          return row(g.label, td(g.creators) + td(g.rows) + td(g.videoRows)
-                     , td(pctBar(g.orderRate, 'var(--pink-400)')) + td(App.formatNumber(g.orders)) + td(g.ordersShare + '%', 'var(--pink-500)', true));
-        }).join('')
-      + '</tbody></table>';
+      + '<div style="padding:10px 12px;">';
 
-    if (m.top.length) {
-      html += '<div style="font-size:12px;font-weight:700;color:var(--pink-600);margin:12px 0 6px;">多品达人 TOP ' + m.top.length + '（按订单量）</div>';
-      html += '<div style="display:flex;flex-direction:column;gap:6px;">';
-      m.top.forEach(function (t, i) {
-        html += '<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:6px 8px;background:var(--bg-pink-soft);border-radius:8px;">'
-          + '<span style="flex:0 0 20px;font-weight:700;color:var(--pink-500);">#' + (i + 1) + '</span>'
-          + '<span style="flex:1;min-width:0;font-weight:600;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + App.escapeHtml(t.creator) + '</span>'
-          + '<span style="flex:0 0 auto;color:var(--text-3);">' + t.skuCount + ' 款</span>'
-          + '<span style="flex:0 0 auto;color:var(--c-success);font-weight:700;">' + t.orderRate + '%</span>'
-          + '<span style="flex:0 0 auto;color:var(--pink-500);font-weight:700;min-width:56px;text-align:right;">' + App.formatNumber(t.orders) + ' 单</span>'
-          + '</div>';
-      });
-      html += '</div>';
+    if (mu) {
+      html += '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
+        + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
+        + '<th style="padding:7px 4px;text-align:left;color:var(--text-3);font-weight:600;">合作款数</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">达人</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">寄样行</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">订单</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--c-success);font-weight:600;">净额</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--pink-500);font-weight:600;">净额占比</th>'
+        + '</tr></thead><tbody>'
+        + mu.groups.map(function (g) {
+            return row(g.label, td(g.creators), td(g.rows), td(App.formatNumber(g.orders)),
+                       td('$' + App.formatNumber(g.net), 'var(--c-success)', true),
+                       td(g.netShare + '%', 'var(--pink-500)', true));
+          }).join('')
+        + '</tbody></table>';
+
+      if (mu.top.length) {
+        html += '<div style="font-size:12px;font-weight:700;color:var(--pink-600);margin:12px 0 6px;">多品达人 TOP ' + mu.top.length + '（按净额）</div>';
+        html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+        mu.top.forEach(function (t, i) {
+          html += '<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:6px 8px;background:var(--bg-pink-soft);border-radius:8px;">'
+            + '<span style="flex:0 0 20px;font-weight:700;color:var(--pink-500);">#' + (i + 1) + '</span>'
+            + '<span style="flex:1;min-width:0;font-weight:600;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + App.escapeHtml(t.creator) + '</span>'
+            + '<span style="flex:0 0 auto;color:var(--text-3);">' + t.skuCount + ' 款</span>'
+            + '<span style="flex:0 0 auto;color:var(--text-3);">' + App.formatNumber(t.orders) + ' 单</span>'
+            + '<span style="flex:0 0 auto;color:var(--pink-500);font-weight:700;min-width:64px;text-align:right;">$' + App.formatNumber(t.net) + '</span>'
+            + '</div>';
+        });
+        html += '</div>';
+      }
+      html += '<div style="margin-top:10px;font-size:11px;color:var(--text-3);line-height:1.6;">'
+        + '📌 多品 = 同一达人在所选区间内合作 ≥2 个 SKU（按寄样行统计）；订单/净额取总订单表里该达人的真实订单，所以各组合计 = 本期有寄样达人的订单，不含长期只看不寄样的老达人。'
+        + '</div>';
+    } else {
+      html += '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
+        + '<thead><tr style="border-bottom:2px solid var(--pink-100);">'
+        + '<th style="padding:7px 4px;text-align:left;color:var(--text-3);font-weight:600;">合作款数</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">达人</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">寄样行</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">视频行</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--c-success);font-weight:600;">出单率</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--text-3);font-weight:600;">订单</th>'
+        + '<th style="padding:7px 4px;text-align:center;color:var(--pink-500);font-weight:600;">订单占比</th>'
+        + '</tr></thead><tbody>'
+        + m.groups.map(function (g) {
+            return row(g.label, td(g.creators), td(g.rows), td(g.videoRows),
+                       td(pctBar(g.orderRate, 'var(--pink-400)')), td(App.formatNumber(g.orders)),
+                       td(g.ordersShare + '%', 'var(--pink-500)', true));
+          }).join('')
+        + '</tbody></table>'
+        + '<div style="margin-top:10px;font-size:11px;color:var(--text-3);">未接入总订单表，以上为寄样行 orderCount 口径。</div>';
     }
-    html += '<div style="margin-top:10px;font-size:11px;color:var(--text-3);line-height:1.6;">'
-      + '📌 多品 = 同一达人在所选区间内合作 ≥2 个 SKU。出单率仍按「出单行 ÷ 视频行」计算，可用来判断多接款是否稀释了单款产出。'
-      + '</div></div></div>';
+    html += '</div></div>';
 
     return html;
   }
