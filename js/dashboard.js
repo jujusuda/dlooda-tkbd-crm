@@ -30,7 +30,7 @@
   /* ---------- 顶部分析标签页（点击切换，一次显示一个区块） ---------- */
   function initAnalysisTabs() {
     var tabs = Array.prototype.slice.call(document.querySelectorAll('.analysis-tab'));
-    var sections = ['section-persona','section-language','section-dev','section-trend','section-product','section-levels','section-fulfill','section-video','section-reinvest'];
+    var sections = ['section-persona','section-language','section-dev','section-trend','section-product','section-conversion','section-levels','section-fulfill','section-video','section-reinvest'];
     function showTab(targetId) {
       sections.forEach(function (id) {
         var el = document.getElementById(id);

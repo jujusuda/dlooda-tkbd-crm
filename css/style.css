@@ -149,6 +149,43 @@ img { max-width: 100%; display: block; }
 
 .sidebar__nav { display: flex; flex-direction: column; gap: 2px; }
 
+/* 侧边栏分组（2026-11 改造） */
+.sidebar__group { display: flex; flex-direction: column; gap: 2px; }
+.sidebar__group + .sidebar__group { margin-top: 10px; }
+.sidebar__group-title {
+  padding: 4px var(--sp-3) 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--text-3);
+  text-transform: uppercase;
+}
+.sidebar__group + .sidebar__group .sidebar__group-title { border-top: 1px solid var(--border-1); padding-top: 12px; }
+
+/* 侧边栏底部：退出登录 */
+.sidebar__logout {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-md);
+  background: #fff;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+.sidebar__logout:hover { background: var(--bg-pink-soft); color: var(--text-1); }
+.sidebar__user {
+  padding: 0 var(--sp-3) 6px;
+  font-size: 11px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sidebar__nav-item {
   display: flex;
   align-items: center;

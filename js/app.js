@@ -62,24 +62,35 @@
     tracking: '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   };
 
-  /* ---------- 导航配置 ---------- */
+  /* ---------- 导航配置 ----------
+     按业务性质分组（2026-11 改造）：工作台 / 日常执行 / 达人 / 内容 /
+     产品配置 / 数据分析 / 工具。路由文件名保持不变，只调整分组与顺序。 */
+  var NAV_GROUPS = [
+    { id: 'workbench', label: '工作台' },
+    { id: 'execution', label: '日常执行' },
+    { id: 'creator',   label: '达人' },
+    { id: 'content',   label: '内容' },
+    { id: 'product',   label: '产品配置' },
+    { id: 'analysis',  label: '数据分析' },
+    { id: 'tools',     label: '工具' }
+  ];
 
   var NAV_ITEMS = [
-    { id: 'index',         label: '首页',     icon: ICONS.home,    href: 'index.html',         enabled: true },
-    { id: 'task',          label: '寄样任务', icon: ICONS.task,    href: 'task.html',          enabled: true },
-    { id: 'todo',          label: '任务清单', icon: ICONS.todo,    href: 'todo.html',          enabled: true },
-    { id: 'creator',       label: '达人',     icon: ICONS.creator, href: 'creator.html',       enabled: true },
-    { id: 'roster',        label: '名单库',   icon: ICONS.roster,  href: 'roster.html',        enabled: true },
-    { id: 'tracking',      label: '履约追踪', icon: ICONS.tracking, href: 'tracking.html',      enabled: true },
-    { id: 'ai-assistant',  label: 'AI分析',   icon: ICONS.ai,      href: 'ai-assistant.html',  enabled: true },
-    { id: 'product',       label: '产品',     icon: ICONS.product, href: 'product.html',       enabled: true },
-    { id: 'invite',        label: '邀约',     icon: ICONS.invite,  href: 'invite.html',        enabled: true },
-    { id: 'message',       label: '私信',     icon: ICONS.message, href: 'message.html',       enabled: true },
-    { id: 'sample',        label: '样品',     icon: ICONS.sample,  href: 'sample.html',        enabled: true },
-    { id: 'video',         label: '视频',     icon: ICONS.video,   href: 'video.html',         enabled: true },
-    { id: 'dashboard',     label: '看板',     icon: ICONS.dashboard, href: 'dashboard.html',   enabled: true },
-    { id: 'report',        label: '复盘',     icon: ICONS.report,  href: 'report.html',        enabled: true },
-    { id: 'daily',         label: '日报',     icon: ICONS.daily,   href: 'daily.html',         enabled: true },
+    { id: 'index',         label: '首页',     icon: ICONS.home,      href: 'index.html',         enabled: true, group: 'workbench' },
+    { id: 'task',          label: '寄样任务', icon: ICONS.task,      href: 'task.html',          enabled: true, group: 'execution' },
+    { id: 'todo',          label: '任务清单', icon: ICONS.todo,      href: 'todo.html',          enabled: true, group: 'execution' },
+    { id: 'invite',        label: '邀约',     icon: ICONS.invite,    href: 'invite.html',        enabled: true, group: 'execution' },
+    { id: 'message',       label: '私信',     icon: ICONS.message,   href: 'message.html',       enabled: true, group: 'execution' },
+    { id: 'sample',        label: '样品',     icon: ICONS.sample,    href: 'sample.html',        enabled: true, group: 'execution' },
+    { id: 'tracking',      label: '履约追踪', icon: ICONS.tracking,  href: 'tracking.html',      enabled: true, group: 'execution' },
+    { id: 'creator',       label: '达人',     icon: ICONS.creator,   href: 'creator.html',       enabled: true, group: 'creator' },
+    { id: 'roster',        label: '名单库',   icon: ICONS.roster,    href: 'roster.html',        enabled: true, group: 'creator' },
+    { id: 'video',         label: '视频',     icon: ICONS.video,     href: 'video.html',         enabled: true, group: 'content' },
+    { id: 'product',       label: '产品',     icon: ICONS.product,   href: 'product.html',       enabled: true, group: 'product' },
+    { id: 'dashboard',     label: '看板',     icon: ICONS.dashboard, href: 'dashboard.html',     enabled: true, group: 'analysis' },
+    { id: 'report',        label: '复盘',     icon: ICONS.report,    href: 'report.html',        enabled: true, group: 'analysis' },
+    { id: 'daily',         label: '日报',     icon: ICONS.daily,     href: 'daily.html',         enabled: true, group: 'analysis' },
+    { id: 'ai-assistant',  label: 'AI分析',   icon: ICONS.ai,        href: 'ai-assistant.html',  enabled: true, group: 'tools' },
   ];
 
   // 移动端底部导航只显示 5 个
@@ -173,16 +184,13 @@
   }
 
   function buildSidebar(currentPage) {
-    var items = NAV_ITEMS.map(function (item) {
+    function renderItem(item) {
       var classes = ['sidebar__nav-item'];
       if (item.id === currentPage) classes.push('active');
       if (!item.enabled) classes.push('disabled');
 
       var badge = '';
-      if (!item.enabled) {
-        badge = '<span class="nav-badge">待开发</span>';
-      }
-
+      if (!item.enabled) badge = '<span class="nav-badge">待开发</span>';
       var href = item.enabled ? item.href : 'javascript:void(0)';
 
       return ''
@@ -191,14 +199,33 @@
         + '  <span>' + item.label + '</span>'
         +   badge
         + '</a>';
+    }
+
+    // 按分组输出：分组标题 + 该组菜单（顺序由 NAV_GROUPS 决定）
+    var groupsHtml = NAV_GROUPS.map(function (g) {
+      var groupItems = NAV_ITEMS.filter(function (item) { return item.group === g.id; });
+      if (!groupItems.length) return '';
+      return '<div class="sidebar__group">'
+        + '<div class="sidebar__group-title">' + g.label + '</div>'
+        + groupItems.map(renderItem).join('')
+        + '</div>';
     }).join('');
+
+    // 兼容未分组的菜单项（防止后续新增漏填 group 而消失）
+    var orphan = NAV_ITEMS.filter(function (item) {
+      return !NAV_GROUPS.some(function (g) { return g.id === item.group; });
+    });
+    if (orphan.length) {
+      groupsHtml += '<div class="sidebar__group"><div class="sidebar__group-title">其他</div>'
+        + orphan.map(renderItem).join('') + '</div>';
+    }
 
     return ''
       + '<div class="sidebar__brand">'
       +   CAT_LOGO_SVG
       +   '<div class="sidebar__brand-text">Dlooda <span>TKBD</span></div>'
       + '</div>'
-      + '<nav class="sidebar__nav">' + items + '</nav>'
+      + '<nav class="sidebar__nav">' + groupsHtml + '</nav>'
       + '<div class="sidebar__footer">'
       +   'Dlooda TKBD CRM<br>'
       +   'v0.1 · 本地开发版<br>'
