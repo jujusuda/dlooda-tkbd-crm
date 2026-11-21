@@ -7,18 +7,23 @@ let pass = 0, fail = 0;
 function ok(n, c, e) { if (c) { pass++; console.log('  PASS', n); } else { fail++; console.log('  FAIL', n, e === undefined ? '' : JSON.stringify(e)); } }
 function eq(n, a, b) { ok(n, a === b, { got: a, want: b }); }
 
-function makeSandbox(file, store) {
+function makeSandbox(file, store, opts) {
+  opts = opts || {};
   const redirects = [];
+  const hopStore = opts.sessionStore || {};
+  const mkStore = o => ({
+    getItem: k => (k in o ? o[k] : null),
+    setItem: (k, v) => { o[k] = String(v); },
+    removeItem: k => { delete o[k]; }
+  });
   const sb = {
-    console, Promise, Date, Math, Number, String, Object, Array, JSON, RegExp, Error, isNaN, setTimeout,
-    localStorage: {
-      getItem: k => (k in store ? store[k] : null),
-      setItem: (k, v) => { store[k] = String(v); },
-      removeItem: k => { delete store[k]; }
-    },
-    location: { pathname: '/' + file, search: '', hash: '', replace: u => redirects.push(u) },
+    console, Promise, Date, Math, Number, String, Object, Array, JSON, RegExp, Error, isNaN, setTimeout, parseInt,
+    localStorage: mkStore(store),
+    sessionStorage: mkStore(hopStore),
+    location: { pathname: '/' + file, search: opts.search || '', hash: opts.hash || '', replace: u => redirects.push(u) },
     document: {
       readyState: 'loading',
+      documentElement: { getAttribute: a => (a === 'data-auth-page' ? (opts.authPage || null) : null) },
       querySelector: () => null,
       querySelectorAll: () => [],
       getElementById: () => null,
@@ -29,6 +34,7 @@ function makeSandbox(file, store) {
     __redirects: redirects
   };
   sb.window = sb; sb.global = sb; sb.self = sb;
+  if (opts.loginFlag) sb.__DLOODA_LOGIN_PAGE__ = true;
   vm.createContext(sb);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/auth-config.js'), 'utf8'), sb);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/auth.js'), 'utf8'), sb);
@@ -97,6 +103,35 @@ console.log('\n=== 6. 账号校验（正确/错误/不存在） ===');
   const d = await sb2.DloodaAuth.verify('someone', 'pw');
   eq('走后端校验', posted && posted.url, '/api/auth/login');
   eq('后端返回显示名', d.display, '后端用户');
+
+  console.log('\n=== 8. Cloudflare pretty URLs：/login.html 308 → /login 不得死循环 ===');
+  [['login', ''], ['login', '?redirect=index.html'],
+   ['login', '?redirect=login%3Fredirect%3Dindex.html'],
+   ['login.html', ''], ['LOGIN', '']].forEach(([f, q]) => {
+    const sb = makeSandbox(f, {}, { search: q });
+    eq('未登录访问 /' + f + q + ' 不再跳转', sb.__redirects.length, 0);
+  });
+  const sbFlag = makeSandbox('some-page', {}, { loginFlag: true });
+  eq('全局标记 __DLOODA_LOGIN_PAGE__ 生效', sbFlag.__redirects.length, 0);
+  const sbAttr = makeSandbox('some-page', {}, { authPage: 'login' });
+  eq('<html data-auth-page=login> 生效', sbAttr.__redirects.length, 0);
+
+  console.log('\n=== 9. 回跳目标清洗（杜绝嵌套 redirect） ===');
+  const sbNest = makeSandbox('dashboard.html', {}, { search: '?redirect=login%3Fredirect%3Dindex.html' });
+  eq('嵌套 redirect 清洗为首页', sbNest.__redirects[0],
+     'login.html?redirect=' + encodeURIComponent('index.html'));
+  const sbSelf = makeSandbox('login', {}, { search: '?redirect=whatever', authPage: null });
+  eq('登录页本身不参与回跳清洗', sbSelf.__redirects.length, 0);
+  eq('safeRedirect 保留普通带参页面', s1.DloodaAuth.safeRedirect('/report.html?view=trend'), 'report.html?view=trend');
+  eq('safeRedirect 拦截 login 目标', s1.DloodaAuth.safeRedirect('/login?redirect=x'), 'index.html');
+
+  console.log('\n=== 10. 熔断：连续跳转超过 3 次强制停止 ===');
+  const sharedHop = {};
+  for (let i = 1; i <= 5; i++) {
+    const sb = makeSandbox('dashboard.html', {}, { sessionStore: sharedHop });
+    if (i <= 3) ok('第 ' + i + ' 次仍正常跳转', sb.__redirects.length === 1);
+    else eq('第 ' + i + ' 次熔断（不再跳）', sb.__redirects.length, 0);
+  }
 
   console.log('\n----------------------------------------');
   console.log(`PASS ${pass} / FAIL ${fail}`);

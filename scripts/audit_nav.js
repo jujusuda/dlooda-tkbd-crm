@@ -53,7 +53,8 @@ ok('页头按钮也是菜单名', headerBtn && items.some(i => i.label === heade
 
 console.log('\n=== 4. SW 版本与新增文件 ===');
 const sw = fs.readFileSync(ROOT + '/sw.js', 'utf8');
-ok('CACHE_VERSION 已升级', /CACHE_VERSION = 'dlooda-tkbd-v60'/.test(sw), sw.match(/CACHE_VERSION = '([^']+)'/)[1]);
+const _ver = (sw.match(/CACHE_VERSION = 'dlooda-tkbd-v(\d+)'/) || [])[1];
+ok('CACHE_VERSION 已升级（≥ v60）', Number(_ver) >= 60, _ver);
 ['./login.html','./js/auth.js','./js/auth-config.js','./js/conversion.js','./css/conversion.css'].forEach(f => {
   ok('APP_SHELL 含 ' + f, sw.includes("'" + f + "'"));
 });

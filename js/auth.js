@@ -14,10 +14,65 @@
   var KEY = CFG.storageKey || 'dlooda_auth_session';
   var HOURS = CFG.sessionHours || (24 * 7);
   var LOGIN_PAGE = 'login.html';
+  var HOP_KEY = '__dlooda_guard_hops';
+  var HOP_TS_KEY = '__dlooda_guard_ts';
 
+  /* 当前路径最后一段。
+     ⚠️ Cloudflare Pages 开启 pretty URLs：/login.html 会 308 到 /login（去掉 .html），
+        所以只认 'login.html' 会把登录页误判成普通页，导致 login?redirect=login?... 无限重定向。
+        这里同时兼容带/不带扩展名，以及路径末尾斜杠。 */
   function currentFile() {
-    var p = (global.location.pathname || '').split('/').pop() || 'index.html';
+    var p = (global.location.pathname || '').replace(/\/+$/, '').split('/').pop() || 'index.html';
     return p.toLowerCase();
+  }
+
+  /* 是否登录页：三重判定，任何一重生效即放行，避免 URL 重写把登录页当普通页拦截 */
+  function isLoginPage() {
+    // 1) 页面自身标记（最可靠：login.html 的 <html data-auth-page="login">）
+    try {
+      var de = document.documentElement;
+      if (de && de.getAttribute && de.getAttribute('data-auth-page') === 'login') return true;
+    } catch (e) {}
+    // 2) 页面在 auth.js 之前设置的全局标记
+    if (global.__DLOODA_LOGIN_PAGE__ === true) return true;
+    // 3) URL 兜底：兼容 /login.html 与 Cloudflare 的 /login
+    var f = currentFile();
+    return f === 'login' || f === 'login.html';
+  }
+
+  /* 跳转熔断：8 秒内连续跳超过 3 次就停止，页面照常渲染。
+     即使将来出现没预判到的 URL 规则，也绝不会再把登录页卡成空白。 */
+  function hopCount() {
+    try {
+      var ss = global.sessionStorage;
+      if (!ss) return 1;
+      var now = Date.now();
+      var last = parseInt(ss.getItem(HOP_TS_KEY) || '0', 10) || 0;
+      var n = (now - last < 8000) ? (parseInt(ss.getItem(HOP_KEY) || '0', 10) || 0) + 1 : 1;
+      ss.setItem(HOP_TS_KEY, String(now));
+      ss.setItem(HOP_KEY, String(n));
+      return n;
+    } catch (e) { return 1; }
+  }
+
+  function resetHops() {
+    try {
+      if (!global.sessionStorage) return;
+      global.sessionStorage.removeItem(HOP_KEY);
+      global.sessionStorage.removeItem(HOP_TS_KEY);
+    } catch (e) {}
+  }
+
+  /* 清洗回跳目标：指向登录页自身、或已嵌套 redirect（循环产物）→ 一律回首页 */
+  function safeRedirect(here) {
+    var rel = String(here || '').replace(/^.*\//, '');
+    var decoded = rel;
+    try { decoded = decodeURIComponent(rel); } catch (e) {}
+    if (!rel || /^login(\.html?)?([?#&]|$)/i.test(decoded) ||
+        /[?&]redirect=/i.test(decoded) || /(^|\/)login([?#&]|$)/i.test(decoded)) {
+      return 'index.html';
+    }
+    return rel;
   }
 
   /* ---------- 同步 SHA-256（不依赖 crypto.subtle，http/file 环境也能用） ---------- */
@@ -146,6 +201,7 @@
   /* ---------- 退出登录 ---------- */
   function logout() {
     clearSession();
+    resetHops();
     global.location.replace(LOGIN_PAGE);
   }
 
@@ -187,13 +243,11 @@
 
   /* ---------- 守卫（同步执行，避免先闪一下页面） ---------- */
   function guard() {
-    if (currentFile() === LOGIN_PAGE) return;          // 登录页自身不拦截
-    if (readSession()) return;
+    if (isLoginPage()) { resetHops(); return; }   // 登录页自身不拦截（含 /login 这种无扩展名形式）
+    if (readSession()) { resetHops(); return; }
     var here = global.location.pathname + global.location.search + global.location.hash;
-    // 只保留相对路径，避免把域名带进 redirect
-    var rel = here.replace(/^.*\//, '');
-    if (!rel || rel.indexOf('login.html') === 0) rel = 'index.html';
-    global.location.replace(LOGIN_PAGE + '?redirect=' + encodeURIComponent(rel));
+    if (hopCount() > 3) return;                   // 熔断：绝不把页面卡进重定向死循环
+    global.location.replace(LOGIN_PAGE + '?redirect=' + encodeURIComponent(safeRedirect(here)));
   }
 
   guard();
@@ -201,10 +255,12 @@
   global.DloodaAuth = {
     hash: function (plain) { return sha256((CFG.salt || '') + plain); },
     verify: verify,
-    login: function (username, display) { return writeSession(username, display); },
+    login: function (username, display) { resetHops(); return writeSession(username, display); },
     logout: logout,
     getSession: readSession,
     isLoggedIn: function () { return !!readSession(); },
+    isLoginPage: isLoginPage,
+    safeRedirect: safeRedirect,
     config: CFG
   };
 

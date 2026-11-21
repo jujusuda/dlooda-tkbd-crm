@@ -3,7 +3,7 @@
    PWA 离线缓存 · 应用外壳预缓存
    ================================================================ */
 
-var CACHE_VERSION = 'dlooda-tkbd-v60';
+var CACHE_VERSION = 'dlooda-tkbd-v61';
 
 /* 需要预缓存的应用外壳文件 */
 var APP_SHELL = [
@@ -110,6 +110,19 @@ self.addEventListener('fetch', function (event) {
           keys.forEach(function (k) { caches.delete(k).catch(function () {}); });
         });
         return response;
+      })
+    );
+    return;
+  }
+
+  // ===== 登录相关文件强制走网络 =====
+  // 登录守卫一旦有 bug 会把整站卡进重定向循环，必须保证修复版部署后立刻生效，
+  // 不能被浏览器 HTTP 缓存里的旧 auth.js / login.html 挡住。
+  if (/\/js\/auth(-config)?\.js(\?|$)/.test(url.pathname) ||
+      /^\/login(\.html)?(\?|$)/.test(url.pathname)) {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' }).catch(function () {
+        return caches.match(request);
       })
     );
     return;

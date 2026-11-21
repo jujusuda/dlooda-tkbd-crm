@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-auth-page="login">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +9,17 @@
   <link rel="manifest" href="manifest.json">
   <title>Dlooda TKBD · 登录</title>
   <link rel="stylesheet" href="css/style.css">
+  <script>
+    // 本页标记：守卫三重判定之一，不受 URL 重写影响
+    window.__DLOODA_LOGIN_PAGE__ = true;
+    // Cloudflare Pages 会把 /login.html 308 成 /login（去掉扩展名）。把地址栏补回 .html，
+    // 让「只认 login.html」的旧版守卫也能识别本页 —— 即使浏览器还留着旧缓存也不会再循环。
+    try {
+      if (/^\/login\/?$/.test(location.pathname)) {
+        history.replaceState(null, '', '/login.html' + location.search + location.hash);
+      }
+    } catch (e) {}
+  </script>
   <script src="js/auth-config.js"></script>
   <script src="js/auth.js"></script>
   <style>
@@ -133,10 +144,16 @@
 
       function redirectTarget() {
         var m = location.search.match(/[?&]redirect=([^&]*)/);
-        var raw = m ? decodeURIComponent(m[1]) : '';
-        // 只允许站内相对路径，杜绝外部跳转
-        if (!raw || /^https?:/i.test(raw) || /^\/\//.test(raw) || raw.indexOf('login.html') === 0) {
+        var raw = '';
+        if (m) { try { raw = decodeURIComponent(m[1]); } catch (e) { raw = m[1]; } }
+        // 只允许站内相对路径；登录页自身 / 已嵌套 redirect（死循环产物）一律回首页
+        if (!raw || /^https?:/i.test(raw) || /^\/\//.test(raw) ||
+            /^login(\.html?)?([?#&]|$)/i.test(raw) || /[?&]redirect=/i.test(raw)) {
           return 'index.html';
+        }
+        // Cloudflare pretty URLs 会把 /xxx.html 308 成 /xxx；本地静态服务仍需要 .html
+        if (!/\./.test(raw.split(/[?#]/)[0]) && !/^index([?#]|$)/i.test(raw)) {
+          raw = raw.replace(/^([^?#]*)/, '$1.html');
         }
         return raw;
       }
