@@ -40,6 +40,11 @@
 .cv-link { border: none; background: none; color: var(--pink-600); font-size: 11px; cursor: pointer; padding: 0 2px; }
 .cv-link:hover { text-decoration: underline; }
 .cv-link--del { color: var(--c-danger); }
+.cv-slot__enc {
+  display: inline-block; margin-left: 8px; padding: 1px 6px;
+  border-radius: var(--r-full); background: var(--c-info-bg);
+  color: var(--c-info); font-size: 10px; font-weight: 600;
+}
 
 .cv-slot__maptitle { font-size: 10px; font-weight: 600; color: var(--text-3); margin: 6px 0 8px; }
 .cv-map-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -84,10 +89,17 @@
 .cv-tag--test { background: var(--c-info-bg); color: var(--c-info); }
 .cv-tag--retire { background: var(--bg-2); color: var(--text-3); }
 
-.cv-metric-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
-.cv-metric-row--extra { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 0; }
-@media (max-width: 900px) { .cv-metric-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .cv-metric-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* 主网格：固定 2 行 × 5 列；窄屏横向滚动，一行仍是 5 格，绝不换行成 4-4-3 或三排（3.4） */
+.cv-card__right { min-width: 0; overflow-x: auto; }
+.cv-metric-row {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px; margin-bottom: 8px; min-width: 620px;
+}
+.cv-metric-row--detail { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 0; }
+.cv-card__detailbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 2px; }
+.cv-card__detailhint { font-size: 10px; color: var(--text-3); }
+.cv-detail { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-1); }
+.cv-detail[hidden] { display: none; }
 .cv-metric { background: var(--bg-2); border: 1px solid var(--border-1); border-radius: var(--r-sm); padding: 8px 9px; min-width: 0; }
 .cv-metric--empty { opacity: .72; }
 .cv-metric__label { font-size: 10px; color: var(--text-2); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

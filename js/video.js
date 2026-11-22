@@ -111,10 +111,11 @@
       + '<div class="stat-card"><div class="stat-card__value" style="color:var(--c-info);">' + App.formatNumber(analytics.uniqueCreators) + '</div><div class="stat-card__label">有视频达人数</div></div>'
       + '</div>';
 
-    // SKU 视频排名
+    // SKU 视频量排名（2.3：此处只放视频明细榜，按 SKU 的寄样/履约/出单率汇总以「看板 → 产品分析」为准）
     if (analytics.skuRanking.length > 0) {
       html += '<div class="card" style="margin-bottom:16px;">'
-        + '<div class="card__header"><h3 class="card__title">SKU 视频排名 & 出单率</h3></div>'
+        + '<div class="card__header"><h3 class="card__title">SKU 视频量排名（按视频数）</h3></div>'
+        + '<div style="padding:4px 0 0;font-size:11px;color:var(--text-3);">按 SKU 的寄样 / 履约 / 出单率汇总，请查看「看板 → 产品分析」（主表口径）</div>'
         + '<div style="padding:8px 0;">';
       var maxVid = analytics.skuRanking[0].videoCount || 1;
       analytics.skuRanking.slice(0, 10).forEach(function (s, i) {
@@ -131,7 +132,6 @@
           + '<div style="display:flex;gap:8px;font-size:12px;">'
           + '<span style="color:var(--c-info);font-weight:600;">' + s.videoCount + ' 视频</span>'
           + '<span style="color:var(--pink-500);font-weight:600;">' + s.orderedCount + ' 出单</span>'
-          + '<span style="color:var(--c-success);font-weight:600;">' + s.orderRate + '%</span>'
           + '</div>'
           + '</div>'
           + '<div style="height:8px;background:var(--bg-pink-soft);border-radius:4px;overflow:hidden;">'
@@ -153,7 +153,7 @@
       html += '<div class="card" style="margin-bottom:16px;background:var(--bg-pink-soft);">'
         + '<div style="font-size:12px;color:var(--pink-600);font-weight:600;margin-bottom:6px;">最受欢迎 SKU</div>'
         + '<div style="font-size:16px;font-weight:700;color:var(--text-1);">SKU ' + App.escapeHtml(analytics.topSKU.sku) + ' — ' + App.escapeHtml(analytics.topSKU.productName) + '</div>'
-        + '<div style="font-size:12px;color:var(--text-2);margin-top:4px;">' + analytics.topSKU.videoCount + ' 个视频 · ' + analytics.topSKU.orderedCount + ' 个出单 · 出单率 ' + analytics.topSKU.orderRate + '%</div>'
+        + '<div style="font-size:12px;color:var(--text-2);margin-top:4px;">' + analytics.topSKU.videoCount + ' 个视频 · ' + analytics.topSKU.orderedCount + ' 个出单</div>'
         + '</div>';
     }
 

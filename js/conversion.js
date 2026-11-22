@@ -10,7 +10,8 @@
      · 转化单数：同时有「归因成交件数」「商品成交件数」时取两列合计更大的一列
      · 数字列先转数值再求和；缺列标「暂无数据」
      · 寄样数 / 达人出单率沿用现有库（getReportData / getProductAnalysis）
-     · 环比 = 上一等长周期，需另行上传上月表；缺上月数据一律显示「-」
+     · 环比 = 上一等长周期，需另行上传上月表；缺上月数据一律显示「较上月 -」
+    · 主网格严格 2 行 × 5 列 = 10 指标；播放/点击/转化率 3 个过程量收进「展开详情」
    ================================================================ */
 (function (global) {
   'use strict';
@@ -42,20 +43,20 @@
 
   /* ---------- 字段定义（关键词按顺序优先，越具体越靠前） ---------- */
   var VIDEO_FIELDS = [
-    { key: 'publishTime', label: '发布时间', kws: ['发布时间', '发布日期', '视频发布时间', '发布', 'publish', 'date'] },
-    { key: 'product',     label: '商品（含商品 ID 长文本）', kws: ['商品', '关联商品', '商品信息', 'product', '商品id'] },
-    { key: 'vv',          label: 'VV / 播放量', kws: ['播放量', 'vv', '观看量', '播放', 'views', 'view'] },
-    { key: 'clicks',      label: '商品点击次数', kws: ['商品点击次数', '点击次数', '商品点击', '点击量', 'click'] },
+    { key: 'publishTime', label: '发布时间 / 投稿时间', kws: ['视频发布时间', '发布时间', '发布日期', '投稿时间', '投稿日期', '发布', 'publish', 'date'] },
+    { key: 'product',     label: '商品（含商品 ID 长文本）', kws: ['商品id', '商品 id', '商品链接', '关联商品', '商品信息', '商品', 'product'] },
+    { key: 'vv',          label: 'VV / 播放量', kws: ['播放量', '播放次数', '播放数', 'vv', '观看量', '播放', 'views', 'view'] },
+    { key: 'clicks',      label: '商品点击次数', kws: ['商品点击次数', '商品点击数', '点击次数', '商品点击', '点击量', '点击', 'click'] },
     { key: 'attrOrders',  label: '视频归因成交件数', kws: ['视频归因成交件数', '归因成交件数', '归因成交', '归因'] },
     { key: 'prodOrders',  label: '视频商品成交件数（可选）', kws: ['视频商品成交件数', '商品成交件数', '商品成交'] }
   ];
   var ORDER_FIELDS = [
-    { key: 'createdTime', label: '创建时间', kws: ['创建时间', '订单创建时间', '下单时间', 'created', '订单时间'] },
+    { key: 'createdTime', label: '创建时间 / 下单时间', kws: ['订单创建时间', '创建时间', '下单时间', '下单日期', '订单时间', 'created', 'date'] },
     { key: 'product',     label: '商品 ID', kws: ['商品id', '商品 id', '商品编号', 'product id', '商品'] },
-    { key: 'gmv',         label: '支付金额 / GMV', kws: ['支付金额', 'gmv', '订单金额', '实付金额', '成交金额'] },
-    { key: 'units',       label: '下单件数', kws: ['下单件数', '商品件数', '件数', '数量', 'qty'] },
+    { key: 'gmv',         label: '支付金额 / GMV', kws: ['支付金额', '支付总额', 'gmv', '订单金额', '实付金额', '成交金额'] },
+    { key: 'units',       label: '下单件数 / 成交件数', kws: ['下单件数', '成交件数', '购买件数', '商品件数', '件数', '数量', 'qty'] },
     { key: 'status',      label: '订单状态', kws: ['订单状态', '状态', 'status'] },
-    { key: 'adRate',      label: '店铺广告佣金率', kws: ['店铺广告佣金率', '广告佣金率', '佣金率', '广告佣金'] }
+    { key: 'adRate',      label: '店铺广告佣金率', kws: ['店铺广告佣金率', '广告佣金率', '佣金率', '广告佣金', '佣金'] }
   ];
 
   var SLOTS = [
@@ -75,6 +76,7 @@
     customEnd: '',
     sortBy: 'gmv',
     showMapEditor: false,
+    expanded: {},           // sku -> 是否展开「过程量」详情
     result: null
   };
 
@@ -210,14 +212,66 @@
     return mapping;
   }
 
+  /* ========== CSV 文本编码识别（3.2：UTF-8 / UTF-8 BOM → 乱码时 GBK / GB18030） ========== */
+  var CN_KWS = ['发布时间', '投稿时间', '创建时间', '下单时间', '商品', '播放', '点击', '成交', '归因',
+                '支付金额', '下单件数', '订单状态', '佣金', '状态', '件数', '金额', '视频',
+                '日期', '编号', '时间', '数量', '颜色', '达人', '名称'];
+
+  function cnHitCount(text) {
+    var n = 0, i;
+    for (i = 0; i < CN_KWS.length; i++) if (text.indexOf(CN_KWS[i]) >= 0) n++;
+    return n;
+  }
+
+  /* 典型乱码特征：替换符 / C1 控制字符（GBK 被当 UTF-8）、或 Latin-1 高位字母串（UTF-8 被当 Latin-1） */
+  function looksMojibake(s) {
+    var str = String(s || '');
+    var bad = (str.match(/[\uFFFD\u0080-\u009F]/g) || []).length;
+    var moji = (str.match(/[åæçèéêëìíîïðñòóôõöøùúûüýþÿ]/g) || []).length;
+    return bad >= 2 || moji >= 3;
+  }
+
+  function decodeCsvBuffer(buf) {
+    var u8 = new Uint8Array(buf);
+    var hasBom = u8.length >= 3 && u8[0] === 0xEF && u8[1] === 0xBB && u8[2] === 0xBF;
+    var body = hasBom ? u8.subarray(3) : u8;
+
+    // ① 严格 UTF-8：非法字节序列会直接抛错
+    var utf8 = null, utf8Valid = true;
+    try { utf8 = new TextDecoder('utf-8', { fatal: true }).decode(body); }
+    catch (e) { utf8Valid = false; }
+
+    // ② 备选 GB18030（Chrome/Edge 的 Encoding API 中 gbk 会归一到 gb18030）
+    var gbk = null;
+    try { gbk = new TextDecoder('gb18030').decode(body); } catch (e2) { gbk = null; }
+
+    if (hasBom) return { text: utf8Valid ? utf8 : (gbk || ''), encoding: 'UTF-8 (BOM)' };
+
+    // ③ UTF-8 合法且不像乱码时优先；但若 GBK 解码命中的中文表头明显更多，说明原文件其实是 GBK
+    if (utf8Valid && !looksMojibake(utf8)) {
+      var a = cnHitCount(utf8), b = gbk ? cnHitCount(gbk) : 0;
+      if (a >= b || b === 0) return { text: utf8, encoding: 'UTF-8' };
+    }
+    if (gbk) return { text: gbk, encoding: 'GBK / GB18030' };
+    return { text: utf8 || '', encoding: 'UTF-8' };
+  }
+
   /* ========== 文件上传解析 ========== */
   function handleFile(slotId, file) {
     if (!file) return;
+    var isCsv = /\.csv$/i.test(file.name);
     ensureXLSX().then(function (XLSX) {
       var fr = new FileReader();
       fr.onload = function (e) {
         try {
-          var wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: false });
+          var wb, enc = '';
+          if (isCsv) {
+            var dec = decodeCsvBuffer(e.target.result);
+            enc = dec.encoding;
+            wb = XLSX.read(dec.text, { type: 'string', cellDates: false });
+          } else {
+            wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: false });
+          }
           var ws = wb.Sheets[wb.SheetNames[0]];
           var aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
           if (!aoa.length) { toast('文件内容为空'); return; }
@@ -233,10 +287,12 @@
             headers: headers,
             mapping: autoMapping(headers, slot.type === 'video' ? VIDEO_FIELDS : ORDER_FIELDS),
             headerHits: det.hits,
+            encoding: enc,
             type: slot.type
           };
           render();
-          toast('已解析 ' + file.name + '（表头第 ' + (det.row + 1) + ' 行）');
+          toast('已解析 ' + file.name + '（表头第 ' + (det.row + 1) + ' 行'
+            + (enc ? ' · 编码 ' + enc : '') + '）');
         } catch (err) {
           toast('解析失败：' + (err && err.message ? err.message : '文件格式不支持'));
         }
@@ -462,11 +518,12 @@
     if (!cv.empty && cv.missing.orders) w.push('视频表未指定成交件数列：出单视频数/视频成交件数/转化率「暂无数据」');
     if (!co.empty && co.missing.status) w.push('订单表未指定订单状态列：状态白名单未生效，全部状态计入');
     if (!co.empty && co.missing.created) w.push('订单表未指定创建时间列：未做时间区间筛选');
-    if (!state.slots.prevVideo || !state.slots.prevOrder) w.push('未上传完整的上月两张表：缺上月数据的指标环比显示「-」');
+    if (!state.slots.prevVideo || !state.slots.prevOrder) w.push('未上传完整的上月两张表：缺上月数据的指标显示「较上月 -」');
     return w;
   }
 
   /* ========== 渲染：参数栏 / 上传区 / 映射 / 对照表 ========== */
+  /* 主网格严格 2 行 × 5 列 = 10 个指标（3.4），不自动换行、不多放格子 */
   var METRIC_DEFS_TOP = [
     { key: 'gmv',       label: 'GMV',        fmt: 'money' },
     { key: 'units',     label: '成交件数',    fmt: 'int' },
@@ -475,13 +532,14 @@
     { key: 'orderRate', label: '达人出单率',  fmt: 'pct1', note: '现有库' }
   ];
   var METRIC_DEFS_BOTTOM = [
-    { key: 'videos',        label: '视频数',        fmt: 'int' },
-    { key: 'orderedVideos', label: '出单视频数',    fmt: 'int' },
-    { key: 'videoUnits',    label: '视频成交件数',  fmt: 'int' },
-    { key: 'videoRate',     label: '视频出单率',    fmt: 'pct' },
-    { key: 'ctr',           label: '点击率',        fmt: 'pct2' }
+    { key: 'videos',        label: '新视频数',       fmt: 'int' },
+    { key: 'orderedVideos', label: '新出单视频数',   fmt: 'int' },
+    { key: 'videoUnits',    label: '新视频成交件数', fmt: 'int' },
+    { key: 'videoRate',     label: '视频出单率',     fmt: 'pct' },
+    { key: 'ctr',           label: '新视频点击率',   fmt: 'pct2' }
   ];
-  var METRIC_DEFS_EXTRA = [
+  /* 3 个过程量不进主网格，收进卡片「展开详情」（3.4） */
+  var METRIC_DEFS_DETAIL = [
     { key: 'vv',     label: '总播放量（VV）', fmt: 'int' },
     { key: 'clicks', label: '总点击次数',     fmt: 'int' },
     { key: 'cvr',    label: '转化率',         fmt: 'pct2' }
@@ -499,15 +557,16 @@
     }
   }
 
+  /* 环比格式固定为「较上月 ↑ 42.9%」/「较上月 ↓ 40.7%」/「较上月 -」（3.4 / 3.7） */
   function deltaHtml(m) {
-    if (m.prev === null || m.prev === undefined || m.value === null) {
-      return '<span class="cv-delta cv-delta--none">环比 -</span>';
+    if (m.prev === null || m.prev === undefined || m.value === null || m.prev === 0) {
+      return '<span class="cv-delta cv-delta--none">较上月 -</span>';
     }
-    if (m.prev === 0) return '<span class="cv-delta cv-delta--none">环比 -</span>';
     var d = (m.value - m.prev) / Math.abs(m.prev) * 100;
-    if (Math.abs(d) < 0.05) return '<span class="cv-delta cv-delta--none">环比 0.0%</span>';
+    if (Math.abs(d) < 0.05) return '<span class="cv-delta cv-delta--none">较上月 0.0%</span>';
     var cls = d > 0 ? 'cv-delta--up' : 'cv-delta--down';
-    return '<span class="cv-delta ' + cls + '">环比 ' + (d > 0 ? '↑' : '↓') + Math.abs(d).toFixed(1) + '%</span>';
+    return '<span class="cv-delta ' + cls + '">较上月 ' + (d > 0 ? '↑' : '↓') + ' '
+      + Math.abs(d).toFixed(1) + '%</span>';
   }
 
   function metricHtml(def, m) {
@@ -523,18 +582,28 @@
   function cardHtml(row) {
     var top = METRIC_DEFS_TOP.map(function (d) { return metricHtml(d, row.m[d.key]); }).join('');
     var bottom = METRIC_DEFS_BOTTOM.map(function (d) { return metricHtml(d, row.m[d.key]); }).join('');
-    var extra = METRIC_DEFS_EXTRA.map(function (d) { return metricHtml(d, row.m[d.key]); }).join('');
+    var detail = METRIC_DEFS_DETAIL.map(function (d) { return metricHtml(d, row.m[d.key]); }).join('');
+    var open = !!state.expanded[row.sku];
     var tagCls = { '爆品': 'hot', '主推': 'main', '测品': 'test', '撤退': 'retire' }[row.tag] || 'retire';
     return '<div class="cv-card">'
+      // 左侧：只放 SKU 编号 + 款式名 + 标签；不放商品图、不放环形占比图
       + '<div class="cv-card__left">'
       +   '<div class="cv-card__sku">' + esc(row.sku) + '</div>'
       +   '<div class="cv-card__name">' + esc(row.name) + '</div>'
       +   '<span class="cv-tag cv-tag--' + tagCls + '">' + esc(row.tag) + '</span>'
       + '</div>'
+      // 右侧：固定 2 行 × 5 列 = 10 格；3 个过程量收进「展开详情」
       + '<div class="cv-card__right">'
       +   '<div class="cv-metric-row">' + top + '</div>'
       +   '<div class="cv-metric-row">' + bottom + '</div>'
-      +   '<div class="cv-metric-row cv-metric-row--extra">' + extra + '</div>'
+      +   '<div class="cv-card__detailbar">'
+      +     '<button type="button" class="cv-link" data-action="toggledetail" data-sku="' + esc(row.sku) + '">'
+      +       (open ? '收起详情' : '展开详情 · 过程量（播放 / 点击 / 转化率）') + '</button>'
+      +     '<span class="cv-card__detailhint">主网格 2 × 5 = 10 个指标</span>'
+      +   '</div>'
+      +   '<div class="cv-detail" data-detail="' + esc(row.sku) + '"' + (open ? '' : ' hidden') + '>'
+      +     '<div class="cv-metric-row cv-metric-row--detail">' + detail + '</div>'
+      +   '</div>'
       + '</div>'
       + '</div>';
   }
@@ -563,6 +632,7 @@
     var body = '';
     if (slot) {
       body = '<div class="cv-slot__file">已上传：<b>' + esc(slot.fileName) + '</b>'
+        + (slot.encoding ? '<span class="cv-slot__enc">' + esc(slot.encoding) + '</span>' : '')
         + ' <button type="button" class="cv-link" data-action="clear" data-slot="' + s.id + '">移除</button></div>'
         + mappingHtml(s.id, slot);
     } else {
@@ -687,6 +757,18 @@
         if (act === 'clear') { delete state.slots[btn.getAttribute('data-slot')]; render(); }
         else if (act === 'togglemap') { state.showMapEditor = !state.showMapEditor; render(); }
         else if (act === 'export') exportCsv();
+        else if (act === 'toggledetail') {
+          var sku = btn.getAttribute('data-sku');
+          state.expanded[sku] = !state.expanded[sku];
+          var boxes = root.querySelectorAll('[data-detail]');
+          for (var bi = 0; bi < boxes.length; bi++) {
+            if (boxes[bi].getAttribute('data-detail') !== sku) continue;
+            if (state.expanded[sku]) boxes[bi].removeAttribute('hidden');
+            else boxes[bi].setAttribute('hidden', '');
+          }
+          btn.textContent = state.expanded[sku]
+            ? '收起详情' : '展开详情 · 过程量（播放 / 点击 / 转化率）';
+        }
         else if (act === 'addmap') {
           var id = (document.getElementById('cv-new-id') || {}).value || '';
           var sku = (document.getElementById('cv-new-sku') || {}).value || '';
@@ -717,7 +799,7 @@
   function exportCsv() {
     var res = state.result || buildResult();
     if (!res.rows.length) { toast('暂无结果可导出'); return; }
-    var defs = METRIC_DEFS_TOP.concat(METRIC_DEFS_BOTTOM).concat(METRIC_DEFS_EXTRA);
+    var defs = METRIC_DEFS_TOP.concat(METRIC_DEFS_BOTTOM).concat(METRIC_DEFS_DETAIL);
     var head = ['SKU', '款式名', '标签'].concat(defs.map(function (d) { return d.label; }))
       .concat(defs.map(function (d) { return d.label + '（环比）'; }));
     var lines = [head];
