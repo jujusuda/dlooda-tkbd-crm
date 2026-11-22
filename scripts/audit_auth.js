@@ -133,6 +133,34 @@ console.log('\n=== 6. 账号校验（正确/错误/不存在） ===');
     else eq('第 ' + i + ' 次熔断（不再跳）', sb.__redirects.length, 0);
   }
 
+  console.log('\n=== 11. 回跳地址不得出现 ".html?" 拼接错误（?reset=1 入口） ===');
+  eq('safeRedirect 纯查询串补首页', s1.DloodaAuth.safeRedirect('/?reset=1'), 'index.html?reset=1');
+  eq('safeRedirect 根路径', s1.DloodaAuth.safeRedirect('/'), 'index.html');
+
+  // 从 login.html 里抽出 redirectTarget() 独立执行，覆盖真实内联逻辑
+  const loginHtml = fs.readFileSync(path.join(ROOT, 'login.html'), 'utf8');
+  const fnStart = loginHtml.indexOf('function redirectTarget()');
+  const brace = loginHtml.indexOf('{', fnStart);
+  let depth = 0, fnEnd = -1;
+  for (let i = brace; i < loginHtml.length; i++) {
+    if (loginHtml[i] === '{') depth++;
+    else if (loginHtml[i] === '}' && --depth === 0) { fnEnd = i + 1; break; }
+  }
+  const fnSrc = loginHtml.slice(fnStart, fnEnd);
+  const runRT = raw => {
+    const sb = { location: { search: raw === null ? '' : '?redirect=' + encodeURIComponent(raw) } };
+    vm.createContext(sb);
+    return vm.runInContext(fnSrc + '\nredirectTarget();', sb);
+  };
+  ok('成功抽取 redirectTarget', fnEnd > fnStart);
+  [['index.html?reset=1', 'index.html?reset=1'], ['?reset=1', 'index.html?reset=1'],
+   ['dashboard', 'dashboard.html'], ['dashboard?view=x', 'dashboard.html?view=x'],
+   ['report.html?view=trend', 'report.html?view=trend'],
+   ['login?redirect=x', 'index.html'], ['', 'index.html'],
+   ['https://evil.com', 'index.html']].forEach(([raw, want]) => {
+    eq('redirectTarget(' + JSON.stringify(raw) + ')', runRT(raw), want);
+  });
+
   console.log('\n----------------------------------------');
   console.log(`PASS ${pass} / FAIL ${fail}`);
   process.exit(fail ? 1 : 0);

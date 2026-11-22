@@ -151,11 +151,14 @@
             /^login(\.html?)?([?#&]|$)/i.test(raw) || /[?&]redirect=/i.test(raw)) {
           return 'index.html';
         }
-        // Cloudflare pretty URLs 会把 /xxx.html 308 成 /xxx；本地静态服务仍需要 .html
-        if (!/\./.test(raw.split(/[?#]/)[0]) && !/^index([?#]|$)/i.test(raw)) {
-          raw = raw.replace(/^([^?#]*)/, '$1.html');
-        }
-        return raw;
+        // Cloudflare pretty URLs 会把 /xxx.html 308 成 /xxx；本地静态服务仍需要 .html。
+        // 只拆「页面名」补扩展名，避免把 "?reset=1" 这种纯查询串变成 ".html?reset=1"。
+        var mm = raw.match(/^([^?#]*)(.*)$/);
+        var page = (mm[1] || '').replace(/^\/+/, '');
+        var suffix = mm[2] || '';
+        if (!page || /^index$/i.test(page)) page = 'index.html';
+        else if (!/\./.test(page)) page += '.html';
+        return page + suffix;
       }
 
       // 已登录直接回原页

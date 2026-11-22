@@ -72,6 +72,8 @@
         /[?&]redirect=/i.test(decoded) || /(^|\/)login([?#&]|$)/i.test(decoded)) {
       return 'index.html';
     }
+    // 只有查询串/片段（如从 /?reset=1 进入）→ 补上首页，避免回跳目标变成 ".html?..."
+    if (/^[?#]/.test(rel)) return 'index.html' + rel;
     return rel;
   }
 
