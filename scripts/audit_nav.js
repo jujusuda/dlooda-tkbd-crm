@@ -21,10 +21,10 @@ eq('分组数', groups.length, 7);
 eq('分组顺序', groups.map(x => x.label).join(' / '), '工作台 / 日常执行 / 达人 / 内容 / 产品配置 / 数据分析 / 工具');
 const expected = {
   workbench: ['首页'],
-  execution: ['寄样任务', '任务清单', '邀约', '私信', '样品', '履约追踪'],
+  execution: ['寄样任务', '任务清单', '邀约', '私信话术库', '样品', '履约追踪'],
   creator: ['达人', '名单库'],
   content: ['视频'],
-  product: ['产品'],
+  product: ['产品定位'],
   analysis: ['看板', '复盘', '日报'],
   tools: ['AI分析']
 };
@@ -71,6 +71,22 @@ const sections = dashjs.match(/var sections = \[([^\]]+)\]/)[1].split(',').map(s
 const tabs = [...dash.matchAll(/data-target="(section-[^"]+)"/g)].map(m => m[1]);
 eq('tab 数与 sections 数一致', tabs.length, sections.length);
 ok('每个 tab 都有对应 section 元素', tabs.every(t => dash.includes('id="' + t + '"')));
+
+console.log('\n=== 6. 本轮新增：改名 / 侧边栏退出 / 全局搜索 / 无注册入口 ===');
+const authSrc = fs.readFileSync(ROOT + '/js/auth.js', 'utf8');
+const msgHtml = fs.readFileSync(ROOT + '/message.html', 'utf8');
+const prodHtml = fs.readFileSync(ROOT + '/product.html', 'utf8');
+ok('侧边栏底部含退出登录按钮', src.indexOf('id="dlooda-logout"') >= 0);
+ok('侧边栏显示当前登录用户', src.indexOf('当前登录：') >= 0);
+ok('退出登录不再注入顶部右上角', authSrc.indexOf('dlooda-logout-top') < 0);
+ok('auth.js 不再后置 append sidebar（避免被覆盖）', authSrc.indexOf('injectUserEntry') < 0);
+ok('全局搜索入口在侧边栏', src.indexOf('id="dlooda-global-search"') >= 0);
+ok('全局搜索支持达人/SKU/视频', /gsSearch/.test(src) && /getCreators/.test(src) && /getAvailableSKUs/.test(src) && /getVideos/.test(src));
+ok('私信页标题已改名', msgHtml.indexOf('私信话术库') >= 0 && msgHtml.indexOf('私信管理') < 0);
+ok('产品页标题保持新名', prodHtml.indexOf('产品定位') >= 0);
+const htmls = fs.readdirSync(ROOT).filter(f => f.endsWith('.html'));
+const regPages = htmls.filter(f => /立即注册|注册账号|申请开通|创建账号/.test(fs.readFileSync(ROOT + '/' + f, 'utf8')));
+eq('全站无注册 / 申请开通入口', regPages.length, 0);
 
 console.log('\n----------------------------------------');
 console.log(`PASS ${pass} / FAIL ${fail}`);

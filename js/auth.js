@@ -207,41 +207,11 @@
     global.location.replace(LOGIN_PAGE);
   }
 
-  /* ---------- 页面内的「用户 / 退出登录」入口 ---------- */
-  function injectUserEntry() {
-    var s = readSession();
-    if (!s) return;
-
-    // 侧边栏：当前用户 + 退出按钮
-    var sidebar = document.querySelector('.sidebar');
-    if (sidebar && !document.getElementById('dlooda-logout')) {
-      var wrap = document.createElement('div');
-      wrap.className = 'sidebar__footer';
-      wrap.innerHTML = '<div class="sidebar__user" title="' + escapeAttr(s.display) + '">当前登录：' + escapeAttr(s.display) + '</div>'
-        + '<button type="button" class="sidebar__logout" id="dlooda-logout">退出登录</button>';
-      sidebar.appendChild(wrap);
-      var btn = document.getElementById('dlooda-logout');
-      if (btn) btn.addEventListener('click', logout);
-    }
-
-    // 顶部右侧：移动端也能退出
-    var actions = document.querySelector('.page-header__actions');
-    if (actions && !document.getElementById('dlooda-logout-top')) {
-      var top = document.createElement('button');
-      top.type = 'button';
-      top.id = 'dlooda-logout-top';
-      top.className = 'btn btn--ghost btn--sm';
-      top.textContent = '退出登录';
-      top.style.marginLeft = '8px';
-      top.addEventListener('click', logout);
-      actions.appendChild(top);
-    }
-  }
-
-  function escapeAttr(v) {
-    return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-      .replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
+  /* ---------- 用户 / 退出登录入口 ----------
+     ⚠️ 统一由 app.js 的 buildSidebar() 渲染在侧边栏最底部（全站 15 个页面一致），
+        本文件不再自行 append：app.js 在 DOMContentLoaded 会重建 sidebar.innerHTML，
+        后置 append 会被覆盖；顶部右上角也不再放退出按钮（指令二.2）。
+        这里只保留 logout() / getSession() 供公共 UI 调用。 */
 
   /* ---------- 守卫（同步执行，避免先闪一下页面） ---------- */
   function guard() {
@@ -266,9 +236,5 @@
     config: CFG
   };
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectUserEntry);
-  } else {
-    injectUserEntry();
-  }
+  /* 登录态 UI 由 app.js 在 injectNavigation() 统一注入，无需在此注册监听。 */
 })(window);

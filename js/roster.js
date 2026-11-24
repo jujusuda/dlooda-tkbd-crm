@@ -202,10 +202,17 @@
     var statusFilterEl = document.getElementById('roster-filter-status');
     var skuFilter = skuFilterEl ? skuFilterEl.value : '';
     var statusFilter = statusFilterEl ? statusFilterEl.value : '';
+    var tagFilterEl = document.getElementById('roster-filter-tag');
+    var tagFilter = tagFilterEl ? tagFilterEl.value : '';
+    var CT = window.DloodaCreatorTags;
 
     var shown = rows.filter(function (r) {
       if (skuFilter && (r.groups || []).indexOf(skuFilter) === -1) return false;
       if (statusFilter && r.status !== statusFilter) return false;
+      if (tagFilter && CT) {
+        var t = CT.get(r.handle || '') || '';
+        if (tagFilter === '__none__' ? !!t : t !== tagFilter) return false;
+      }
       return true;
     });
 
@@ -254,7 +261,7 @@
             + 'style="color:var(--c-danger);">删除</button>';
 
       return ''
-        + '<tr>'
+        + '<tr data-handle="' + App.escapeHtml(r.handle || '') + '">'
         +   '<td><span style="font-weight:600;color:var(--text-1);">'
         +     App.escapeHtml(r.raw || r.handle) + '</span>'
         +     (c ? '<div style="font-size:11px;color:var(--text-3);margin-top:2px;">'

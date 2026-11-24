@@ -3,7 +3,7 @@
    PWA 离线缓存 · 应用外壳预缓存
    ================================================================ */
 
-var CACHE_VERSION = 'dlooda-tkbd-v62';
+var CACHE_VERSION = 'dlooda-tkbd-v63';
 
 /* 需要预缓存的应用外壳文件 */
 var APP_SHELL = [
@@ -27,6 +27,10 @@ var APP_SHELL = [
   './css/style.css',
   './css/conversion.css',
   './js/app.js',
+  './js/result-store.js',
+  './js/workbench.js',
+  './js/dashboard-extra.js',
+  './js/creator-tags.js',
   './js/data.js',
   './js/real-data.js',
   './js/auth-config.js',

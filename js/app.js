@@ -80,13 +80,13 @@
     { id: 'task',          label: '寄样任务', icon: ICONS.task,      href: 'task.html',          enabled: true, group: 'execution' },
     { id: 'todo',          label: '任务清单', icon: ICONS.todo,      href: 'todo.html',          enabled: true, group: 'execution' },
     { id: 'invite',        label: '邀约',     icon: ICONS.invite,    href: 'invite.html',        enabled: true, group: 'execution' },
-    { id: 'message',       label: '私信',     icon: ICONS.message,   href: 'message.html',       enabled: true, group: 'execution' },
+    { id: 'message',       label: '私信话术库', icon: ICONS.message,   href: 'message.html',       enabled: true, group: 'execution' },
     { id: 'sample',        label: '样品',     icon: ICONS.sample,    href: 'sample.html',        enabled: true, group: 'execution' },
     { id: 'tracking',      label: '履约追踪', icon: ICONS.tracking,  href: 'tracking.html',      enabled: true, group: 'execution' },
     { id: 'creator',       label: '达人',     icon: ICONS.creator,   href: 'creator.html',       enabled: true, group: 'creator' },
     { id: 'roster',        label: '名单库',   icon: ICONS.roster,    href: 'roster.html',        enabled: true, group: 'creator' },
     { id: 'video',         label: '视频',     icon: ICONS.video,     href: 'video.html',         enabled: true, group: 'content' },
-    { id: 'product',       label: '产品',     icon: ICONS.product,   href: 'product.html',       enabled: true, group: 'product' },
+    { id: 'product',       label: '产品定位', icon: ICONS.product,   href: 'product.html',       enabled: true, group: 'product' },
     { id: 'dashboard',     label: '看板',     icon: ICONS.dashboard, href: 'dashboard.html',     enabled: true, group: 'analysis' },
     { id: 'report',        label: '复盘',     icon: ICONS.report,    href: 'report.html',        enabled: true, group: 'analysis' },
     { id: 'daily',         label: '日报',     icon: ICONS.daily,     href: 'daily.html',         enabled: true, group: 'analysis' },
@@ -114,6 +114,7 @@
     if (sidebar) {
       sidebar.innerHTML = buildSidebar(currentPage);
       injectVersionTag(sidebar);
+      initGlobalSearchUI();
     }
 
     // 移动端底部导航
@@ -171,6 +172,155 @@
     } catch (e) {}
   }
 
+  /* ========== 全局搜索 + 侧边栏退出登录（全站统一注入，2026-11） ==========
+     所有页面都加载 app.js，导航在 DOMContentLoaded 由 injectNavigation 重建，
+     所以搜索入口 / 当前用户 / 退出按钮必须并进 buildSidebar，不能后置 append（会被覆盖）。 */
+  var GS_CSS = [
+    '.sidebar__search{padding:10px 14px 2px;}',
+    '.sidebar__search-btn{width:100%;display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border-1);border-radius:8px;background:var(--bg-card);color:var(--text-2);font-size:11px;font-family:inherit;cursor:pointer;text-align:left;}',
+    '.sidebar__search-btn:hover{border-color:var(--pink-400);color:var(--text-1);}',
+    '.sidebar__search-icon{font-size:15px;line-height:1;color:var(--pink-500);}',
+    '.sidebar__search-k{margin-left:auto;font-size:9px;color:var(--text-3);border:1px solid var(--border-1);border-radius:4px;padding:1px 4px;}',
+    '.sidebar__user-row{margin-top:10px;padding-top:9px;border-top:1px solid var(--border-1);display:flex;flex-direction:column;gap:6px;align-items:flex-start;}',
+    '.sidebar__user-name{font-size:10px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}',
+    '.sidebar__logout{width:100%;border:1px solid var(--border-1);background:#fff;color:var(--text-2);border-radius:8px;padding:5px 10px;font-size:10px;font-family:inherit;cursor:pointer;}',
+    '.sidebar__logout:hover{color:var(--pink-600);border-color:var(--pink-400);}',
+    '.gs-panel[hidden]{display:none;}',
+    '.gs-mask{position:fixed;inset:0;background:rgba(24,34,47,.32);z-index:9000;}',
+    '.gs-box{position:fixed;z-index:9001;top:12%;left:50%;transform:translateX(-50%);width:min(620px,92vw);background:var(--bg-card);border:1px solid var(--border-1);border-radius:14px;box-shadow:0 18px 48px rgba(24,34,47,.18);overflow:hidden;}',
+    '.gs-inputrow{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border-1);}',
+    '.gs-icon{font-size:18px;color:var(--pink-500);}',
+    '.gs-input{flex:1;border:none;outline:none;background:transparent;color:var(--text-1);font-size:14px;font-family:inherit;}',
+    '.gs-close{border:none;background:none;color:var(--text-3);font-size:11px;cursor:pointer;font-family:inherit;}',
+    '.gs-results{max-height:52vh;overflow:auto;padding:6px 10px 10px;}',
+    '.gs-group__title{font-size:10px;color:var(--text-3);font-weight:700;padding:8px 6px 4px;}',
+    '.gs-item{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:8px 10px;border-radius:8px;text-decoration:none;color:var(--text-1);}',
+    '.gs-item:hover{background:var(--bg-2);}',
+    '.gs-item__name{font-size:12px;font-weight:600;}',
+    '.gs-item__sub{font-size:10px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%;}',
+    '.gs-empty{padding:24px;text-align:center;color:var(--text-3);font-size:12px;}',
+    '.gs-tip{padding:8px 14px;border-top:1px solid var(--border-1);font-size:10px;color:var(--text-3);}'
+  ].join('');
+
+  function gsEnsurePanel() {
+    var st = document.getElementById('dlooda-gs-style');
+    if (!st) {
+      st = document.createElement('style');
+      st.id = 'dlooda-gs-style';
+      st.textContent = GS_CSS;
+      document.head.appendChild(st);
+    }
+    var panel = document.getElementById('dlooda-search-panel');
+    if (panel) return panel;
+    panel = document.createElement('div');
+    panel.id = 'dlooda-search-panel';
+    panel.className = 'gs-panel';
+    panel.setAttribute('hidden', '');
+    panel.innerHTML = ''
+      + '<div class="gs-mask" data-gs="close"></div>'
+      + '<div class="gs-box" role="dialog" aria-label="全局搜索">'
+      +   '<div class="gs-inputrow"><span class="gs-icon">⌕</span>'
+      +     '<input id="dlooda-search-input" class="gs-input" type="text" placeholder="搜达人昵称 / TikTok 主页 / SKU" autocomplete="off">'
+      +     '<button type="button" class="gs-close" data-gs="close">关闭</button></div>'
+      +   '<div id="dlooda-search-results" class="gs-results"></div>'
+      +   '<div class="gs-tip">达人 → 达人分析页；SKU → 视频页；TikTok 主页 → 达人页。Esc 关闭，Ctrl / ⌘ + K 打开。</div>'
+      + '</div>';
+    document.body.appendChild(panel);
+    return panel;
+  }
+
+  function gsSearch(q) {
+    var out = { creators: [], skus: [], videos: [] };
+    var kw = String(q || '').trim().toLowerCase();
+    var D = window.DloodaData;
+    if (!kw || !D) return out;
+    try {
+      (D.getCreators() || []).forEach(function (c) {
+        var name = String(c.name || '');
+        var handle = '@' + name;
+        var url = 'https://www.tiktok.com/@' + name;
+        var hay = (name + ' ' + (c.category || '') + ' ' + (c.note || '') + ' ' + handle + ' ' + url).toLowerCase();
+        if (hay.indexOf(kw) >= 0) {
+          out.creators.push({ name: name, sub: (c.official || '—') + ' · ' + (c.creatorType || ''), href: 'ai-assistant.html?creator=' + encodeURIComponent(name) });
+        }
+      });
+    } catch (e) {}
+    try {
+      var skus = D.getAvailableSKUs ? D.getAvailableSKUs() : [];
+      skus.forEach(function (s) {
+        var code = typeof s === 'string' ? s : (s.sku || s.code || '');
+        var nm = typeof s === 'string' ? '' : (s.productName || s.name || '');
+        if (String(code).toLowerCase().indexOf(kw) >= 0 || String(nm).toLowerCase().indexOf(kw) >= 0) {
+          out.skus.push({ name: code, sub: nm || 'SKU', href: 'video.html?sku=' + encodeURIComponent(code) });
+        }
+      });
+    } catch (e) {}
+    try {
+      (D.getVideos() || []).slice(0, 500).forEach(function (v) {
+        var hay = (String(v.creator || '') + ' ' + String(v.sku || '')).toLowerCase();
+        if (hay.indexOf(kw) >= 0) {
+          out.videos.push({ name: v.creator || '（未知达人）', sub: 'SKU ' + (v.sku || '—') + ' · ' + (v.postTime || ''), href: 'video.html?sku=' + encodeURIComponent(v.sku || '') });
+        }
+      });
+    } catch (e) {}
+    out.creators = out.creators.slice(0, 8);
+    out.skus = out.skus.slice(0, 8);
+    out.videos = out.videos.slice(0, 8);
+    return out;
+  }
+
+  function gsRender(q) {
+    var box = document.getElementById('dlooda-search-results');
+    if (!box) return;
+    if (!String(q || '').trim()) { box.innerHTML = '<div class="gs-empty">输入关键词开始搜索…</div>'; return; }
+    var r = gsSearch(q), html = '';
+    [['达人', r.creators], ['SKU', r.skus], ['视频', r.videos]].forEach(function (g) {
+      if (!g[1].length) return;
+      html += '<div class="gs-group"><div class="gs-group__title">' + g[0] + '（' + g[1].length + '）</div>'
+        + g[1].map(function (x) {
+          return '<a class="gs-item" href="' + escapeHtml(x.href) + '">'
+            + '<span class="gs-item__name">' + escapeHtml(x.name) + '</span>'
+            + '<span class="gs-item__sub">' + escapeHtml(x.sub) + '</span></a>';
+        }).join('') + '</div>';
+    });
+    box.innerHTML = html || '<div class="gs-empty">没有匹配的达人 / SKU / 视频</div>';
+  }
+
+  function gsOpen() {
+    var p = gsEnsurePanel();
+    p.removeAttribute('hidden');
+    var inp = document.getElementById('dlooda-search-input');
+    if (inp) { inp.value = ''; inp.focus(); gsRender(''); }
+  }
+  function gsClose() {
+    var p = document.getElementById('dlooda-search-panel');
+    if (p) p.setAttribute('hidden', '');
+  }
+
+  var gsBound = false;
+  function initGlobalSearchUI() {
+    gsEnsurePanel();
+    if (gsBound) return;
+    gsBound = true;
+    document.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t) return;
+      if (t.id === 'dlooda-logout') {
+        if (window.DloodaAuth && window.DloodaAuth.logout) window.DloodaAuth.logout();
+        return;
+      }
+      if (t.id === 'dlooda-global-search' || (t.closest && t.closest('#dlooda-global-search'))) { gsOpen(); return; }
+      if (t.getAttribute && t.getAttribute('data-gs') === 'close') { gsClose(); return; }
+    });
+    document.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); gsOpen(); }
+      if (e.key === 'Escape') gsClose();
+    });
+    document.addEventListener('input', function (e) {
+      if (e.target && e.target.id === 'dlooda-search-input') gsRender(e.target.value);
+    });
+  }
+
   function prefetchPages(currentPage) {    if (!document.head) return;
     NAV_ITEMS.forEach(function (item) {
       if (!item.enabled || item.id === currentPage) return;
@@ -220,16 +370,32 @@
         + orphan.map(renderItem).join('') + '</div>';
     }
 
+    var sessName = '';
+    try {
+      var sess = window.DloodaAuth && window.DloodaAuth.getSession && window.DloodaAuth.getSession();
+      if (sess) sessName = sess.display || sess.username || '';
+    } catch (e) {}
+
     return ''
       + '<div class="sidebar__brand">'
       +   CAT_LOGO_SVG
       +   '<div class="sidebar__brand-text">Dlooda <span>TKBD</span></div>'
       + '</div>'
       + '<nav class="sidebar__nav">' + groupsHtml + '</nav>'
+      + '<div class="sidebar__search">'
+      +   '<button type="button" class="sidebar__search-btn" id="dlooda-global-search">'
+      +     '<span class="sidebar__search-icon">⌕</span><span>全局搜索</span>'
+      +     '<span class="sidebar__search-k">Ctrl K</span>'
+      +   '</button>'
+      + '</div>'
       + '<div class="sidebar__footer">'
       +   'Dlooda TKBD CRM<br>'
       +   'v0.1 · 本地开发版<br>'
       +   BOW_SVG
+      +   '<div class="sidebar__user-row">'
+      +     '<span class="sidebar__user-name">当前登录：' + escapeHtml(sessName) + '</span>'
+      +     '<button type="button" class="sidebar__logout" id="dlooda-logout">退出登录</button>'
+      +   '</div>'
       + '</div>';
   }
 

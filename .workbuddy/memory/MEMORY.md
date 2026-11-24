@@ -2,6 +2,8 @@
 
 ## 概况
 - Dlooda：TikTok Shop 美国女装；CRM = 飞书多维表格 → Web CRM（GitHub `jujusuda/dlooda-tkbd-crm`，Cloudflare Pages，PWA）。淡粉治愈风 + Hello Kitty 点缀。详细日志见各日期 md。
+- **月报工具链**（2026-11 建）：`scripts/build_report_data.py`（订单/视频/层级/source 全部数字 → work/report_data.json）+ `scripts/build_monthly_deck.py` + `scripts/deck_lib.py`（python-pptx，26 页商务风格）。
+- ⚠️ **月度订单口径以用户为准：全部订单状态**（2026-10 = 7,039 件 / $153,934.85，自然单 5,536 + 广告单 1,503）。《统计指令》里的「只取待确认+已结算」是另一口径（6,572 件 / $143,810），别拿它当月度总订单；后台「达人 GMV」才对应有效口径。
 
 ## 硬性规则（勿改）
 - **评分**：总100 = 月销售40 + 女装垂度20 + 均播15 + 口播15 + 女粉10；不用粉丝数/国家；只显示 ★★★★★ + 95/100。
@@ -31,7 +33,8 @@
 - ⚠️ 同步逻辑**两份必须同步改**：`functions/lib/sync.mjs`（线上主路径）+ `server/sync.js`（本地兜底）。占位 tableId 自动跳过；`tables[k].appToken` 单表覆盖。`node server/sync.js` 不会同步，用 `_run_sync_once.js` 或 POST /api/sync。
 - normSku 两端归一（sku 可能数字/数组/{text}）；时间戳 UTC+8；orderCount 字符串、fulfillMethod 数组，判断前归一化。
 - ⚠️ 日期范围比较只比前 10 位（`slice(0,10)`），否则结束日当天被吞（曾致复盘页与 Dashboard 对不上）。
-- 改前端必递增 sw.js CACHE_VERSION（当前 v44）。核对线上数字用 `/api/data`，仓库静态 real-data.js 是旧快照。
+- 改前端必递增 sw.js CACHE_VERSION（当前 v61）。核对线上数字用 `/api/data`，仓库静态 real-data.js 是旧快照。
+- 🚨 **Cloudflare Pages pretty URLs**：`/xxx.html` 会 308 到 `/xxx`（无扩展名，`/index.html`→`/`）。任何靠 `location.pathname` 判断「当前是哪个页面」的逻辑必须兼容两种形式，否则无限重定向（v60 登录守卫踩过：`login?redirect=login?...` 白屏）。现方案：`auth.js` 三重判定（`<html data-auth-page="login">` / `__DLOODA_LOGIN_PAGE__` / URL 含 login 与 login.html）+ 8s 内 >3 次跳转熔断；`login.html` 用 `history.replaceState` 把 `/login` 补回 `/login.html` 以兼容旧守卫缓存；SW 对 `auth*.js` / `login*` 强制 `cache:'no-store'`。本地 `http.server` 不做 308，测不出来，需专门模拟。
 
 ## CRM 名单库 roster.html（铁律）
 - 跨设备云同步 KV（`functions/api/roster.js` + `js/store.js`，防抖 2s 上推，`_updatedAt` 大者胜，断网降级本地）。
@@ -52,6 +55,9 @@
 - 话术：Hook→品牌+产品→佣金→Feel free to apply；translator.js 须在 invite/message.js 前加载。
 
 ## 通用坑
+- ⚠️ **登录态 UI 只能由 `js/app.js` 的 `buildSidebar()` 渲染**：app.js 在 DOMContentLoaded 会 `sidebar.innerHTML = ...`，任何其它脚本后置 append 的侧边栏内容都会被覆盖（v60 退出登录只剩右上角的根因）。退出登录固定在侧边栏 footer，顶部不放。
+- ⚠️ `Data.getSKUsByPositioning(2)` 无效（数字比中文 positioning 串，恒空）；按档位过滤 SKU 一律用 `getSKUPositionTier(sku)===n`。
+- ⚠️ 上传表结果存本机 `dlooda_upload_results_v1`（`js/result-store.js`）；`conversion.js` 只在确实有上传表时才 save，否则空汇总会冲掉上次结果。首页工作台/测款专区/达人页都读这一份，不另算口径。
 - **`window.DloodaApp` 不是 `window.App`**：app.js 导出的是 `DloodaApp`，各页面自己 `var App = window.DloodaApp`。新写独立脚本照做，否则 `App.escapeHtml` 报 TypeError、区块静默空白（creator-levels.js 踩过）。
 - 排查线上前端错误：本机 Chrome 无头 `--headless=new --enable-logging=stderr --dump-dom` + grep "Uncaught"，比反复猜快得多。
 - 不加评分字段/不手写 Sidebar/不做假数据/列表限100+搜索/不重复实现 copyToClipboard、populateSkuSelect。

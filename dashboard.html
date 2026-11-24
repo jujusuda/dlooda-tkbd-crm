@@ -29,6 +29,7 @@
   </style>
   <script src="js/auth-config.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/result-store.js"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -56,6 +57,19 @@
         <button class="analysis-tab" data-target="section-fulfill">履约率分析</button>
         <button class="analysis-tab" data-target="section-video">视频质量分析</button>
         <button class="analysis-tab" data-target="section-reinvest">复投分析</button>
+        <button class="analysis-tab" data-target="section-funnel">全链路漏斗</button>
+        <button class="analysis-tab" data-target="section-testsku">测款专区</button>
+      </div>
+
+      <!-- B1 全链路漏斗 -->
+      <div class="section" id="section-funnel">
+        <div class="section__header"><h2 class="section__title">邀约 → 寄样 → 履约 → 出单 全链路漏斗</h2></div>
+        <div id="funnel-analysis"></div>
+      </div>
+      <!-- B2 测款专区 -->
+      <div class="section" id="section-testsku">
+        <div class="section__header"><h2 class="section__title">测款专区（新品全量口径）</h2></div>
+        <div id="testsku-analysis"></div>
       </div>
 
       <!-- 1. 达人画像分析 -->
@@ -132,5 +146,6 @@
   <script src="js/reminder.js?v=20261023"></script>
   <script src="js/dashboard.js?v=20260908"></script>
   <script src="js/conversion.js"></script>
+  <script src="js/dashboard-extra.js"></script>
 </body>
 </html>

@@ -56,7 +56,9 @@
     { key: 'gmv',         label: '支付金额 / GMV', kws: ['支付金额', '支付总额', 'gmv', '订单金额', '实付金额', '成交金额'] },
     { key: 'units',       label: '下单件数 / 成交件数', kws: ['下单件数', '成交件数', '购买件数', '商品件数', '件数', '数量', 'qty'] },
     { key: 'status',      label: '订单状态', kws: ['订单状态', '状态', 'status'] },
-    { key: 'adRate',      label: '店铺广告佣金率', kws: ['店铺广告佣金率', '广告佣金率', '佣金率', '广告佣金', '佣金'] }
+    { key: 'adRate',      label: '店铺广告佣金率', kws: ['店铺广告佣金率', '广告佣金率', '佣金率', '广告佣金', '佣金'] },
+    // 可选：上传表若带达人列，才能算「按达人累计 GMV」；没有该列一律显示「暂无数据」，不拿现有库凑
+    { key: 'creator',     label: '达人昵称（可选）', kws: ['达人昵称', '达人名称', '达人账号', '达人', 'creator', 'handle', 'tiktok'] }
   ];
 
   var SLOTS = [
@@ -390,7 +392,8 @@
     var out = {}, missing = { gmv: false, units: false, natural: false, created: false, status: false };
     // 未上传订单表：所有订单侧字段都视为「缺列」，一律显示「暂无数据」，绝不补 0
     if (!slot || slot.type !== 'order') {
-      return { data: out, missing: { gmv: true, units: true, natural: true, created: true, status: true }, empty: true };
+      return { data: out, missing: { gmv: true, units: true, natural: true, created: true, status: true },
+               empty: true, totals: { rows: 0, naturalRows: 0 }, byCreator: {}, hasCreator: false };
     }
     var mp = slot.mapping;
     missing.gmv = isBlank(mp.gmv);
@@ -398,6 +401,9 @@
     missing.created = isBlank(mp.createdTime);
     missing.status = isBlank(mp.status);
     missing.natural = isBlank(mp.adRate);
+    var hasCreator = !isBlank(mp.creator);
+    var totals = { rows: 0, naturalRows: 0 };
+    var byCreator = {};
 
     var white = (state.statusWhite || '').split(/[,，、\s]+/).filter(Boolean);
     slot.aoa.slice(slot.headerRow + 1).forEach(function (r) {
@@ -414,11 +420,23 @@
 
       var a = out[sku] || (out[sku] = { gmv: 0, units: 0, rows: 0, naturalRows: 0 });
       a.rows += 1;
+      totals.rows += 1;
       if (!missing.gmv) a.gmv += num(r[mp.gmv]);
       if (!missing.units) a.units += num(r[mp.units]);
-      if (!missing.natural && isBlank(r[mp.adRate])) a.naturalRows += 1;
+      if (!missing.natural && isBlank(r[mp.adRate])) { a.naturalRows += 1; totals.naturalRows += 1; }
+      if (hasCreator) {
+        var cn = String(r[mp.creator] == null ? '' : r[mp.creator]).trim();
+        if (cn) {
+          var ca = byCreator[cn] || (byCreator[cn] = { gmv: 0, units: 0, orders: 0, lastTime: '' });
+          ca.orders += 1;
+          if (!missing.gmv) ca.gmv += num(r[mp.gmv]);
+          if (!missing.units) ca.units += num(r[mp.units]);
+          if (d && (!ca.lastTime || d > ca.lastTime)) ca.lastTime = d;
+        }
+      }
     });
-    return { data: out, missing: missing, empty: false };
+    return { data: out, missing: missing, empty: false,
+             totals: totals, byCreator: byCreator, hasCreator: hasCreator };
   }
 
   /* 现有库指标（寄样数、达人出单率）：沿用现有页面口径，不另算 */
@@ -502,10 +520,62 @@
       rows.sort(function (a, b) { return (b.m.gmv.value || 0) - (a.m.gmv.value || 0); });
     }
 
+    /* ---------- 跨页共享汇总：首页工作台 / 达人页 / 测款专区都读这一份（不另算口径） ---------- */
+    function sumField(o, f) {
+      var s = 0;
+      Object.keys(o || {}).forEach(function (k) { s += (o[k][f] || 0); });
+      return s;
+    }
+    function pair(cur, prev, okCur, okPrev) {
+      return { value: okCur ? cur : null, prev: (hasPrev && okPrev && prev !== null) ? prev : null };
+    }
+    // 测款专区用「新品全量」口径单独再算一次视频侧（VV<50 剔除、=50 保留）
+    var fullV = computeVideo(state.slots.video, { start: R.start, end: R.end }, 'full');
+    var bySku = {}, bySkuFull = {};
+    rows.forEach(function (row) {
+      bySku[row.sku] = { name: row.name, tag: row.tag, tier: row.tier, m: row.m };
+    });
+    Object.keys(fullV.data || {}).forEach(function (sku) {
+      var f = fullV.data[sku];
+      bySkuFull[sku] = { videos: f.videos, orderedVideos: f.orderedVideos,
+        orderUnits: f.orderUnits, vv: f.vv, clicks: f.clicks, conversions: f.conversions,
+        orderRate: f.videos ? f.orderedVideos / f.videos : null };
+    });
+    var oT = curO.totals || { rows: 0, naturalRows: 0 };
+    var pT = prevO.totals || { rows: 0, naturalRows: 0 };
+    var summary = {
+      updatedAt: new Date().toISOString(),
+      period: { start: R.start, end: R.end, prevStart: R.prevStart, prevEnd: R.prevEnd },
+      hasOrder: !curO.empty, hasVideo: !curV.empty, hasPrev: hasPrev,
+      hasCreator: !!curO.hasCreator, videoMode: state.videoMode,
+      totals: {
+        gmv:    pair(sumField(curO.data, 'gmv'), sumField(prevO.data, 'gmv'), !curO.missing.gmv, !prevO.missing.gmv),
+        units:  pair(sumField(curO.data, 'units'), sumField(prevO.data, 'units'), !curO.missing.units, !prevO.missing.units),
+        natural: pair(oT.rows ? oT.naturalRows / oT.rows : null,
+                      pT.rows ? pT.naturalRows / pT.rows : null,
+                      !curO.missing.natural && oT.rows > 0, !prevO.missing.natural && pT.rows > 0),
+        videos:        pair(sumField(curV.data, 'videos'), sumField(prevV.data, 'videos'), !curV.empty, !prevV.empty),
+        orderedVideos: pair(sumField(curV.data, 'orderedVideos'), sumField(prevV.data, 'orderedVideos'),
+                            !curV.empty && !curV.missing.orders, !prevV.empty && !prevV.missing.orders),
+        videoUnits:    pair(sumField(curV.data, 'orderUnits'), sumField(prevV.data, 'orderUnits'),
+                            !curV.empty && !curV.missing.orders, !prevV.empty && !prevV.missing.orders),
+        vv:     pair(sumField(curV.data, 'vv'), sumField(prevV.data, 'vv'),
+                     !curV.empty && !curV.missing.vv, !prevV.empty && !prevV.missing.vv),
+        clicks: pair(sumField(curV.data, 'clicks'), sumField(prevV.data, 'clicks'),
+                     !curV.empty && !curV.missing.clicks, !prevV.empty && !prevV.missing.clicks)
+      },
+      bySku: bySku, bySkuFull: bySkuFull, byCreator: curO.byCreator || {}
+    };
+    var t = summary.totals;
+    t.ctr = { value: (t.clicks.value !== null && t.vv.value) ? t.clicks.value / t.vv.value : null,
+              prev: (t.clicks.prev !== null && t.vv.prev) ? t.clicks.prev / t.vv.prev : null };
+    t.videoRate = { value: (t.videos.value && t.orderedVideos.value !== null) ? t.orderedVideos.value / t.videos.value : null,
+                    prev: (t.videos.prev && t.orderedVideos.prev !== null) ? t.orderedVideos.prev / t.videos.prev : null };
+
     return {
       rows: rows, ranges: R, hasPrev: hasPrev,
       warnings: buildWarnings(curV, curO, prevV, prevO),
-      orderKey: curV.orderKey
+      orderKey: curV.orderKey, summary: summary
     };
   }
 
@@ -673,6 +743,12 @@
     var root = document.getElementById('conversion-root');
     if (!root) return;
     state.result = buildResult();
+    // 汇总写本机，供首页工作台 / 看板测款专区 / 达人页读取（不存原始表）。
+    // ⚠️ 只在确实上传了表时覆盖：否则本页初始化会把上次上传的结果冲成空汇总。
+    var sm = state.result.summary;
+    if (global.DloodaResults && global.DloodaResults.save && sm && (sm.hasOrder || sm.hasVideo)) {
+      try { global.DloodaResults.save(sm); } catch (e) {}
+    }
     var R = state.result.ranges;
     var warnHtml = state.result.warnings.length
       ? '<div class="cv-warn">' + state.result.warnings.map(function (w) { return '· ' + esc(w); }).join('<br>') + '</div>' : '';
